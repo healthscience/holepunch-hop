@@ -1,0 +1,42 @@
+{
+  "name": "holepunch-hop",
+  "version": "0.0.2",
+  "description": "data interface to HOP",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "mocha test/*.*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/healthscience/holepunch-hop.git"
+  },
+  "keywords": [
+    "holepunch",
+    "data",
+    "hop",
+    "ptop"
+  ],
+  "author": "aboynejames@gmail.com",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/healthscience/holepunch-hop/issues"
+  },
+  "homepage": "https://github.com/healthscience/holepunch-hop#readme",
+  "dependencies": {
+    "b4a": "^1.6.1",
+    "corestore": "^6.4.0",
+    "debounceify": "^1.0.0",
+    "graceful-goodbye": "^1.2.0",
+    "hyperbee": "^2.2.0",
+    "hypercore": "^10.5.3",
+    "hyperdrive": "^11.0.0-alpha.10",
+    "hyperswarm": "^4.3.5",
+    "localdrive": "github:holepunchto/localdrive"
+  },
+  "devDependencies": {
+    "assert": "^2.0.0",
+    "mocha": "^10.0.0"
+  }
+}
