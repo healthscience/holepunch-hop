@@ -9,8 +9,11 @@
 * @version    $Id$
 */
 import EventEmitter from 'events'
+import fs from 'fs'
 import Hyperdrive from 'hyperdrive'
 import b4a from 'b4a'
+import Fileparser from './fileParser.js'
+import csv from 'csv-parser'
 
 import { Node } from 'hyperbee/lib/messages.js'
 import { start } from 'repl'
@@ -23,6 +26,7 @@ class HypDrive extends EventEmitter {
     this.core = core
     this.swarm = swarm
     this.drive = {}
+    this.fileUtility = new Fileparser('')
     // this.setupHyperdrive()
   }
 

@@ -25,8 +25,11 @@
   },
   "homepage": "https://github.com/healthscience/holepunch-hop#readme",
   "dependencies": {
+    "atob": "^2.1.2",
+    "axios": "^1.2.2",
     "b4a": "^1.6.1",
     "corestore": "^6.4.0",
+    "csv-parser": "^3.0.0",
     "debounceify": "^1.0.0",
     "graceful-goodbye": "^1.2.0",
     "hyperbee": "^2.2.0",
