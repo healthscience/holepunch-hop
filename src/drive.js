@@ -66,7 +66,6 @@ class HypDrive extends EventEmitter {
    *
    */
   hyperdriveWritestream = async function (fileData) {
-    console.log('start write drive')
     let localthis = this
     const ws = this.drive.createWriteStream('/blob.txt')
 
@@ -77,6 +76,29 @@ class HypDrive extends EventEmitter {
     this.wsocketon('close', function () {
       const rs = localthis.drive.createReadStream('/blob.txt')
       rs.pipe(process.stdout) // prints Hello, world!
+    })
+  }
+
+  /**
+   * produce list of files in folder
+   * @method listFilesFolder 
+   *
+  */
+  listFilesFolder = function (folder) {
+    const stream = this.drive.list('') //  [options])
+    // console.log(stream)
+    // Handle stream events --> data, end, and error
+    let dataDrive = []
+    stream.on('data', function(chunk) {
+      // console.log('data')
+      // console.log(chunk)
+      // console.log('end cuchnk')
+      dataDrive.push(chunk)
+    })
+
+    stream.on('end', function(chunk) {
+      // console.log('stream at end')
+      // console.log(dataDrive)
     })
   }
 
@@ -123,7 +145,6 @@ class HypDrive extends EventEmitter {
     var buffer = Buffer.from(dataUrl, 'base64')
     fs.writeFileSync('data.csv', buffer)
     if (path === 'text/csv') {
-      console.log('put hyperdirve')
       await this.drive.put(hyperdrivePath, fs.readFileSync('data.csv', 'utf-8'))
       // now remove the temp file for converstion
       fs.unlink('data.csv', (err => {
@@ -170,7 +191,6 @@ class HypDrive extends EventEmitter {
    *
    */
   hyperdriveLocalfile = async function (path) {
-    console.log('get drive entry')
     // File reads to buffer and recreate file
     // const bufFromGet2 = await this.drive.get(path)
     const { value: entry } = await this.drive.entry(path)
@@ -189,7 +209,6 @@ class HypDrive extends EventEmitter {
   *
   */
   readCSVfile = async function (fpath, headerSet) {
-    console.log('read cvs dirve')
     // const rs2 = this.drive.createReadStream(fpath) // 'text/csv/testshed11530500.csv') // '/blob.txt')
     // rs2.pipe(process.stdout) // prints file content
     const rs = this.drive.createReadStream(fpath) // 'text/csv/testshed11530500.csv') // '/blob.txt')

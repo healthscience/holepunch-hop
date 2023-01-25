@@ -94,7 +94,6 @@ class HyperBee extends EventEmitter {
     await this.dbKBledger.ready()
     // this.client.replicate(this.dbKBledger.feed)
     beePubkeys.push({'kbledger': b4a.toString(core5.key, 'hex')})
-
     // return beePubkeys
     let startBeePubkey = {}
     startBeePubkey.type = 'hyperbee-pubkeys'
@@ -109,14 +108,9 @@ class HyperBee extends EventEmitter {
    *
   */
   savePubliclibrary = async function (refContract) {
-    console.log('save ref contract public')
-    console.log(refContract)
     let beeSave = await this.dbPublicLibrary.put(refContract.data.hash, refContract.data.contract)
-    console.log(beeSave)
     // go query the key are return the info. to ensure data save asplanned.
     let saveCheck = await this.getPublicLibrary(refContract.data.hash)
-    console.log('check save')
-    console.log(saveCheck)
     let returnMessage = {}
     returnMessage.stored = true
     returnMessage.type = refContract.reftype
@@ -132,13 +126,13 @@ class HyperBee extends EventEmitter {
    *
   */
   savePeerLibrary = async function (refContract) {
-
     await this.dbPeerLibrary.put(refContract.hash, refContract.contract)
+    let saveCheck = await this.getPeerLibrary(refContract.hash)
     let returnMessage = {}
     returnMessage.stored = true
     returnMessage.type = refContract.reftype
-    returnMessage.key = refContract.hash
-    returnMessage.contract = refContract.contract
+    returnMessage.key = saveCheck.key
+    returnMessage.contract = saveCheck.value
     return returnMessage
   }
 
@@ -168,17 +162,8 @@ class HyperBee extends EventEmitter {
   saveBentospace = async function (spaceContract) {
     let key = 'startbentospaces'
     await this.dbBentospaces.put(key, spaceContract)
-  }
-
-  /**
-   * get data for keystore db
-   * @method getHyperbeeDB
-   *
-  */
-  getHyperbeeDB = async function (refchash) {
-    // if you want to query the feed
-    const nodeData = await this.dbbee3.get(refchash)
-
+    let checkSave = await this.getBentospace(key)
+    return checkSave
   }
 
   /**
@@ -294,8 +279,6 @@ class HyperBee extends EventEmitter {
    *
   */
   deleteRefcontPeerlibrary = async function (nxpID) {
-    console.log('delecotnra id')
-    console.log(nxpID)
     let deleteInfo = {}
     let deleteStatus = await this.dbPeerLibrary.del(nxpID)
     deleteInfo.success = deleteStatus
