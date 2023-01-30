@@ -9,6 +9,7 @@
 * @version    $Id$
 */
 import EventEmitter from 'events'
+import os from 'os'
 import Corestore from 'corestore'
 import Hyperswarm from 'hyperswarm'
 import goodbye from 'graceful-goodbye'
@@ -42,7 +43,7 @@ class HolepunchWorker extends EventEmitter {
    *
   */
   startHolepunch = async function () {
-    this.store = new Corestore('./hop-storage')
+    this.store = new Corestore(os.homedir() + './hop-storage')
     this.swarm = new Hyperswarm()
     goodbye(() => this.swarm.destroy())
     this.BeeData = new BeeWorker(this.store, this.swarm)
