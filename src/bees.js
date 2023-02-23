@@ -178,6 +178,29 @@ class HyperBee extends EventEmitter {
   }
 
   /**
+   * save space layout of bentobox
+   * @method saveSolospace
+   *
+  */
+  saveSolospace = async function (spaceContract) {
+    let key = 'startsolospaces'
+    await this.dbBentospaces.put(key, spaceContract)
+    let checkSave = await this.getBentospace(key)
+    return checkSave
+  }
+
+  /**
+   * lookup peer solospace layout default
+   * @method getSolospace
+   *
+  */
+  getSolospace = async function () {
+    let key = 'startsolospaces'
+    const nodeData = await this.dbBentospaces.get(key)
+    return nodeData
+  }
+
+  /**
    * lookup specific result UUID
    * @method getPublicLibrary
    *
@@ -192,7 +215,7 @@ class HyperBee extends EventEmitter {
    * @method getPublicLibraryRange
    *
   */
-  getPublicLibraryRange = async function (dataPrint) {
+  getPublicLibraryRange = async function (range) {
     const nodeData = this.dbPublicLibrary.createReadStream() // { gt: 'a', lt: 'z' }) // anything >a and <z
     let contractData = []
     for await (const { key, value } of nodeData) {
