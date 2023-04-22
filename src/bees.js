@@ -126,6 +126,8 @@ class HyperBee extends EventEmitter {
    *
   */
   savePeerLibrary = async function (refContract) {
+    console.log('save peer')
+    console.log(refContract)
     await this.dbPeerLibrary.put(refContract.hash, refContract.contract)
     let saveCheck = await this.getPeerLibrary(refContract.hash)
     let returnMessage = {}
@@ -185,7 +187,7 @@ class HyperBee extends EventEmitter {
   saveSolospace = async function (spaceContract) {
     let key = 'startsolospaces'
     await this.dbBentospaces.put(key, spaceContract)
-    let checkSave = await this.getBentospace(key)
+    let checkSave = await this.getSolospace(key)
     return checkSave
   }
 
