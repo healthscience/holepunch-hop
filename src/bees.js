@@ -126,8 +126,6 @@ class HyperBee extends EventEmitter {
    *
   */
   savePeerLibrary = async function (refContract) {
-    console.log('save peer')
-    console.log(refContract)
     await this.dbPeerLibrary.put(refContract.hash, refContract.contract)
     let saveCheck = await this.getPeerLibrary(refContract.hash)
     let returnMessage = {}

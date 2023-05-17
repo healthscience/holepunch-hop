@@ -15,9 +15,6 @@ import b4a from 'b4a'
 import Fileparser from './fileParser.js'
 import csv from 'csv-parser'
 
-import { Node } from 'hyperbee/lib/messages.js'
-import { start } from 'repl'
-
 class HypDrive extends EventEmitter {
 
   constructor(core, swarm) {
@@ -90,9 +87,6 @@ class HypDrive extends EventEmitter {
     // Handle stream events --> data, end, and error
     let dataDrive = []
     stream.on('data', function(chunk) {
-      // console.log('data')
-      // console.log(chunk)
-      // console.log('end cuchnk')
       dataDrive.push(chunk)
     })
 

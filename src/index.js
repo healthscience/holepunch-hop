@@ -43,7 +43,7 @@ class HolepunchWorker extends EventEmitter {
    *
   */
   startHolepunch = async function () {
-    this.store = new Corestore(os.homedir() + '/.hop-storage')
+    this.store = new Corestore(os.homedir() + '/.hop-bioregion-storage')
     this.swarm = new Hyperswarm()
     goodbye(() => this.swarm.destroy())
     this.BeeData = new BeeWorker(this.store, this.swarm)
