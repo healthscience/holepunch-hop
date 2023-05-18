@@ -9,7 +9,7 @@
 * @version    $Id$
 */
 import EventEmitter from 'events'
-import DHT from '@hyperswarm/dht'
+// import DHT from '@hyperswarm/dht'
 import goodbye from 'graceful-goodbye'
 import b4a from 'b4a'
 
@@ -31,7 +31,7 @@ class HypPeers extends EventEmitter {
    *
   */
   setupHyerPeers = function () {
-    const dht = new DHT()
+    /* const dht = new DHT()
 
     // This keypair is your peer identifier in the DHT
     const keyPair = DHT.keyPair()
@@ -47,7 +47,7 @@ class HypPeers extends EventEmitter {
 
     // Unnannounce the public key before exiting the process
     // (This is not a requirement, but it helps avoid DHT pollution)
-    goodbye(() => server.close())
+    goodbye(() => server.close()) */
   }
 
 }

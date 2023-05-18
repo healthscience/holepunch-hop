@@ -174,6 +174,8 @@ class HyperBee extends EventEmitter {
   getBentospace = async function () {
     let key = 'startbentospaces'
     const nodeData = await this.dbBentospaces.get(key)
+    console.log('start spaces')
+    console.log(nodeData)
     return nodeData
   }
 
