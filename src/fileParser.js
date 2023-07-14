@@ -19,6 +19,7 @@ import events from 'events'
 import axios from 'axios'
 import csv from 'csv-parser'
 import crypto from 'crypto'
+import { time } from 'console'
 
 var FileParser = function (path) {
   events.EventEmitter.call(this)
@@ -244,8 +245,20 @@ FileParser.prototype.convertJSON = function (o, headerSet, results, source, newF
   const datacolumn = o.data.info.datename
   const flowList = []
   for (const rs of results) {
-    const dateFormat = new Date(rs[datacolumn])
+    console.log(rs)
+    let timeLength = 0
+    // what length is date number?  Need to make ms time standard to convert
+    if (rs[datacolumn].length === 10) {
+      console.log('not ms time add 000')
+      timeLength = rs[datacolumn] * 1000
+    } else {
+      console.log('assume ms time ')
+      timeLength = rs[datacolumn]
+    }
+    const dateFormat = new Date(timeLength)
+    console.log(dateFormat)
     const msDate = dateFormat.getTime()
+    console.log(msDate)
     rs[datacolumn] = msDate / 1000
     flowList.push(rs)
   }

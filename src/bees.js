@@ -174,8 +174,6 @@ class HyperBee extends EventEmitter {
   getBentospace = async function () {
     let key = 'startbentospaces'
     const nodeData = await this.dbBentospaces.get(key)
-    console.log('start spaces')
-    console.log(nodeData)
     return nodeData
   }
 
@@ -271,13 +269,31 @@ class HyperBee extends EventEmitter {
   }
 
   /**
+   * get all kbl entries
+   * @method KBLentries
+   *
+  */
+  KBLentries = async function (dataPrint) {
+    const nodeData = this.dbKBledger.createReadStream()
+    let ledgerData = []
+    for await (const { key, value } of nodeData) {
+      ledgerData.push({ key, value })
+    }
+    return ledgerData
+  }
+
+  /**
    * lookup specific result UUID
    * @method peerResults
    *
   */
   peerResults = async function (dataPrint) {
-    const nodeData = await this.dbHOPresults.get(dataPrint.resultuuid)
-    return nodeData
+    const nodeData = this.dbKBledger.createReadStream()
+    let resData = []
+    for await (const { key, value } of nodeData) {
+      resData.push({ key, value })
+    }
+    return resData
   }
 
 
