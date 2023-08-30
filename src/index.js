@@ -49,6 +49,7 @@ class HolepunchWorker extends EventEmitter {
     this.BeeData = new BeeWorker(this.store, this.swarm)
     this.DriveFiles = new DriveWorker(this.store, this.swarm)
     this.Peers = new PeerWorker()
+    // console.log('end start holepunch')
   }
 
   /**
