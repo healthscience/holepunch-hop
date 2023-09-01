@@ -49,7 +49,17 @@ class HolepunchWorker extends EventEmitter {
     this.BeeData = new BeeWorker(this.store, this.swarm)
     this.DriveFiles = new DriveWorker(this.store, this.swarm)
     this.Peers = new PeerWorker()
-    // console.log('end start holepunch')
+  }
+
+  /**
+   * bring individual hypercore, bees, drive to active
+   * @method activateHypercores
+   *
+  */
+  activateHypercores = async function () {
+    await this.DriveFiles.setupHyperdrive()
+    await this.BeeData.setupHyperbee()
+    this.emit('hcores-active')
   }
 
   /**
@@ -57,12 +67,11 @@ class HolepunchWorker extends EventEmitter {
    * @method setWebsocket
    *
   */
-  setWebsocket = async function (ws) {
+  setWebsocket = function (ws) {
     this.wsocket = ws
     this.BeeData.setWebsocket(ws)
     this.DriveFiles.setWebsocket(ws)
-    await this.DriveFiles.setupHyperdrive()
-    await this.BeeData.setupHyperbee()
+    this.activateHypercores()
   }
 
   /**

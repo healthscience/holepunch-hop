@@ -23,7 +23,6 @@ class HyperBee extends EventEmitter {
     this.core = core
     this.swarm = swarm
     this.liveBees = {}
-    // this.setupHyperbee()
   }
 
   /**
@@ -94,6 +93,8 @@ class HyperBee extends EventEmitter {
     await this.dbKBledger.ready()
     // this.client.replicate(this.dbKBledger.feed)
     beePubkeys.push({'kbledger': b4a.toString(core5.key, 'hex')})
+    console.log('hyperbees-live')
+    this.emit('hbee-live')
     // return beePubkeys
     let startBeePubkey = {}
     startBeePubkey.type = 'hyperbee-pubkeys'
