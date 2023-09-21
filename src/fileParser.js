@@ -19,7 +19,6 @@ import events from 'events'
 import axios from 'axios'
 import csv from 'csv-parser'
 import crypto from 'crypto'
-import { time } from 'console'
 
 var FileParser = function (path) {
   events.EventEmitter.call(this)
@@ -34,7 +33,7 @@ util.inherits(FileParser, events.EventEmitter)
 
 /**
 * local json file extract header for auto complete
-* @method
+* @method extractJSONfile
 *
 */
 FileParser.prototype.localJSONfile = async function (o, ws) {

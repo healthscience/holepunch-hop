@@ -131,6 +131,18 @@ class HypDrive extends EventEmitter {
    * save to hyperdrive file
    * @method hyperdriveFilesave 
    *
+  */
+  hyperdriveJSONsaveBlind = async function (name, data) {
+    // simple JSON file to save from blind input form beebee
+    let hyperdrivePath = 'json/' + name
+    let confirmSave = await this.drive.put(hyperdrivePath, data)
+    return confirmSave
+  }
+
+  /**
+   * save to hyperdrive file
+   * @method hyperdriveFilesave 
+   *
    */
   hyperdriveFilesave = async function (path, name, data) {
     // File writes
