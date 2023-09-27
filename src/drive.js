@@ -197,6 +197,8 @@ class HypDrive extends EventEmitter {
    *
    */
   hyperdriveLocalfile = async function (path) {
+    console.log('path in')
+    console.log(path)
     // File reads to buffer and recreate file
     // const bufFromGet2 = await this.drive.get(path)
     const { value: entry } = await this.drive.entry(path)
