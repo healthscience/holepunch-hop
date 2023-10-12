@@ -98,24 +98,18 @@ class HypDrive extends EventEmitter {
 
   /**
    * navigate folders and files
-   * @method hyperdriveFolderFiles 
+   * @method hyperdriveCSVmanager
    *
    */
-  hyperdriveFolderFiles = async function (fileData) {
+  hyperdriveCSVmanager = async function (fileData) {
     // File writes
     let fileResponse = {}
-
     // file input management
     // protocol to save original file
-    let newPathFile = await this.hyperdriveFilesave(fileData.data.type, fileData.data.name, fileData.data.path)
+    let newPathFile = await this.hyperdriveFilesave(fileData.data[0].type, fileData.data[0].name, fileData.data[0].content)
 
     // extract out the headers name for columns
     let headerSet = this.fileUtility.extractCSVHeaderInfo(fileData)
-    // let drivePath = fileData.data.type
-    // hyperdrive 10 old
-    // await this.drive.promises.mkdir(drivePath)
-    // make a subfolder not sure for now
-    // await this.drive.promises.mkdir('/stuff/things')
     //  csv to JSON convertion HOP protocol standard
     const parseData = await this.readCSVfile(newPathFile, headerSet)
     let jsonFiledata = this.fileUtility.convertJSON(fileData, headerSet, parseData, 'local', null)
@@ -129,7 +123,7 @@ class HypDrive extends EventEmitter {
 
   /**
    * save to hyperdrive file
-   * @method hyperdriveFilesave 
+   * @method hyperdriveJSONsaveBlind 
    *
   */
   hyperdriveJSONsaveBlind = async function (name, data) {
@@ -147,16 +141,16 @@ class HypDrive extends EventEmitter {
   hyperdriveFilesave = async function (path, name, data) {
     // File writes
     let hyperdrivePath = path + '/' + name
-    var dataUrl = data.split(",")[1]
-    var buffer = Buffer.from(dataUrl, 'base64')
-    fs.writeFileSync('data.csv', buffer)
+    var dataUrl = data
+    // var buffer = Buffer.from(dataUrl, 'base64')
+    fs.writeFileSync('data.csv', dataUrl)
     if (path === 'text/csv') {
       await this.drive.put(hyperdrivePath, fs.readFileSync('data.csv', 'utf-8'))
       // now remove the temp file for converstion
       fs.unlink('data.csv', (err => {
         if (err) console.log(err);
         else {
-          console.log('file deleted csv');
+          console.log('file deleted csv')
         }
       }))
     } else if (path === 'json') {
@@ -169,7 +163,7 @@ class HypDrive extends EventEmitter {
       fs.unlink('tempsql.db', (err => {
         if (err) console.log(err);
         else {
-          console.log('file deleted temp sqlite');
+          console.log('file deleted temp sqlite')
         }
       }))
     }
@@ -197,8 +191,6 @@ class HypDrive extends EventEmitter {
    *
    */
   hyperdriveLocalfile = async function (path) {
-    console.log('path in')
-    console.log(path)
     // File reads to buffer and recreate file
     // const bufFromGet2 = await this.drive.get(path)
     const { value: entry } = await this.drive.entry(path)
@@ -220,7 +212,6 @@ class HypDrive extends EventEmitter {
     // const rs2 = this.drive.createReadStream(fpath) // 'text/csv/testshed11530500.csv') // '/blob.txt')
     // rs2.pipe(process.stdout) // prints file content
     const rs = this.drive.createReadStream(fpath) // 'text/csv/testshed11530500.csv') // '/blob.txt')
-  
     return new Promise((resolve, reject) => {
       const results = []
       //this.drive.createReadStream(fpath)

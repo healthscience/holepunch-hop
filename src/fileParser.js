@@ -82,8 +82,6 @@ FileParser.prototype.localFileParse = async function (o, ws) {
   // file input management
   // extract out the headers name for columns
   let headerSet = this.extractCSVHeaderInfo(o)
-  console.log('header set')
-  console.log(headerSet)
   // protocol should be to save original file
   let newPathFile = this.saveOriginalProtocol(o)
   //  csv to JSON convertion and save into HOP
@@ -142,17 +140,17 @@ FileParser.prototype.extractCSVHeaderInfo = function (o) {
       }
     })
   } else {
-    // let filePathCSV = fs.existsSync(os.homedir() + this.storepath + '/csv/') + o.data.name
-    const allFileContents = fs.readFileSync(filePathCSV, 'utf-8')
+    //let filePathCSV = o.data[0].content // fs.existsSync(os.homedir() + this.storepath + '/csv/') + o.data.name
+    const allFileContents = o.data[0].content // fs.readFileSync(filePathCSV, 'utf-8')
     allFileContents.split(/\r?\n/).forEach(line =>  {
       lcounter++
-      if (lcounter === (parseInt(o.data.info.cnumber) +1 )) {
-        match = line
+      if (lcounter === (parseInt(o.data[0].info.cnumber) +1 )) {
+      match = line
       }
     })
+    let headerInfo = this.extractCSVheaders(o, match)
+    return headerInfo
   }
-  let headerInfo = this.extractCSVheaders(o, match)
-  return headerInfo
 }
 
 /**
@@ -187,18 +185,17 @@ FileParser.prototype.extractJSONkeys = function (o) {
 *
 */
 FileParser.prototype.extractCSVheaders = function (o, lineData) {
-  console.log(lineData)
   let delimiter = ''
-  if (o.data.info.delimiter === 'tab') {
+  if (o.data[0].info.delimiter === 'tab') {
     delimiter = "\t"
-  } else if (o.data.info.delimiter === ';') {
+  } else if (o.data[0].info.delimiter === ';') {
     delimiter = ";"
   } else {
     delimiter = ","
   }
   let splitWords = lineData.split(delimiter)
   const headerSet = splitWords
-  let dataline = parseInt(o.data.info.dataline)
+  let dataline = parseInt(o.data[0].info.dataline)
 
   let headerInfo = {}
   headerInfo.headerset = headerSet
@@ -233,31 +230,29 @@ FileParser.prototype.readFileStream = async function (fpath, headerSet) {
 */
 FileParser.prototype.convertJSON = function (o, headerSet, results, source, newFilename) {
   const localthis = this
-  // console.log('convert json')
-  // console.log(results)
   let fileName = ''
   if (source !== 'web') {
-    fileName = o.data.name
+    fileName = o.data[0].name
   } else {
     fileName = newFilename
   }
-  const datacolumn = o.data.info.datename
+  const datacolumn = o.data[0].info.datename
   const flowList = []
   for (const rs of results) {
-    console.log(rs)
+    // console.log(rs)
     let timeLength = 0
     // what length is date number?  Need to make ms time standard to convert
     if (rs[datacolumn].length === 10) {
-      console.log('not ms time add 000')
+      // console.log('not ms time add 000')
       timeLength = rs[datacolumn] * 1000
     } else {
-      console.log('assume ms time ')
+      // console.log('assume ms time ')
       timeLength = rs[datacolumn]
     }
     const dateFormat = new Date(timeLength)
-    console.log(dateFormat)
+    // console.log(dateFormat)
     const msDate = dateFormat.getTime()
-    console.log(msDate)
+    // console.log(msDate)
     rs[datacolumn] = msDate / 1000
     flowList.push(rs)
   }
@@ -267,25 +262,6 @@ FileParser.prototype.convertJSON = function (o, headerSet, results, source, newF
   fileJSONbundle.name = fileName + '.json'
   fileJSONbundle.data = jsonFlow
   return fileJSONbundle
-  // do via hyperspace protocol now
-  /* 
-  fs.writeFile(os.homedir() + localthis.storepath + '/json/' + fileName + '.json', jsonFlow, 'utf8', function (err) {
-    if (err) {
-      console.log('An error occured while writing JSON Object to File.')
-      return console.log(err)
-    }
-    // data back to peer
-    let fileFeedback = {}
-    fileFeedback.success = true
-    fileFeedback.path = localthis.storepath + '/json/' + fileName + '.json'
-    fileFeedback.columns = headerSet.splitwords
-    let storeFeedback = {}
-    storeFeedback.type = 'file-save'
-    storeFeedback.action = 'library'
-    storeFeedback.data = fileFeedback
-    return storeFeedback
-    // ws.send(JSON.stringify(storeFeedback))
-  }) */
 }
 
 /**
