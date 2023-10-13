@@ -126,4 +126,4 @@ class HolepunchWorker extends EventEmitter {
 
 }
 
-export default HolepunchWorker    
+export default HolepunchWorker
