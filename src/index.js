@@ -35,6 +35,7 @@ class HolepunchWorker extends EventEmitter {
     this.discKeypeer = ''
     this.readcore = null
     this.startHolepunch()
+    this.networkListeners()
   }
 
   /**
@@ -48,7 +49,7 @@ class HolepunchWorker extends EventEmitter {
     goodbye(() => this.swarm.destroy())
     this.BeeData = new BeeWorker(this.store, this.swarm)
     this.DriveFiles = new DriveWorker(this.store, this.swarm)
-    this.Peers = new PeerWorker()
+    this.Peers = new PeerWorker(this.store, this.swarm)
   }
 
   /**
@@ -59,6 +60,7 @@ class HolepunchWorker extends EventEmitter {
   activateHypercores = async function () {
     await this.DriveFiles.setupHyperdrive()
     await this.BeeData.setupHyperbee()
+    this.Peers.networkKeys()
     this.emit('hcores-active')
   }
 
@@ -68,11 +70,45 @@ class HolepunchWorker extends EventEmitter {
    *
   */
   setWebsocket = function (ws) {
+    console.log('webcocket live HP')
     this.wsocket = ws
     this.BeeData.setWebsocket(ws)
     this.DriveFiles.setWebsocket(ws)
     this.activateHypercores()
   }
+
+
+  /**
+  * listen for outputs from workers
+  * @method networkListeners
+  *
+  */
+  networkListeners = function () {
+    this.Peers.on('peer-network', (data) => {
+      this.wsocket.send(JSON.stringify(data))
+    })
+
+  }
+
+  /**
+  * manage flow to network of peers and data
+  * @method networkPath
+  *
+  */
+  networkPath = function (message) {
+    console.log('manage network path info peer connections to data replication etc.')
+    console.log(message)
+    if (message.action === 'share') {
+      if (message.task === 'peer-join') {
+        this.Peers.peerJoin(message.data.publickey)
+        this.Peers.writeTonetwork(message.data.boxid)
+      } else if (message.task === 'peer-write') {
+        this.emit('peer-write', message.data)
+      } else if (message.task === 'topic') {
+        // this.Peers.peerTopic(message.data.topic)
+      }
+    }
+    }
 
   /**
    * corestore test example
@@ -80,8 +116,7 @@ class HolepunchWorker extends EventEmitter {
    *
   */
   testCoreStore = async function () {
-
-        // A name is a purely-local, and maps to a key pair. It's not visible to readers.
+    // A name is a purely-local, and maps to a key pair. It's not visible to readers.
     // Since a name always corresponds to a key pair, these are all writable
     this.core1 = this.store.get({ name: 'core-1', valueEncoding: 'json' })
     this.core2 = this.store.get({ name: 'core-2' })

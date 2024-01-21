@@ -63,7 +63,7 @@ class HypDrive extends EventEmitter {
    *
    */
   hyperdriveWritestream = async function (fileData) {
-    let localthis = this
+    /* let localthis = this
     const ws = this.drive.createWriteStream('/blob.txt')
 
     this.wsocketwrite('Hello, ')
@@ -73,7 +73,7 @@ class HypDrive extends EventEmitter {
     this.wsocketon('close', function () {
       const rs = localthis.drive.createReadStream('/blob.txt')
       rs.pipe(process.stdout) // prints Hello, world!
-    })
+    }) */
   }
 
   /**
@@ -134,6 +134,23 @@ class HypDrive extends EventEmitter {
   }
 
   /**
+   * save csv data to hyperdrive file
+   * @method saveCSVfilecontent 
+   *
+  */
+  saveCSVfilecontent = async function (fData) {
+    // extract header info first
+    let headerInfo = this.fileUtility.webCSVparse(fData)
+    let hyperdrivePath = 'csv/' + fData.data[0].name
+    let confirmSave = await this.drive.put(hyperdrivePath, fData.data[0].content)
+    let saveStatus = {}
+    saveStatus.save = confirmSave
+    saveStatus.headerinfo = headerInfo
+    return saveStatus
+  }
+
+
+  /**
    * save to hyperdrive file
    * @method hyperdriveFilesave 
    *
@@ -191,6 +208,8 @@ class HypDrive extends EventEmitter {
    *
    */
   hyperdriveLocalfile = async function (path) {
+    console.log('hoelpuch--localfile')
+    console.log(path)
     // File reads to buffer and recreate file
     // const bufFromGet2 = await this.drive.get(path)
     const { value: entry } = await this.drive.entry(path)

@@ -36,7 +36,7 @@ class HyperBee extends EventEmitter {
 
   /**
    * setup hypercore protocol
-   * @method startHyperbee
+   * @method setupHyperbee
    *
   */
   setupHyperbee = async function () {
@@ -48,7 +48,7 @@ class HyperBee extends EventEmitter {
       valueEncoding: 'json' // same options as above
     })
     await this.dbPublicLibrary.ready()
-    beePubkeys.push({'pubilclibrary': b4a.toString(core.key, 'hex')})
+    beePubkeys.push({ store: 'pubilclibrary', pubkey: b4a.toString(core.key, 'hex')})
     // console.log(this.dbPublicLibrary._feed)
     // this.client.replicate(this.dbPublicLibrary.feed)
 
@@ -58,7 +58,7 @@ class HyperBee extends EventEmitter {
       valueEncoding: 'json' // same options as above
     })
     await this.dbPeerLibrary.ready()
-    beePubkeys.push({'peerlibrary': b4a.toString(core2.key, 'hex')})
+    beePubkeys.push({store:'peerlibrary', pubkey: b4a.toString(core2.key, 'hex')})
 
     const core6 = this.core.get({ name: 'peers' })
     this.dbPeers = new Hyperbee(core6, {
@@ -66,7 +66,7 @@ class HyperBee extends EventEmitter {
       valueEncoding: 'json' // same options as above
     })
     await this.dbPeers.ready()
-    beePubkeys.push({'peers': b4a.toString(core6.key, 'hex')})
+    beePubkeys.push({store:'peers', pubkey: b4a.toString(core6.key, 'hex')})
 
     const core3 = this.core.get({ name: 'bentospaces' })
     this.dbBentospaces = new Hyperbee(core3, {
@@ -74,7 +74,7 @@ class HyperBee extends EventEmitter {
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentospaces.ready()
-    beePubkeys.push({'bentospaces': b4a.toString(core3.key, 'hex')})
+    beePubkeys.push({store:'bentospaces', pubkey: b4a.toString(core3.key, 'hex')})
 
     const core4 = this.core.get({ name: 'hopresults' })
     this.dbHOPresults = new Hyperbee(core4, {
@@ -83,7 +83,7 @@ class HyperBee extends EventEmitter {
     })
     await this.dbHOPresults.ready()
     // this.client.replicate(this.dbHOPresults.feed)
-    beePubkeys.push({'hopresults': b4a.toString(core4.key, 'hex')})
+    beePubkeys.push({store:'hopresults', pubkey: b4a.toString(core4.key, 'hex')})
 
     const core5 = this.core.get({ name: 'kbledger' })
     this.dbKBledger = new Hyperbee(core5, {
@@ -92,12 +92,13 @@ class HyperBee extends EventEmitter {
     })
     await this.dbKBledger.ready()
     // this.client.replicate(this.dbKBledger.feed)
-    beePubkeys.push({'kbledger': b4a.toString(core5.key, 'hex')})
+    beePubkeys.push({store:'kbledger', pubkey: b4a.toString(core5.key, 'hex')})
     console.log('hyperbees-live')
     this.emit('hbee-live')
     // return beePubkeys
     let startBeePubkey = {}
-    startBeePubkey.type = 'hyperbee-pubkeys'
+    startBeePubkey.type = 'account'
+    startBeePubkey.action = 'hyperbee-pubkeys'
     startBeePubkey.data = beePubkeys
     this.liveBees = startBeePubkey
     this.wsocket.send(JSON.stringify(startBeePubkey))

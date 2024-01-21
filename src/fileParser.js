@@ -91,13 +91,25 @@ FileParser.prototype.localFileParse = async function (o, ws) {
 }
 
 /**
-* files from cloud
-* @method webFileParse
+* csv content files from web
+* @method webCSVparse
 *
 */
-FileParser.prototype.webFileParse = async function (o, ws) {
-  const localthis = this
-  let dataWeb = await axios.get(o.data.websource)
+FileParser.prototype.webCSVparse = function (fData) {
+  // match name row number
+  let lcounter = 0
+  let match = ''
+  fData.data[0].content.split(/\r?\n/).forEach(line =>  {
+    lcounter++
+    if (lcounter === (parseInt(fData.data[0].info.cnumber) +1 )) {
+    match = line
+    }
+  })
+
+  let headerInfo = this.extractCSVheaders(fData.data[0], match)
+  return headerInfo
+  /*
+  let dataWeb = await axios.get(content.websource)
     .catch(function (error) {
         // handle error
         console.log(error)
@@ -107,18 +119,19 @@ FileParser.prototype.webFileParse = async function (o, ws) {
   let match = []
   dataSource.split(/\r\n|\n/).forEach(line =>  {
     lcounter++
-    if (lcounter === (parseInt(o.data.info.cnumber) +1 )) {
+    if (lcounter === (parseInt(content.info.cnumber) +1 )) {
       match = line
     }
   })
+  */
   // create new file name hash of source url
-  const hashURL = crypto.createHash('sha256').update(o.data.websource).digest('hex')
-  const fileNewName = hashURL + '.csv'
+  // const hashURL = crypto.createHash('sha256').update(content.websource).digest('hex')
+  // const fileNewName = hashURL + '.csv'
   // localthis.linesLimit = lines.slice(0, 30)
-  let headerInfo = localthis.extractCSVheaders(o, match)
-  let newPathFile = localthis.saveOriginalProtocolWeb(o, dataSource, fileNewName)
-  const praser = await localthis.readFileStream(newPathFile, headerInfo)
-  this.convertJSON(o, ws, headerInfo, praser, 'web', fileNewName)
+  // let headerInfo = this.extractCSVheaders(content, match)
+  // let newPathFile = localthis.saveOriginalProtocolWeb(content, dataSource, fileNewName)
+  // const praser = await localthis.readFileStream(newPathFile, headerInfo)
+  // this.convertJSON(o, ws, headerInfo, praser, 'web', fileNewName)
 }
 
 /**
@@ -184,18 +197,18 @@ FileParser.prototype.extractJSONkeys = function (o) {
 * @method extractCSVheaders
 *
 */
-FileParser.prototype.extractCSVheaders = function (o, lineData) {
+FileParser.prototype.extractCSVheaders = function (data, lineData) {
   let delimiter = ''
-  if (o.data[0].info.delimiter === 'tab') {
+  if (data.info.delimiter === 'tab') {
     delimiter = "\t"
-  } else if (o.data[0].info.delimiter === ';') {
+  } else if (data.info.delimiter === ';') {
     delimiter = ";"
   } else {
     delimiter = ","
   }
   let splitWords = lineData.split(delimiter)
   const headerSet = splitWords
-  let dataline = parseInt(o.data[0].info.dataline)
+  let dataline = parseInt(data.info.dataline)
 
   let headerInfo = {}
   headerInfo.headerset = headerSet
