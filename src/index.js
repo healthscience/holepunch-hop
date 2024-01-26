@@ -34,6 +34,7 @@ class HolepunchWorker extends EventEmitter {
     this.core3 = {}
     this.discKeypeer = ''
     this.readcore = null
+    this.warmPeers = []
     this.startHolepunch()
     this.networkListeners()
   }
@@ -87,7 +88,14 @@ class HolepunchWorker extends EventEmitter {
     this.Peers.on('peer-network', (data) => {
       this.wsocket.send(JSON.stringify(data))
     })
-
+    // peer connection active
+    this.Peers.on('peer-connect', (data) => {
+      this.Peers.writeTonetwork(data)
+    })
+    // data for beebee
+    this.Peers.on('beebee-data', (data) => {
+      this.emit('peer-topeer', data)
+    })
   }
 
   /**
@@ -96,19 +104,29 @@ class HolepunchWorker extends EventEmitter {
   *
   */
   networkPath = function (message) {
-    console.log('manage network path info peer connections to data replication etc.')
-    console.log(message)
     if (message.action === 'share') {
       if (message.task === 'peer-join') {
-        this.Peers.peerJoin(message.data.publickey)
-        this.Peers.writeTonetwork(message.data.boxid)
+        // has the peer joined already?
+        let peerMatch = false
+        for (let wpeer of this.warmPeers) {
+          if (wpeer.publickey = message.data.publickey) {
+            peerMatch = true
+          }
+        }
+        if (peerMatch === true) {
+          this.Peers.peerAlreadyJoin(message.data)
+          this.Peers.writeTonetwork(message.data.publickey)
+        } else {
+          this.warmPeers.push(message.data)
+          this.Peers.peerJoin(message.data)
+        }
       } else if (message.task === 'peer-write') {
         this.emit('peer-write', message.data)
       } else if (message.task === 'topic') {
         // this.Peers.peerTopic(message.data.topic)
       }
     }
-    }
+  }
 
   /**
    * corestore test example

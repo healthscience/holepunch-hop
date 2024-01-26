@@ -23,6 +23,8 @@ class NetworkPeers extends EventEmitter {
     this.core = core
     this.swarm = swarm
     this.drive = {}
+    this.peerHolder = {}
+    this.peerConnect = {}
   }
 
   /**
@@ -31,7 +33,7 @@ class NetworkPeers extends EventEmitter {
    *
   */
   networkKeys = function () {
-    console.log('hyperswarm begin2')
+    console.log('hyperswarm begin1')
     let peerNxKeys = {}
     peerNxKeys.publickey = this.swarm.keyPair.publicKey.toString('hex')
     let networkMessage = {}
@@ -49,20 +51,43 @@ class NetworkPeers extends EventEmitter {
   */
   listenNetwork = function () {
     console.log('listen network')
-    this.on('peer-write', (data) => {
-      console.log('peer message tos send')
-      // conn.write('peer welcome to HOP++' + JSON.stringify(data))
-    })
     this.swarm.on('connection', (conn, info) => {
       // listener to write message to peers or network partial or broadcast
-
+      console.log('swarm connection recieved')
+      let publicKeylive = info.publicKey.toString('hex')
+      this.peerConnect[publicKeylive] = conn
+      this.emit('peer-connect', publicKeylive)
       // process network message
       conn.on('data', data =>
-        console.log('recieve network message:', data.toString()),
-        console.log('emit to be verified and acted upon appropriately')
+        // console.log('recieve network message:', data.toString()),
+        // console.log(data.toString()),
+        // console.log('emit to be verified and acted upon appropriately'),
+        // assess data
+        this.assessData(publicKeylive, data)
       )
       //conn.end()
     })
+  }
+
+  /**
+   * 
+   * @method assessData data and act
+   *
+  */
+  assessData = function (peer, data) {
+    console.log('assess---data receive peer-----------')
+    let dataShareIn = JSON.parse(data.toString())
+    if (dataShareIn.type === 'chart') {
+      console.log('start chart protocol from peer')
+      this.emit('beebee-data', dataShareIn)
+      // need to look at NXP,  modules and within for reference contracts.
+      // Need to replicate public library for contracts (repliate hyberbee)
+      // Need to ask for data source e.g. file (replicate hyberdrive)
+      // Lastly put together SafeFlowECS query to produce chart
+    } else if (dataShareIn.type === 'peer') {
+      console.log('message from peer on connect')
+      console.log(dataShareIn)
+    }
   }
 
   /**
@@ -70,9 +95,20 @@ class NetworkPeers extends EventEmitter {
    * @method writeTonetwork
    *
   */
-  writeTonetwork = function (data) {
-   console.log('write emit')
-    this.emit('peer-write', data)
+  writeTonetwork = function (publickey) {
+    // check this peer has asked for chart data
+    let connectTrue = publickey in this.peerConnect
+    let chartTrue = publickey in this.peerHolder
+    if (connectTrue === true && chartTrue === true) {
+      let chartData = this.peerHolder[publickey]
+      let dataShare = {}
+      dataShare.hop = chartData.hop
+      dataShare.data = chartData.data
+      dataShare.type = 'chart'
+      this.peerConnect[publickey].write(JSON.stringify(dataShare))
+    } else {
+      console.log('non chart write')
+    }
   }
 
 
@@ -81,12 +117,24 @@ class NetworkPeers extends EventEmitter {
    * @method peerJoin
    *
   */
-  peerJoin = function (peerPubkey) {
-    const noisePublicKey = Buffer.from(peerPubkey, 'hex') //  must be 32 bytes
+  peerJoin = function (peerContext) {
+    this.peerHolder[peerContext.publickey] = peerContext
+    const noisePublicKey = Buffer.from(peerContext.publickey, 'hex') //  must be 32 bytes
     if (noisePublicKey.length === 32) {
       const peerConnect = this.swarm.joinPeer(noisePublicKey, { server: true, client: false })
     }
   }
+
+  /**
+   * already joined but keep track context data
+   * @method peerAlreadyJoin
+   *
+  */
+  peerAlreadyJoin = function (peerContext) {
+    console.log('aleardy joined')
+    this.peerHolder[peerContext.publickey] = peerContext
+  }
+
 
   /**
    * join peer to peer private (client)
@@ -104,11 +152,11 @@ class NetworkPeers extends EventEmitter {
   */
   listenClient = async function (topic) {
     const noisePublicKey = Buffer.alloc(32).fill(topic) // A topic must be 32 bytes
-    const peerConnect = this.swarm.joinPeer(noisePublicKey, { server: false, client: true })
+    const peerConnect = this.swarm.join(noisePublicKey, { server: false, client: true })
     await peerConnect.flushed() // Waits for the topic to be fully announced on the DHT
   }
 
-/**
+  /**
    * 
    * @method listen
    *
