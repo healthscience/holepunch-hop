@@ -42,6 +42,7 @@ class NetworkPeers extends EventEmitter {
     networkMessage.data = peerNxKeys
     this.emit('peer-network', networkMessage)
     this.listenNetwork()
+    this.peerJoinClient()
   }
 
   /**
@@ -55,6 +56,7 @@ class NetworkPeers extends EventEmitter {
       // listener to write message to peers or network partial or broadcast
       console.log('swarm connection recieved')
       let publicKeylive = info.publicKey.toString('hex')
+      this.emit('connect-warm', publicKeylive)
       this.peerConnect[publicKeylive] = conn
       this.emit('peer-connect', publicKeylive)
       // process network message

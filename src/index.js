@@ -96,6 +96,14 @@ class HolepunchWorker extends EventEmitter {
     this.Peers.on('beebee-data', (data) => {
       this.emit('peer-topeer', data)
     })
+    // new warm incoming peer
+    this.Peers.on('connect-warm', (data) => {
+      let peerId = {}
+      peerId.name = ''
+      peerId.publickkey = data
+      peerId.datastore = ''
+      this.warmPeers.push(peerId)
+    })
   }
 
   /**
