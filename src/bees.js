@@ -157,14 +157,61 @@ class HyperBee extends EventEmitter {
   }
 
   /**
+   * save chat history
+   * @method saveBentochat
+   *
+  */
+  saveBentochat = async function (chatHistory) {
+    await this.dbBentospaces.put(chatHistory.chat.chatid, chatHistory)
+    let checkSave = await this.getBentochat(chatHistory.chat.chatid)
+    return checkSave
+  }
+
+  /**
+   * delete chat item
+   * @method deleteBentochat
+   *
+  */
+  deleteBentochat = async function (chat) {
+    await this.dbBentospaces.del(chat.chatid)
+    let deleteInfo = {}
+    deleteInfo.chatid = chat.chatid
+    return deleteInfo
+  }
+
+  /**
+   * lookup peer bentospace layout default
+   * @method getBentochat
+   *
+  */
+  getBentochat = async function (key) {
+    // let key = 'startbentospaces'
+    const nodeData = await this.dbBentospaces.get(key)
+    return nodeData
+  }
+
+  /**
+   * lookup range save chat history
+   * @method getBentochatHistory
+   *
+  */
+  getBentochatHistory = async function (range) {
+    const chathistoryData = this.dbBentospaces.createReadStream() // { gt: 'a', lt: 'z' }) // anything >a and <z
+    let chatData = []
+    for await (const { key, value } of chathistoryData) {
+      chatData.push({ key, value })
+    }
+    return chatData
+  }
+
+  /**
    * save space layout of bentobox
    * @method saveBentospace
    *
   */
   saveBentospace = async function (spaceContract) {
-    let key = 'startbentospaces'
-    await this.dbBentospaces.put(key, spaceContract)
-    let checkSave = await this.getBentospace(key)
+    await this.dbBentospaces.put(spaceContract.space.spaceid, spaceContract)
+    let checkSave = await this.getBentospace(spaceContract.space.spaceid)
     return checkSave
   }
 
@@ -173,10 +220,21 @@ class HyperBee extends EventEmitter {
    * @method getBentospace
    *
   */
-  getBentospace = async function () {
-    let key = 'startbentospaces'
+  getBentospace = async function (key) {
     const nodeData = await this.dbBentospaces.get(key)
     return nodeData
+  }
+
+  /**
+   * delete nxp ref contract from peer library
+   * @method deleteBentospace
+   *
+  */
+  deleteBentospace = async function (space) {
+    const deleteStatus = await this.dbBentospaces.del(key)
+    let deleteInfo = {}
+    deleteInfo.spaceid = space.spaceid
+    return deleteInfo
   }
 
   /**
@@ -328,17 +386,6 @@ class HyperBee extends EventEmitter {
     deleteInfo.nxp = nxpID
     return deleteInfo
   }
-
-  /**
-   * delete nxp ref contract from peer library
-   * @method deleteBentospace
-   *
-  */
-  deleteBentospace = async function (nxpID) {
-    let key = 'startbentospaces'
-    const deleteStatus = await this.dbBentospaces.del(key)
-    return deleteStatus
-}
 
   /**
    * repicate the publiclibrary peer to peer

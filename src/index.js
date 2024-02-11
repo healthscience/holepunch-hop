@@ -99,7 +99,7 @@ class HolepunchWorker extends EventEmitter {
     // new warm incoming peer
     this.Peers.on('connect-warm', (data) => {
       let peerId = {}
-      peerId.name = ''
+      peerId.name = 'new-peer'
       peerId.publickkey = data
       peerId.datastore = ''
       this.warmPeers.push(peerId)
