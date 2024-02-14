@@ -231,7 +231,7 @@ class HyperBee extends EventEmitter {
    *
   */
   deleteBentospace = async function (space) {
-    const deleteStatus = await this.dbBentospaces.del(key)
+    const deleteStatus = await this.dbBentospaces.del(space.spaceid)
     let deleteInfo = {}
     deleteInfo.spaceid = space.spaceid
     return deleteInfo
