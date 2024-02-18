@@ -205,13 +205,24 @@ class HyperBee extends EventEmitter {
   }
 
   /**
+   * save space menu
+   * @method saveSpaceHistory
+   *
+  */
+  saveSpaceHistory = async function (spaceContract) {
+    await this.dbBentospaces.put(spaceContract.space.spaceid, spaceContract)
+    let checkSave = await this.getBentospace(spaceContract.space.spaceid)
+    return checkSave
+  }
+
+  /**
    * save space layout of bentobox
    * @method saveBentospace
    *
   */
   saveBentospace = async function (spaceContract) {
-    await this.dbBentospaces.put(spaceContract.space.spaceid, spaceContract)
-    let checkSave = await this.getBentospace(spaceContract.space.spaceid)
+    await this.dbBentospaces.put(spaceContract.spaceid, spaceContract)
+    let checkSave = await this.getBentospace(spaceContract.spaceid)
     return checkSave
   }
 
