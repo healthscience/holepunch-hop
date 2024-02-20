@@ -33,7 +33,6 @@ class NetworkPeers extends EventEmitter {
    *
   */
   networkKeys = function () {
-    console.log('hyperswarm begin1')
     let peerNxKeys = {}
     peerNxKeys.publickey = this.swarm.keyPair.publicKey.toString('hex')
     let networkMessage = {}
@@ -51,12 +50,10 @@ class NetworkPeers extends EventEmitter {
    *
   */
   listenNetwork = function () {
-    console.log('listen network')
     this.swarm.on('connection', (conn, info) => {
       // listen for replication
       this.store.replicate(conn)
       // listener to write message to peers or network partial or broadcast
-      console.log('swarm connection recieved')
       let publicKeylive = info.publicKey.toString('hex')
       this.emit('connect-warm', publicKeylive)
       this.peerConnect[publicKeylive] = conn
@@ -79,7 +76,6 @@ class NetworkPeers extends EventEmitter {
    *
   */
   assessData = function (peer, data) {
-    console.log('assess---data receive peer-----------')
     if (Buffer.isBuffer(data)) {
     } else {
       let dataShareIn = JSON.parse(data.toString())
@@ -135,7 +131,6 @@ class NetworkPeers extends EventEmitter {
    *
   */
   peerAlreadyJoin = function (peerContext) {
-    console.log('aleardy joined')
     this.peerHolder[peerContext.publickey] = peerContext
   }
 

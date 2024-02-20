@@ -49,12 +49,10 @@ class HyperBee extends EventEmitter {
     // console.log(this.dbPublicLibrary._feed)
     // allow other peer access to public library  (need to check for DDOS ie over asked)
     // join a topic
-    console.log('public library discover key')
-    console.log(this.dbPublicLibrary.discoveryKey)
     const discovery = this.swarm.join(this.dbPublicLibrary.discoveryKey)
     // Only display the key once the Hyperbee has been announced to the DHT
     discovery.flushed().then(() => {
-      console.log('bee key:', b4a.toString(core.key, 'hex'))
+      // console.log('bee key:', b4a.toString(core.key, 'hex'))
     })
 
 
@@ -99,7 +97,6 @@ class HyperBee extends EventEmitter {
     await this.dbKBledger.ready()
     // this.client.replicate(this.dbKBledger.feed)
     beePubkeys.push({store:'kbledger', pubkey: b4a.toString(core5.key, 'hex')})
-    console.log('hyperbees-live')
     this.emit('hbee-live')
     // return beePubkeys
     let startBeePubkey = {}
