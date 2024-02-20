@@ -12,15 +12,12 @@ import EventEmitter from 'events'
 import Hyperbee from 'hyperbee'
 import b4a from 'b4a'
 
-import { Node } from 'hyperbee/lib/messages.js'
-import { start } from 'repl'
-
 class HyperBee extends EventEmitter {
 
-  constructor(core, swarm) {
+  constructor(store, swarm) {
     super()
     this.hello = 'hyperbee'
-    this.core = core
+    this.store = store
     this.swarm = swarm
     this.liveBees = {}
   }
@@ -42,7 +39,7 @@ class HyperBee extends EventEmitter {
   setupHyperbee = async function () {
     let beePubkeys = []
 
-    const core = this.core.get({ name: 'publiclibrary' })
+    const core = this.store.get({ name: 'publiclibrary' })
     this.dbPublicLibrary = new Hyperbee(core, {
       keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
@@ -50,9 +47,18 @@ class HyperBee extends EventEmitter {
     await this.dbPublicLibrary.ready()
     beePubkeys.push({ store: 'pubilclibrary', pubkey: b4a.toString(core.key, 'hex')})
     // console.log(this.dbPublicLibrary._feed)
-    // this.client.replicate(this.dbPublicLibrary.feed)
+    // allow other peer access to public library  (need to check for DDOS ie over asked)
+    // join a topic
+    console.log('public library discover key')
+    console.log(this.dbPublicLibrary.discoveryKey)
+    const discovery = this.swarm.join(this.dbPublicLibrary.discoveryKey)
+    // Only display the key once the Hyperbee has been announced to the DHT
+    discovery.flushed().then(() => {
+      console.log('bee key:', b4a.toString(core.key, 'hex'))
+    })
 
-    const core2 = this.core.get({ name: 'peerlibrary' })
+
+    const core2 = this.store.get({ name: 'peerlibrary' })
     this.dbPeerLibrary = new Hyperbee(core2, {
       keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
@@ -60,7 +66,7 @@ class HyperBee extends EventEmitter {
     await this.dbPeerLibrary.ready()
     beePubkeys.push({store:'peerlibrary', pubkey: b4a.toString(core2.key, 'hex')})
 
-    const core6 = this.core.get({ name: 'peers' })
+    const core6 = this.store.get({ name: 'peers' })
     this.dbPeers = new Hyperbee(core6, {
       keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
@@ -68,7 +74,7 @@ class HyperBee extends EventEmitter {
     await this.dbPeers.ready()
     beePubkeys.push({store:'peers', pubkey: b4a.toString(core6.key, 'hex')})
 
-    const core3 = this.core.get({ name: 'bentospaces' })
+    const core3 = this.store.get({ name: 'bentospaces' })
     this.dbBentospaces = new Hyperbee(core3, {
       keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
@@ -76,7 +82,7 @@ class HyperBee extends EventEmitter {
     await this.dbBentospaces.ready()
     beePubkeys.push({store:'bentospaces', pubkey: b4a.toString(core3.key, 'hex')})
 
-    const core4 = this.core.get({ name: 'hopresults' })
+    const core4 = this.store.get({ name: 'hopresults' })
     this.dbHOPresults = new Hyperbee(core4, {
       keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
@@ -85,7 +91,7 @@ class HyperBee extends EventEmitter {
     // this.client.replicate(this.dbHOPresults.feed)
     beePubkeys.push({store:'hopresults', pubkey: b4a.toString(core4.key, 'hex')})
 
-    const core5 = this.core.get({ name: 'kbledger' })
+    const core5 = this.store.get({ name: 'kbledger' })
     this.dbKBledger = new Hyperbee(core5, {
       keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
@@ -355,10 +361,20 @@ class HyperBee extends EventEmitter {
 
   /**
    * lookup specific result UUID
+   * @method peerResultsItem
+   *
+  */
+  peerResultsItem = async function (dataPrint) {
+    const resultsData = this.dbKBledger.get(dataPrint.resultuuid)
+    return resultsData
+  }
+
+  /**
+   * lookup specific result UUID
    * @method peerResults
    *
   */
-  peerResults = async function (dataPrint) {
+  peerResults = async function () {
     const nodeData = this.dbKBledger.createReadStream()
     let resData = []
     for await (const { key, value } of nodeData) {
@@ -398,17 +414,90 @@ class HyperBee extends EventEmitter {
     return deleteInfo
   }
 
+
   /**
    * repicate the publiclibrary peer to peer
    * @method replicatePubliclibrary
    *
   */
-  replicatePubliclibrary = async function (key) {
-    console.log('key to repilicate')
-    console.log(key)
+  replicatePubliclibrary = async function (keylib) {
+    // create or get the hypercore using the public key supplied as command-line argument
+    const coreRep = this.store.get({ key: b4a.from(keylib, 'hex') })
+
+    // create a hyperbee instance using the hypercore instance
+    const beePlib = new Hyperbee(coreRep, {
+      keyEncoding: 'utf-8',
+      valueEncoding: 'utf-8'
+    })
+
+    // wait till the hypercore properties to be intialized
+    await coreRep.ready()
+
+    // logging the public key of the hypercore instance
+    // console.log('core key here is:', coreRep.key.toString('hex'))
+
+    // Attempt to connect to peers
+    this.swarm.join(coreRep.discoveryKey, { server: false, client: true })
+
+    await coreRep.update()
+
+    // now ask for whole of public library
+    /* read all of repliate connect bee and displays */
+    const chathistoryData = beePlib.createReadStream() // { gt: 'a', lt: 'z' }) // anything >a and <z
+    let chatData = []
+    for await (const { key, value } of chathistoryData) {
+      chatData.push({ key, value })
+    }
+
+    // now replicate with peer own public library in whole or per nxp
+    let savePublib = await this.updatePublicLibrary(beePlib)
+    let repMessage = {}
+    repMessage.type = 'library'
+    repMessage.action = 'replicate-publiclibrary'
+    repMessage.task = 'replicate'
+    repMessage.reftype = 'publiclibrary'
+    repMessage.data = savePublib
+    return repMessage
+  }
+
+  /**
+   * update public library from peers public library
+   * @method updatePublicLibrary
+   *
+  */
+  updatePublicLibrary = async function (updateLib) {
+    /* read all of repliate connect bee and displays */
+    const chathistoryData = updateLib.createReadStream() // { gt: 'a', lt: 'z' }) // anything >a and <z
+    let libData = []
+    for await (const { key, value } of chathistoryData) {
+      libData.push({ key, value })
+    }
+    
+    // save entries required
+    const batch = this.dbPublicLibrary.batch()
+    for (const { key, value } of libData) {
+      await batch.put(key, JSON.parse(value))
+    }
+    await batch.flush()
+
+    // check
+    const libUpdatecheck = this.dbPublicLibrary.createReadStream()
+    let libConracts = []
+    for await (const { key, value } of libUpdatecheck) {
+      libConracts.push({ key, value })
+    }
+    return true
+  }
+
+  /**
+   * repicate the publiclibrary peer to peer
+   * @method replicatePubliclibraryOLD
+   *
+  */
+  replicatePubliclibraryOLD = async function (key) {
     // key = '3ec0f3b78a0cfe574c4be89b1d703a65f018c0b73ad77e52ac65645d8f51676a'
     const store = this.client.corestore('peerspace-hyperbeetemp')
-    const core = this.core.get(key)
+    const core = this.store.get(key)
     this.dbPublicLibraryTemp = new Hyperbee(core, {
       keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
@@ -430,8 +519,6 @@ class HyperBee extends EventEmitter {
    *
   */
   getReplicatePublicLibrary = async function (nxp) {
-    console.log('temp public library get info from peer replicate')
-    console.log(nxp)
     // const peerRepData = await this.dbPublicLibraryTemp.get()
     const peerRepData = await this.dbPublicLibraryTemp.createReadStream()
     let contractData = []
@@ -450,7 +537,7 @@ class HyperBee extends EventEmitter {
     const beeKey = 'eff38e0adefd1e1ffcc8dcf4e3413148645a183f2c13679365c431bcc2d26668'
 
     const store = this.client.corestore('peerspace-hyperbeetemp')
-    const core = this.core.get(beeKey)
+    const core = this.store.get(beeKey)
 
     // load and read the hyperbee identified by `beeKey`
     const beeResults =new Hyperbee(core, {
@@ -488,8 +575,6 @@ class HyperBee extends EventEmitter {
    *
   */
   publicLibraryAddentry = async function (nxp) {
-    console.log('add entry from nl2')
-    console.log(nxp)
     const localthis = this
     const refContract = await this.dbPublicLibraryTemp.get(nxp.nxpID)
       // need to look up individual module contracts and copy them across

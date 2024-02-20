@@ -47,6 +47,8 @@ class HolepunchWorker extends EventEmitter {
   startHolepunch = async function () {
     this.store = new Corestore(os.homedir() + '/.hop-storage')
     this.swarm = new Hyperswarm()
+    // make replication possible
+    // this.swarm.on('connection', conn => this.store.replicate(conn))
     goodbye(() => this.swarm.destroy())
     this.BeeData = new BeeWorker(this.store, this.swarm)
     this.DriveFiles = new DriveWorker(this.store, this.swarm)
@@ -71,7 +73,6 @@ class HolepunchWorker extends EventEmitter {
    *
   */
   setWebsocket = function (ws) {
-    console.log('webcocket live HP')
     this.wsocket = ws
     this.BeeData.setWebsocket(ws)
     this.DriveFiles.setWebsocket(ws)
@@ -150,7 +151,7 @@ class HolepunchWorker extends EventEmitter {
     this.core3 = this.store.get({ name: 'core-3' })
     await Promise.all([this.core1.ready(), this.core2.ready(), this.core3.ready()])
 
-    console.log('main core key:', b4a.toString(this.core1.key, 'hex'))
+    // console.log('main core key:', b4a.toString(this.core1.key, 'hex'))
     this.discKeypeer = b4a.toString(this.core1.key, 'hex')
 
     // Here we'll only join the swarm with the core1's discovery key

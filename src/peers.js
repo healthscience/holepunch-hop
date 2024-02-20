@@ -16,11 +16,11 @@ import b4a from 'b4a'
 
 class NetworkPeers extends EventEmitter {
 
-  constructor(core, swarm) {
+  constructor(store, swarm) {
     super()
     console.log('peer manager')
     this.hello = 'hyperpeers'
-    this.core = core
+    this.store = store
     this.swarm = swarm
     this.drive = {}
     this.peerHolder = {}
@@ -53,6 +53,8 @@ class NetworkPeers extends EventEmitter {
   listenNetwork = function () {
     console.log('listen network')
     this.swarm.on('connection', (conn, info) => {
+      // listen for replication
+      this.store.replicate(conn)
       // listener to write message to peers or network partial or broadcast
       console.log('swarm connection recieved')
       let publicKeylive = info.publicKey.toString('hex')
