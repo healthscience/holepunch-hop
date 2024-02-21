@@ -76,16 +76,23 @@ class NetworkPeers extends EventEmitter {
    *
   */
   assessData = function (peer, data) {
+    console.log('assess---data receive peer-----------')
     if (Buffer.isBuffer(data)) {
-    } else {
-      let dataShareIn = JSON.parse(data.toString())
-      if (dataShareIn.type === 'chart') {
-        this.emit('beebee-data', dataShareIn)
-        // need to look at NXP,  modules and within for reference contracts.
-        // Need to replicate public library for contracts (repliate hyberbee)
-        // Need to ask for data source e.g. file (replicate hyberdrive)
-        // Lastly put together SafeFlowECS query to produce chart
-      } else if (dataShareIn.type === 'peer') {
+      console.log('1 buffer')
+      try {
+        let dataShareIn = JSON.parse(data.toString())
+        if (dataShareIn.type === 'chart') {
+          this.emit('beebee-data', dataShareIn)
+          // need to look at NXP,  modules and within for reference contracts.
+          // Need to replicate public library for contracts (repliate hyberbee)
+          // Need to ask for data source e.g. file (replicate hyberdrive)
+          // Lastly put together SafeFlowECS query to produce chart
+        } else if (dataShareIn.type === 'peer') {
+          console.log('3 buffer')
+        }
+        console.log(a)
+      } catch (e) {
+          return console.error('ignore')
       }
     }
   }
