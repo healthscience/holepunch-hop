@@ -135,6 +135,42 @@ FileParser.prototype.webCSVparse = function (fData) {
 }
 
 /**
+* TEMP blind csv content files from web
+* @method TEMPwebCSVparse
+*
+*/
+FileParser.prototype.TEMPwebCSVparse = function (fData) {
+  // match name row number
+  let lcounter = 0
+  let match = ''
+  let extractLabel = []
+  let extractCol = []
+  fData.content.forEach(line =>  {
+    lcounter++
+    if (lcounter === parseInt(fData.info.cnumber)) {
+     match = line
+    }
+    if (lcounter > 1) {
+      let splitRow = line.split(',')
+      // let pairData = {}
+      // pairData.timestamp = splitRow[2]
+      // pairData.price = splitRow[5]
+      // console.log(pairData)
+      if (splitRow[2] !== undefined) {
+        extractCol.push(splitRow[fData.context.id])
+        extractLabel.push(splitRow[2])
+      }
+    }
+  })
+  // extract out price and time
+  let extractedPair = {}
+  extractedPair.label = extractLabel
+  extractedPair.data = extractCol
+  return extractedPair
+
+}
+
+/**
 * read csv headers and extract info
 * @method extractCSVHeaderInfo
 *
