@@ -36,7 +36,9 @@
     "hypercore": "^10.5.3",
     "hyperdrive": "^11.0.0-alpha.10",
     "hyperswarm": "^4.3.5",
-    "localdrive": "github:holepunchto/localdrive"
+    "localdrive": "github:holepunchto/localdrive",
+    "luxon": "^3.4.4",
+    "chrono-node": "^2.7.5"
   },
   "devDependencies": {
     "assert": "^2.0.0",
