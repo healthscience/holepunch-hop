@@ -13,7 +13,10 @@ import fs from 'fs'
 import Hyperdrive from 'hyperdrive'
 import b4a from 'b4a'
 import Fileparser from './fileParser.js'
+import SqliteAdapter from './adapters/sqliteDatabase.js'
 import csv from 'csv-parser'
+import { DateTime, Interval } from 'luxon'
+import * as chrono from 'chrono-node'
 
 class HypDrive extends EventEmitter {
 
@@ -24,6 +27,8 @@ class HypDrive extends EventEmitter {
     this.swarm = swarm
     this.drive = {}
     this.fileUtility = new Fileparser('')
+    this.AdapterSqlite = new SqliteAdapter()
+    this.dataBase = {}
     // this.setupHyperdrive()
   }
 
@@ -151,6 +156,37 @@ class HypDrive extends EventEmitter {
 
 
   /**
+   * save csv data to hyperdrive file
+   * @method saveSqliteFirst 
+   *
+  */
+  saveSqliteFirst = async function (path, name, data) {
+    let fileResponse = {}
+    // file input management
+    // protocol to save original file
+    let newPathFile = await this.hyperdriveFilesave(path, name, data)
+    // extract table and then table columns
+    // extract out the headers name for columns
+    const parseData = await this.SQLiteSetup(name)
+    fileResponse.filename = name
+    fileResponse.header = parseData.headers
+    fileResponse.data = parseData.tables
+    return fileResponse
+  }
+
+
+  /**
+   * blind sqlite lookup of data (maybe restricture no. of rows of data iniitally)
+   * @method blindDataSqlite 
+   *
+  */
+  blindDataSqlite = async function (dataInfo) {
+     let parseData = await this.SQLiteQuery(dataInfo)
+     return parseData
+  }
+
+
+  /**
    * save to hyperdrive file
    * @method hyperdriveFilesave 
    *
@@ -184,8 +220,6 @@ class HypDrive extends EventEmitter {
         }
       }))
     }
-
-
     return hyperdrivePath
   }
 
@@ -206,19 +240,76 @@ class HypDrive extends EventEmitter {
    * rebuidl file and give directory location
    * @method hyperdriveLocalfile
    *
-   */
+  */
   hyperdriveLocalfile = async function (path) {
     // File reads to buffer and recreate file
     // const bufFromGet2 = await this.drive.get(path)
     const { value: entry } = await this.drive.entry(path)
     const blobs = await this.drive.getBlobs()
     const bufFromEntry = await blobs.get(entry.blob)
-
     let localFile = 'localdb'
-    // fs.writeFileSync(localFile, bufFromGet2)
     fs.writeFileSync(localFile, bufFromEntry)
     return localFile
   }
+
+  /**
+  *  set file path, read and make sqlite3 connect db
+  * @method SQLiteSetup
+  *
+  */
+  SQLiteSetup = async function (file) {
+    // const stream = this.liveDataAPI.DriveFiles.listFilesFolder('sqlite/')
+    let dbFile = await this.hyperdriveLocalfile('sqlite/' + file)
+    let summarySQLinfo = await this.AdapterSqlite.newDatabase(dbFile)
+    return summarySQLinfo
+  }
+  
+    /**
+  *  set file path, read and make sqlite3 connect db
+  * @method SQLiteQuery
+  *
+  */
+  SQLiteQuery = async function (dataInfo) {
+     let timestampCol = ''
+    // is the sqliite database sill accive?
+    // const stream = this.liveDataAPI.DriveFiles.listFilesFolder('sqlite/')
+    let dbFile = await this.hyperdriveLocalfile('sqlite/' + dataInfo.file.file)
+    let queryData = await this.AdapterSqlite.queryTable(dataInfo)
+    let contextKeys = Object.keys(queryData[0])
+    timestampCol = contextKeys[dataInfo.context.timestamp]
+    // now prepare into data and labels
+    let blindData = {}
+    let extractCol = []
+    let extractLabel = []
+    for (let rowi of queryData) {
+	extractCol.push(rowi[dataInfo.context.name.name])
+	// assume data column for now and parse to mills seconds
+	let testCH1 = chrono.parseDate(rowi[timestampCol])
+	let parseDate = testCH1 * 1000 // this.testDataExtact(testCH1)
+	extractLabel.push(parseDate)
+    }
+    blindData.data = extractCol
+    blindData.label = extractLabel
+    return blindData
+  }
+
+
+	/**
+	* try to match to known time formats
+	* @method testDataExtact
+	*
+	*/
+	testDataExtact = function (sampleDate) {
+	  let parseDate0 = DateTime.fromISO(sampleDate)
+	  let parseDate1 = DateTime.fromHTTP(sampleDate)
+	  let parseDate2 = DateTime.fromJSDate(sampleDate)
+	  /* let parseDate3 = DateTime.fromFormat(sampleDate, "dd-MM-yyyy HH:MM")
+	  let parseDate4 = DateTime.local(sampleDate)
+	  // .fromJSDate(sampleDate) // .fromHTTP(sampleDate) //  fromFormat(sampleDate, "YYY-MM-DD ")  //.fromISO(sampleDate) // or DateTime. fromFormat("23-06-2019", "dd-MM-yyyy") .(splitRow[0])//  new Date(splitRow[0])
+	   */
+	  let millDate = parseDate2.toMillis()
+	  return millDate
+	}
 
   /**
   *  taken in csv file and read per line

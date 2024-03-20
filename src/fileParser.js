@@ -11,7 +11,6 @@ import atob from 'atob'
 * @license    http://www.gnu.org/licenses/old-licenses/gpl-3.0.html
 * @version    $Id$
 */
-
 import fs from 'fs'
 import os from 'os'
 import util from 'util'
@@ -19,12 +18,14 @@ import events from 'events'
 import axios from 'axios'
 import csv from 'csv-parser'
 import crypto from 'crypto'
+import TimeConvert from './adapters/timeConvertor.js'
 import { DateTime, Interval } from 'luxon'
 import * as chrono from 'chrono-node'
 
 var FileParser = function (path) {
   events.EventEmitter.call(this)
   this.storepath = path
+  this.convertTime = new TimeConvert()
 }
 
 /**
@@ -162,7 +163,7 @@ FileParser.prototype.TEMPwebCSVparse = function (fData) {
         extractCol.push(splitRow[fData.context.id])
         // assume data column for now and parse to mills seconds
         let testCH1 = chrono.parseDate(splitRow[fData.context.timestamp])
-        let parseDate = this.testDataExtact(testCH1)
+        let parseDate = this.convertTime.testDataExtact(testCH1)
         // let parseDate = DateTime.fromISO(splitRow[0])
         // let millDate = parseDate.toMillis()
         extractLabel.push(parseDate)
@@ -173,28 +174,7 @@ FileParser.prototype.TEMPwebCSVparse = function (fData) {
   let extractedPair = {}
   extractedPair.label = extractLabel
   extractedPair.data = extractCol
-  console.log('finsiehd')
-  console.log(extractedPair)
   return extractedPair
-}
-
-/**
-* try to match to known time formats
-* @method testDataExtact
-*
-*/
-FileParser.prototype.testDataExtact = function (sampleDate) {
-  let parseDate0 = DateTime.fromISO(sampleDate)
-  let parseDate1 = DateTime.fromHTTP(sampleDate)
-  let parseDate2 = DateTime.fromJSDate(sampleDate)
-  /* let parseDate3 = DateTime.fromFormat(sampleDate, "dd-MM-yyyy HH:MM")
-  console.log(parseDate3)
-  let parseDate4 = DateTime.local(sampleDate)
-  console.log(parseDate4)
-  // .fromJSDate(sampleDate) // .fromHTTP(sampleDate) //  fromFormat(sampleDate, "YYY-MM-DD ")  //.fromISO(sampleDate) // or DateTime. fromFormat("23-06-2019", "dd-MM-yyyy") .(splitRow[0])//  new Date(splitRow[0])
-  // console.log(parseDate) */
-  let millDate = parseDate2.toMillis()
-  return millDate
 }
 
 /**

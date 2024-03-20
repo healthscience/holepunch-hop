@@ -1,6 +1,6 @@
 {
   "name": "holepunch-hop",
-  "version": "0.2.5",
+  "version": "0.2.7",
   "description": "data interface to HOP",
   "main": "src/index.js",
   "type": "module",
@@ -38,7 +38,8 @@
     "hyperswarm": "^4.3.5",
     "localdrive": "github:holepunchto/localdrive",
     "luxon": "^3.4.4",
-    "chrono-node": "^2.7.5"
+    "chrono-node": "^2.7.5",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "assert": "^2.0.0",
