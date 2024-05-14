@@ -131,8 +131,8 @@ class HyperBee extends EventEmitter {
    *
   */
   savePeerLibrary = async function (refContract) {
-    await this.dbPeerLibrary.put(refContract.hash, refContract.contract)
-    let saveCheck = await this.getPeerLibrary(refContract.hash)
+    await this.dbPeerLibrary.put(refContract.data.hash, refContract.data.contract)
+    let saveCheck = await this.getPeerLibrary(refContract.data.hash)
     let returnMessage = {}
     returnMessage.stored = true
     returnMessage.type = refContract.reftype
@@ -396,6 +396,19 @@ class HyperBee extends EventEmitter {
       console.log(`${key} -> ${value}`)
     }
 
+  }
+
+  /**
+   * delete nxp ref contract public
+   * @method deleteRefcontPubliclibrary
+   *
+  */
+  deleteRefcontPubliclibrary = async function (nxpID) {
+    let deleteInfo = {}
+    let deleteStatus = await this.dbPublicLibrary.del(nxpID)
+    deleteInfo.success = deleteStatus
+    deleteInfo.nxp = nxpID
+    return deleteInfo
   }
 
   /**
