@@ -113,7 +113,7 @@ class HyperBee extends EventEmitter {
    *
   */
   savePubliclibrary = async function (refContract) {
-    let beeSave = await this.dbPublicLibrary.put(refContract.data.hash, refContract.data.contract)
+    await this.dbPublicLibrary.put(refContract.data.hash, refContract.data.contract)
     // go query the key are return the info. to ensure data save asplanned.
     let saveCheck = await this.getPublicLibrary(refContract.data.hash)
     let returnMessage = {}
