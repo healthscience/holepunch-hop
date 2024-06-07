@@ -29,9 +29,23 @@ class SqliteAdapter extends EventEmitter {
     this.createDbConnection(db)
      // ask for tables 
     let tables = await this.discoverTables()
-    let header = await this.discoverColumns()
+    // let header = await this.discoverColumns()
     newSqlite.tables = tables
-    newSqlite.headers = header
+    // newSqlite.headers = header
+    return newSqlite
+  }
+
+  /**
+  * discover colum names in a table
+  * @method tableQuery
+  *
+  */
+  tableQuery = async function (data) {
+    let newSqlite = {}
+    this.createDbConnection(data.file)
+     // ask for tables 
+    let headers = await this.discoverColumns(data.table)
+    newSqlite.headers = headers
     return newSqlite
   }
 
@@ -83,14 +97,13 @@ class SqliteAdapter extends EventEmitter {
     // columns in table
     let header = []
     const res = await new Promise((resolve, reject) => {
-	    let sqlTableCols = `PRAGMA table_info('MI_BAND_ACTIVITY_SAMPLE')`
-
+	    let sqlTableCols = `PRAGMA table_info('` + table + `')`
 	    this.dataBase.all(sqlTableCols, [], (err, rows) => {
 	      if (err) {
 		reject(err)
 	      }
 	      rows.forEach((row) => {
-		header.push(row)
+		      header.push(row)
 	      })
 	      resolve(header)
 	    })
@@ -108,6 +121,29 @@ class SqliteAdapter extends EventEmitter {
     let data = []
     const res = await new Promise((resolve, reject) => {
 	    let sqlQuery = `SELECT * FROM MI_BAND_ACTIVITY_SAMPLE WHERE DEVICE_ID = 3 ORDER BY TIMESTAMP DESC LIMIT 1400` // AND TIMESTAMP BETWEEN 1627677840 AND 1627678380`
+
+	    this.dataBase.all(sqlQuery, [], (err, rows) => {
+	      if (err) {
+		reject(err)
+	      }
+	      rows.forEach((row) => {
+		data.push(row)
+	      })
+	      resolve(data)
+	    })
+	})
+    return res
+  }
+
+  /**
+  * query device table
+  * @method deviceQuery
+  *
+  */
+  deviceQuery = async function (table) {
+    let data = []
+    const res = await new Promise((resolve, reject) => {
+	    let sqlQuery = `SELECT * FROM ` + table
 
 	    this.dataBase.all(sqlQuery, [], (err, rows) => {
 	      if (err) {

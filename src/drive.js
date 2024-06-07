@@ -88,7 +88,6 @@ class HypDrive extends EventEmitter {
   */
   listFilesFolder = function (folder) {
     const stream = this.drive.list('') //  [options])
-    // console.log(stream)
     // Handle stream events --> data, end, and error
     let dataDrive = []
     stream.on('data', function(chunk) {
@@ -170,7 +169,7 @@ class HypDrive extends EventEmitter {
     const parseData = await this.SQLiteSetup(name)
     fileResponse.filename = name
     fileResponse.header = parseData.headers
-    fileResponse.data = parseData.tables
+    fileResponse.tables = parseData.tables
     return fileResponse
   }
 
@@ -264,7 +263,38 @@ class HypDrive extends EventEmitter {
     return summarySQLinfo
   }
   
-    /**
+  /**
+  *  set file path, read and make sqlite3 connect db
+  * @method SQLiteSourceSetup
+  *
+  */
+  SQLiteSourceSetup = async function (data) {
+    // const stream = this.liveDataAPI.DriveFiles.listFilesFolder('sqlite/')
+    let dbFile = await this.hyperdriveLocalfile('sqlite/' + data.db)
+    data.file = dbFile
+    let summarySQLinfo = await this.AdapterSqlite.tableQuery(data)
+    return summarySQLinfo
+  }
+
+
+  /**
+  *  ask for device tables and info.
+  * @method SQLiteDeviceSetup
+  *
+  */
+  SQLiteDeviceSetup = async function (data) {
+    // const stream = this.liveDataAPI.DriveFiles.listFilesFolder('sqlite/')
+    let dbFile = await this.hyperdriveLocalfile('sqlite/' + data.db)
+    data.file = dbFile
+    let summaryTable = await this.AdapterSqlite.tableQuery(data)
+    let summaryDevice = await this.AdapterSqlite.deviceQuery(data.table)
+    let summarySQLinfo = {}
+    summarySQLinfo.tables = summaryTable
+    summarySQLinfo.devices = summaryDevice
+    return summarySQLinfo
+  }
+
+  /**
   *  set file path, read and make sqlite3 connect db
   * @method SQLiteQuery
   *
