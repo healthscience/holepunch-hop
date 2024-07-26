@@ -300,27 +300,37 @@ class HypDrive extends EventEmitter {
   *
   */
   SQLiteQuery = async function (dataInfo) {
+    console.log('HP--DRIVE--sqlite')
      let timestampCol = ''
     // is the sqliite database sill accive?
     // const stream = this.liveDataAPI.DriveFiles.listFilesFolder('sqlite/')
     let dbFile = await this.hyperdriveLocalfile('sqlite/' + dataInfo.file.file)
     let queryData = await this.AdapterSqlite.queryTable(dataInfo)
-    let contextKeys = Object.keys(queryData[0])
-    timestampCol = contextKeys[dataInfo.context.timestamp]
-    // now prepare into data and labels
-    let blindData = {}
-    let extractCol = []
-    let extractLabel = []
-    for (let rowi of queryData) {
-	extractCol.push(rowi[dataInfo.context.name.name])
-	// assume data column for now and parse to mills seconds
-	let testCH1 = chrono.parseDate(rowi[timestampCol])
-	let parseDate = testCH1 * 1000 // this.testDataExtact(testCH1)
-	extractLabel.push(parseDate)
+    if (queryData.length > 0) {
+      let contextKeys = Object.keys(queryData[0])
+      timestampCol = contextKeys[dataInfo.context.timestamp]
+      // now prepare into data and labels
+      let blindData = {}
+      let extractCol = []
+      let extractLabel = []
+      for (let rowi of queryData) {
+    extractCol.push(rowi[dataInfo.context.name.name])
+    // assume data column for now and parse to mills seconds
+    let testCH1 = chrono.parseDate(rowi[timestampCol])
+    let parseDate = testCH1 * 1000 // this.testDataExtact(testCH1)
+    extractLabel.push(parseDate)
+      }
+      blindData.data = extractCol
+      blindData.label = extractLabel
+      return blindData
+    } else {
+      console.log('no data for that query')
+      let blindData = {}
+      blindData.data = []
+      blindData.label = []
+      return blindData
     }
-    blindData.data = extractCol
-    blindData.label = extractLabel
-    return blindData
+
   }
 
 

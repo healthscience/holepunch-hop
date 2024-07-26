@@ -344,6 +344,17 @@ class HyperBee extends EventEmitter {
   }
 
   /**
+   * filter peer library to get compute modules with a key
+   * @method getPeerLibComputeModules
+   *
+  */
+  getPeerLibComputeModules = async function () {
+    const moduleData = await this.dbPeerLibrary.createHistoryStream({ reverse: true, limit: 10 })
+    return moduleData
+  }
+
+
+  /**
    * get all kbl entries
    * @method KBLentries
    *

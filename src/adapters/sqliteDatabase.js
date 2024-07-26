@@ -49,6 +49,29 @@ class SqliteAdapter extends EventEmitter {
     return newSqlite
   }
 
+    /**
+  * setup sqlite db and get tables and columns
+  * @method discoverColumns
+  *
+  */
+    discoverColumns = async function (table) {  
+      // columns in table
+      let header = []
+      const res = await new Promise((resolve, reject) => {
+        let sqlTableCols = `PRAGMA table_info('` + table + `')`
+        this.dataBase.all(sqlTableCols, [], (err, rows) => {
+          if (err) {
+      reject(err)
+          }
+          rows.forEach((row) => {
+            header.push(row)
+          })
+          resolve(header)
+        })
+    })
+      return res
+    }
+
   /**
   * setup sqlite db and get tables and columns
   * @method createDbConnection
@@ -88,28 +111,6 @@ class SqliteAdapter extends EventEmitter {
     return res
   }
 
-  /**
-  * setup sqlite db and get tables and columns
-  * @method discoverColumns
-  *
-  */
-  discoverColumns = async function (table) {  
-    // columns in table
-    let header = []
-    const res = await new Promise((resolve, reject) => {
-	    let sqlTableCols = `PRAGMA table_info('` + table + `')`
-	    this.dataBase.all(sqlTableCols, [], (err, rows) => {
-	      if (err) {
-		reject(err)
-	      }
-	      rows.forEach((row) => {
-		      header.push(row)
-	      })
-	      resolve(header)
-	    })
-	})
-    return res
-  }
 
   /**
   * query a table for data
@@ -117,11 +118,48 @@ class SqliteAdapter extends EventEmitter {
   *
   */
   queryTable = async function (table) {
+    console.log('HP--first SQL query')
+    console.log(table)
+    let tableName = table.context.deviceTable
+    // let devicetableName = table.context.devicetablename
+    let tableTimestamp = table.context.timestamp   // timecolumn
+    let deviceColumn = ''
+    if (table?.context?.deviceCol) {
+      deviceColumn = table?.context?.deviceCol?.name
+    } else {
+      deviceColumn = ''
+    }
+    let queryDevice = 0
+    if (table.context?.deviceID) {
+      queryDevice = table.context?.deviceID
+    } else {
+      queryDevice = 1 // table?.context?.device?._id
+    }
+    let queryLimit = true
+    let queryLevel = 1400
+    let blindTimestart = 0
+    let blindTimeend = 0
     // columns in table
     let data = []
     const res = await new Promise((resolve, reject) => {
-	    let sqlQuery = `SELECT * FROM MI_BAND_ACTIVITY_SAMPLE WHERE DEVICE_ID = 3 ORDER BY TIMESTAMP DESC LIMIT 1400` // AND TIMESTAMP BETWEEN 1627677840 AND 1627678380`
-
+	    let sqlQuery = `SELECT * FROM ` + tableName 
+      // now build filter of query based on input if any
+      if (deviceColumn.length > 0) {
+        sqlQuery += ` WHERE ` + deviceColumn + ` = ` + queryDevice 
+      }
+      if (tableTimestamp.length > 0) {
+        sqlQuery += ` ORDER BY TIMESTAMP DEC` // + tableTimestamp
+      }
+      if (blindTimestart) {
+        sqlQuery += ` AND TIMESTAMP BETWEEN ` + blindTimestart + ` AND ` + blindTimeend
+ 
+      }
+      // lastly set hard limit on length
+      if (queryLimit) {
+        sqlQuery += ` LIMIT ` + queryLevel
+      }
+      console.log('HP------formed ----------')
+      console.log(sqlQuery)
 	    this.dataBase.all(sqlQuery, [], (err, rows) => {
 	      if (err) {
 		reject(err)
@@ -135,12 +173,14 @@ class SqliteAdapter extends EventEmitter {
     return res
   }
 
+
   /**
   * query device table
   * @method deviceQuery
   *
   */
   deviceQuery = async function (table) {
+    console.log('HOLEP---adtpSQL--query device SQLite ad')
     let data = []
     const res = await new Promise((resolve, reject) => {
 	    let sqlQuery = `SELECT * FROM ` + table

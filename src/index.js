@@ -130,6 +130,8 @@ class HolepunchWorker extends EventEmitter {
           this.warmPeers.push(message.data)
           this.Peers.peerJoin(message.data)
         }
+      } else if (message.task === 'peer-board') {
+        console.log('public board share with peer')
       } else if (message.task === 'peer-write') {
         this.emit('peer-write', message.data)
       } else if (message.task === 'topic') {

@@ -138,6 +138,26 @@ FileParser.prototype.webCSVparse = function (fData) {
 }
 
 /**
+* TEMP blind json content
+* @method TEMPwebJSONparse
+*
+*/
+FileParser.prototype.TEMPwebJSONparse = function (fjData) {
+  console.log(fjData)
+  let extractLabel = []
+  let extractCol = []
+  for (let df of fjData.content) {
+    extractLabel.push(df[fjData.context.timestampname])
+    extractCol.push(df[fjData.context.name])
+  }
+  // extract out price and time
+  let extractedPair = {}
+  extractedPair.label = extractLabel
+  extractedPair.data = extractCol
+  return extractedPair
+}
+
+/**
 * TEMP blind csv content files from web
 * @method TEMPwebCSVparse
 *
