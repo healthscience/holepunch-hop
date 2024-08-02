@@ -94,7 +94,9 @@ class HolepunchWorker extends EventEmitter {
       let taskCheck = 0
       let firstCheck = this.Peers.peerHolder[data]
       if (firstCheck !== undefined) {
-        taskCheck = this.Peers.peerHolder[data].data.labels.length
+        if (this.Peers.peerHolder[data]?.data?.labels !== undefined) {
+          taskCheck = this.Peers.peerHolder[data].data.labels.length
+        }
       } else {
         taskCheck = 0
       }
