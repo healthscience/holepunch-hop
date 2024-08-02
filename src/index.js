@@ -91,10 +91,17 @@ class HolepunchWorker extends EventEmitter {
     })
     // peer connection active
     this.Peers.on('peer-connect', (data) => {
+      let taskCheck = 0
+      let firstCheck = this.Peers.peerHolder[data]
+      if (firstCheck !== undefined) {
+        taskCheck = this.Peers.peerHolder[data].data.labels.length
+      } else {
+        taskCheck = 0
+      }
       // if (this.Peers.peerHolder[data].data.boardID !== undefined) {
       // any existing peers
       let holderCheck = Object.keys(this.Peers.peerHolder)
-      if (holderCheck.length !== 0) {
+      if (holderCheck !== 0 && taskCheck === 0) {
         this.Peers.writeToPublicLibrary(data)
       } else {
         this.Peers.writeTonetwork(data)
