@@ -4,7 +4,7 @@
 *
 * @class HypBee
 * @package    HypBee
-* @copyright  Copyright (c) 2022 James Littlejohn
+* @copyright  Copyright (c) 2024 James Littlejohn
 * @license    http://www.gnu.org/licenses/old-licenses/gpl-3.0.html
 * @version    $Id$
 */
@@ -20,6 +20,7 @@ class HyperBee extends EventEmitter {
     this.store = store
     this.swarm = swarm
     this.liveBees = {}
+    this.confirmPubLibList = {}
   }
 
   /**
@@ -45,14 +46,12 @@ class HyperBee extends EventEmitter {
       valueEncoding: 'json' // same options as above
     })
     await this.dbPublicLibrary.ready()
-    beePubkeys.push({ store: 'pubilclibrary', pubkey: b4a.toString(core.key, 'hex')})
-    // console.log(this.dbPublicLibrary._feed)
+    beePubkeys.push({ store: 'publiclibrary', pubkey: b4a.toString(core.key, 'hex')})
     // allow other peer access to public library  (need to check for DDOS ie over asked)
     // join a topic
     const discovery = this.swarm.join(this.dbPublicLibrary.discoveryKey)
     // Only display the key once the Hyperbee has been announced to the DHT
     discovery.flushed().then(() => {
-      // console.log('bee key:', b4a.toString(core.key, 'hex'))
     })
 
 
@@ -113,7 +112,6 @@ class HyperBee extends EventEmitter {
    *
   */
   savePubliclibrary = async function (refContract) {
-    console.log(refContract)
     let beeSave = await this.dbPublicLibrary.put(refContract.data.hash, refContract.data.contract)
     // go query the key are return the info. to ensure data save asplanned.
     let saveCheck = await this.getPublicLibrary(refContract.data.hash)
@@ -444,9 +442,9 @@ class HyperBee extends EventEmitter {
    * @method replicatePubliclibrary
    *
   */
-  replicatePubliclibrary = async function (keylib) {
+  replicatePubliclibrary = async function (dataIn) {
     // create or get the hypercore using the public key supplied as command-line argument
-    const coreRep = this.store.get({ key: b4a.from(keylib, 'hex') })
+    const coreRep = this.store.get({ key: b4a.from(dataIn.data.datastores, 'hex') })
 
     // create a hyperbee instance using the hypercore instance
     const beePlib = new Hyperbee(coreRep, {
@@ -465,23 +463,83 @@ class HyperBee extends EventEmitter {
 
     await coreRep.update()
 
+    // if provided with specific boarnxp key then just get the contract, extract module contracts and get those contracts and then inform the peer and save to their public library
+    const boardNXPcontract = await beePlib.get(dataIn.data.boardID)
+    let unString = JSON.parse(boardNXPcontract.value)
+    let moduleContracts = []
+    for (let mod of unString.modules) {
+      let modC = await beePlib.get(mod)
+      moduleContracts.push(modC)
+    }
+    // next reference contracts, then ref within refs i.e. packaging datatypes
+    let referenceContracts = []
+    for (let modRef of moduleContracts) {
+      let unString = JSON.parse(modRef.value)
+      if (unString.style === 'packaging') {
+        // get list of datatypes
+        for (let ref of unString.info.value.concept.tablestructure) {
+          if (ref?.refcontract) {
+          let refC = await beePlib.get(ref.refcontract)
+            referenceContracts.push(refC)
+          }
+        }
+      } else if (unString.style === 'compute') {
+        // console.log('compute TODO')
+        // console.log(unString)
+      } else if (unString.style === 'visualise') {
+        // console.log('visualise TODO')
+        // console.log(unString)
+      } else if (unString.style === 'question') {
+        let questRef = {}
+        questRef.key = unString.info.key
+        questRef.value = JSON.stringify(unString.info.value)
+        referenceContracts.push(questRef)
+      }
+    }
+    // notify and get confirmation to accept and save to public library
+    if (moduleContracts.length > 0) {
+      // keep hold of data ready to be confirmed
+      let holderConfirm = {}
+      holderConfirm.boardNXP = [boardNXPcontract]
+      holderConfirm.modules = moduleContracts
+      holderConfirm.refcontracts = referenceContracts
+      this.confirmPubLibList[dataIn.data.datastores] = holderConfirm
+      this.emit('publibbeebee-notification', dataIn.data)
+    }
+    // or
     // now ask for whole of public library
     /* read all of repliate connect bee and displays */
     const chathistoryData = beePlib.createReadStream() // { gt: 'a', lt: 'z' }) // anything >a and <z
     let chatData = []
     for await (const { key, value } of chathistoryData) {
-      chatData.push({ key, value })
+      if (key === dataIn.data.boardID) {
+       chatData.push({ key, value })
+      }
     }
-
     // now replicate with peer own public library in whole or per nxp
-    let savePublib = await this.updatePublicLibrary(beePlib)
+    /* let savePublib = await this.updatePublicLibrary(beePlib)
     let repMessage = {}
     repMessage.type = 'library'
     repMessage.action = 'replicate-publiclibrary'
     repMessage.task = 'replicate'
     repMessage.reftype = 'publiclibrary'
     repMessage.data = savePublib
-    return repMessage
+    return repMessage */
+  }
+
+
+  /**
+   * peer confirmed add to public library
+   * @method addConfrimPublicLibrary
+   *
+  */
+  addConfrimPublicLibrary = async function (data) {
+    // add board nxp
+    await this.updatePublicLibrary(this.confirmPubLibList[data.datastores].boardNXP)
+    // add modules
+    await this.updatePublicLibrary(this.confirmPubLibList[data.datastores].modules)
+    // add reference
+    await this.updatePublicLibrary(this.confirmPubLibList[data.datastores].refcontracts)
   }
 
   /**
@@ -489,17 +547,10 @@ class HyperBee extends EventEmitter {
    * @method updatePublicLibrary
    *
   */
-  updatePublicLibrary = async function (updateLib) {
-    /* read all of repliate connect bee and displays */
-    const chathistoryData = updateLib.createReadStream() // { gt: 'a', lt: 'z' }) // anything >a and <z
-    let libData = []
-    for await (const { key, value } of chathistoryData) {
-      libData.push({ key, value })
-    }
-    
+  updatePublicLibrary = async function (libContracts) {
     // save entries required
     const batch = this.dbPublicLibrary.batch()
-    for (const { key, value } of libData) {
+    for (const { key, value } of libContracts) {
       await batch.put(key, JSON.parse(value))
     }
     await batch.flush()
@@ -577,10 +628,8 @@ class HyperBee extends EventEmitter {
     let rs = beeResults.createReadStream() // anything >=a and <=d
 
     for await (const { key, value } of rs) {
-      // console.log(`${key} -> ${value}`)
       // need a save funnction in here
       if (key === 'bdb6a7db0b479d9b30406cd24f3cc2f315fd3ba0') {
-        // console.log(`${key} -> ${value}`)
         let dataR = {}
         dataR.hash = key
         dataR.data = value

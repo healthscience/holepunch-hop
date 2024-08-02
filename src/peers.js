@@ -18,7 +18,6 @@ class NetworkPeers extends EventEmitter {
 
   constructor(store, swarm) {
     super()
-    console.log('peer manager')
     this.hello = 'hyperpeers'
     this.store = store
     this.swarm = swarm
@@ -60,9 +59,6 @@ class NetworkPeers extends EventEmitter {
       this.emit('peer-connect', publicKeylive)
       // process network message
       conn.on('data', data =>
-        // console.log('recieve network message:', data.toString()),
-        // console.log(data.toString()),
-        // console.log('emit to be verified and acted upon appropriately'),
         // assess data
         this.assessData(publicKeylive, data)
       )
@@ -76,9 +72,7 @@ class NetworkPeers extends EventEmitter {
    *
   */
   assessData = function (peer, data) {
-    console.log('assess---data receive peer-----------')
     if (Buffer.isBuffer(data)) {
-      console.log('1 buffer')
       try {
         let dataShareIn = JSON.parse(data.toString())
         if (dataShareIn.type === 'chart') {
@@ -87,12 +81,13 @@ class NetworkPeers extends EventEmitter {
           // Need to replicate public library for contracts (repliate hyberbee)
           // Need to ask for data source e.g. file (replicate hyberdrive)
           // Lastly put together SafeFlowECS query to produce chart
+        } else if (dataShareIn.type === 'public-library') {
+          this.emit('publiclibrarynotification', dataShareIn)
         } else if (dataShareIn.type === 'peer') {
-          console.log('3 buffer')
         }
         console.log(a)
       } catch (e) {
-          return console.error('ignore')
+          return console.error('ignore err')
       }
     }
   }
@@ -118,6 +113,27 @@ class NetworkPeers extends EventEmitter {
     }
   }
 
+  /**
+   * write message connect public library
+   * @method writeToPublicLibrary
+   *
+  */
+  writeToPublicLibrary = function (publickey) {
+    // check this peer has asked for chart data
+    let connectTrue = publickey in this.peerConnect
+    let libraryTrue = publickey in this.peerHolder
+    if (connectTrue === true && libraryTrue === true) {
+      let libraryData = this.peerHolder[publickey]
+      let dataShare = {}
+      dataShare.data = libraryData.data
+      dataShare.type = 'public-library'
+      this.peerConnect[publickey].write(JSON.stringify(dataShare))
+    } else {
+      console.log('no board to write ie share with a peer')
+    }
+  }
+
+
 
   /**
    * join peer to peer private (server)
@@ -134,10 +150,10 @@ class NetworkPeers extends EventEmitter {
 
   /**
    * already joined but keep track context data
-   * @method peerAlreadyJoin
+   * @method peerAlreadyJoinSetData
    *
   */
-  peerAlreadyJoin = function (peerContext) {
+  peerAlreadyJoinSetData = function (peerContext) {
     this.peerHolder[peerContext.publickey] = peerContext
   }
 

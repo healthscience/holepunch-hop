@@ -91,11 +91,26 @@ class HolepunchWorker extends EventEmitter {
     })
     // peer connection active
     this.Peers.on('peer-connect', (data) => {
-      this.Peers.writeTonetwork(data)
+      // if (this.Peers.peerHolder[data].data.boardID !== undefined) {
+      // any existing peers
+      let holderCheck = Object.keys(this.Peers.peerHolder)
+      if (holderCheck.length !== 0) {
+        this.Peers.writeToPublicLibrary(data)
+      } else {
+        this.Peers.writeTonetwork(data)
+      }
+
     })
     // data for beebee
     this.Peers.on('beebee-data', (data) => {
       this.emit('peer-topeer', data)
+    })
+    // public library notification
+    this.Peers.on('publiclibrarynotification', (data) => {
+      this.BeeData.replicatePubliclibrary(data)
+    })
+    this.BeeData.on('publibbeebee-notification', (data) => {
+      this.emit('beebee-publib-notification', data)
     })
     // new warm incoming peer
     this.Peers.on('connect-warm', (data) => {
@@ -115,23 +130,33 @@ class HolepunchWorker extends EventEmitter {
   */
   networkPath = function (message) {
     if (message.action === 'share') {
-      if (message.task === 'peer-join') {
-        // has the peer joined already?
-        let peerMatch = false
-        for (let wpeer of this.warmPeers) {
-          if (wpeer.publickey = message.data.publickey) {
-            peerMatch = true
-          }
+      // has the peer joined already?
+      let peerMatch = false
+      for (let wpeer of this.warmPeers) {
+        if (wpeer.publickey = message.data.publickey) {
+          peerMatch = true
         }
+      }
+      
+      if (message.task === 'peer-join') {
         if (peerMatch === true) {
-          this.Peers.peerAlreadyJoin(message.data)
+          this.Peers.peerAlreadyJoinSetData(message.data)
           this.Peers.writeTonetwork(message.data.publickey)
         } else {
           this.warmPeers.push(message.data)
           this.Peers.peerJoin(message.data)
         }
       } else if (message.task === 'peer-board') {
-        console.log('public board share with peer')
+        if (peerMatch === true) {
+         this.Peers.peerAlreadyJoinSetData(message.data)
+         this.Peers.writeToPublicLibrary(message.data.publickey)
+        } else {
+          this.warmPeers.push(message.data)
+          this.Peers.peerJoin(message.data)
+          // now set data and write to public library info.
+          this.Peers.peerAlreadyJoinSetData(message.data)
+          this.Peers.writeToPublicLibrary(message.data.publickey)
+        }
       } else if (message.task === 'peer-write') {
         this.emit('peer-write', message.data)
       } else if (message.task === 'topic') {
