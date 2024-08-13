@@ -143,7 +143,6 @@ FileParser.prototype.webCSVparse = function (fData) {
 *
 */
 FileParser.prototype.TEMPwebJSONparse = function (fjData) {
-  console.log(fjData)
   let extractLabel = []
   let extractCol = []
   for (let df of fjData.content) {
@@ -315,20 +314,16 @@ FileParser.prototype.convertJSON = function (o, headerSet, results, source, newF
   const datacolumn = o.data[0].info.datename
   const flowList = []
   for (const rs of results) {
-    // console.log(rs)
     let timeLength = 0
     // what length is date number?  Need to make ms time standard to convert
     if (rs[datacolumn].length === 10) {
-      // console.log('not ms time add 000')
       timeLength = rs[datacolumn] * 1000
     } else {
       // console.log('assume ms time ')
       timeLength = rs[datacolumn]
     }
     const dateFormat = new Date(timeLength)
-    // console.log(dateFormat)
     const msDate = dateFormat.getTime()
-    // console.log(msDate)
     rs[datacolumn] = msDate / 1000
     flowList.push(rs)
   }

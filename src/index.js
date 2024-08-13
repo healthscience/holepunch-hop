@@ -130,6 +130,9 @@ class HolepunchWorker extends EventEmitter {
       this.warmPeers.push(peerId)
       this.emit('peer-incoming', peerId)
     })
+    this.DriveFiles.on('largefile-save', (data) => {
+      this.emit('drive-save-large', data)
+    })
   }
 
   /**

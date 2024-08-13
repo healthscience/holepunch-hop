@@ -86,18 +86,9 @@ class HypDrive extends EventEmitter {
    * @method listFilesFolder 
    *
   */
-  listFilesFolder = function (folder) {
-    const stream = this.drive.list('') //  [options])
-    // Handle stream events --> data, end, and error
-    let dataDrive = []
-    stream.on('data', function(chunk) {
-      dataDrive.push(chunk)
-    })
-
-    stream.on('end', function(chunk) {
-      // console.log('stream at end')
-      // console.log(dataDrive)
-    })
+  listFilesFolder = async function (folder) {
+    const stream = await this.drive.list(folder) //  [options])
+    return stream
   }
 
   /**
@@ -222,6 +213,110 @@ class HypDrive extends EventEmitter {
     return hyperdrivePath
   }
 
+
+  /**
+   * save a stream of file ie. large file
+   * @method hyperdriveStreamSave 
+   *
+   */
+  hyperdriveStreamSave = async function (path, data, first) {
+    let ws
+    if (first === true) {
+      // await this.drive.del(path)
+      ws = this.drive.createWriteStream(path)
+      // this.streamSavedata(path, data)
+      ws.write(data)
+    }
+    // use listener
+    this.on('stream-update', (data) => {
+      ws.write(data)
+    })
+
+    this.on('stream-complete', async (data) => {
+      ws.end()
+      ws.once('close', () => 
+        console.log('stream-close'),
+        await this.checkLargeList(path)
+      )
+    })
+
+  }
+
+  /**
+   * check read the file if save large file
+   * @method checkLargeList
+   *
+  */
+  checkLargeList = async function (path) {
+    let localthis = this
+    let folder = 'test'
+    let folderList = await this.listFilesFolder(folder)
+    let dataDrive = []
+    folderList.on('data', function(chunk) {
+      dataDrive.push(chunk)
+    })
+
+    folderList.on('end', async function() {
+      for (let file of dataDrive) {
+        if (file.key === path) {
+          await localthis.firstLineLargeCSV(path)
+        }
+      }
+    })
+  }
+
+  /**
+   * check read the file if save large file
+   * @method checkLargeSave
+   *
+  */
+  checkLargeSave = async function (path) {
+    const rs = this.drive.createReadStream(path)
+    for await (const chunk of rs) {
+     console.log('rs', chunk.toString()) // => <Buffer ..>
+    }
+  }
+
+  /**
+   * check read the file if save large file
+   * @method firstLineLargeCSV
+   *
+  */
+  firstLineLargeCSV = async function (path) {
+    let readFile = await this.readCSVfileStream(path)
+    let makeString = readFile[0].toString()
+    let csvFormat = makeString.split(/\r?\n/)
+    let headerList = csvFormat[0].split(",");
+    let largeMessage = {}
+    largeMessage.type = 'library'
+    largeMessage.action = 'PUT-stream'
+    largeMessage.task = 'PUT-stream'
+    largeMessage.save = true
+    largeMessage.data = {}
+    largeMessage.data.path = path
+    largeMessage.data.columns = headerList
+    this.emit('largefile-save', largeMessage)
+  }
+
+  /**
+   * stream save update
+   * @method streamSavedata 
+   *
+   */
+  streamSavedata = async function (path, data) {
+    this.emit('stream-update', data)
+  }
+
+  /**
+   * stream save complete
+   * @method streamSaveComplete 
+   *
+   */
+  streamSaveComplete = async function (data) {
+    this.emit('stream-update', data)
+    this.emit('stream-complete', data)
+  }
+
   /**
    * read file nav to folder
    * @method hyperdriveReadfile 
@@ -300,7 +395,6 @@ class HypDrive extends EventEmitter {
   *
   */
   SQLiteQuery = async function (dataInfo) {
-    console.log('HP--DRIVE--sqlite')
      let timestampCol = ''
     // is the sqliite database sill accive?
     // const stream = this.liveDataAPI.DriveFiles.listFilesFolder('sqlite/')
@@ -324,7 +418,6 @@ class HypDrive extends EventEmitter {
       blindData.label = extractLabel
       return blindData
     } else {
-      console.log('no data for that query')
       let blindData = {}
       blindData.data = []
       blindData.label = []
@@ -362,10 +455,26 @@ class HypDrive extends EventEmitter {
     const rs = this.drive.createReadStream(fpath) // 'text/csv/testshed11530500.csv') // '/blob.txt')
     return new Promise((resolve, reject) => {
       const results = []
-      //this.drive.createReadStream(fpath)
+      // this.drive.createReadStream(fpath)
         rs.pipe(csv({ headers: headerSet.headerset, separator: headerSet.delimiter, skipLines: headerSet.dataline }))
         .on('data', (data) => results.push(data))
         .on('end', () => {
+          resolve(results)
+        })
+    })
+  }
+
+  /**
+  *  stream out line by line
+  * @method readCSVfileStream
+  *
+  */
+  readCSVfileStream = async function (fpath) {
+    const rs = this.drive.createReadStream(fpath, { start: 0, end: 120 })
+      return new Promise((resolve, reject) => {
+      let results = []
+        rs.on('data', (data) => results.push(data.toString()))
+        rs.on('end', () => {
           resolve(results)
         })
     })
