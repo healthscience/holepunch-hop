@@ -2,8 +2,8 @@
 /**
 *  Manage HyperBee  key store datastore
 *
-* @class HypBee
-* @package    HypBee
+* @class HyperBee
+* @package    HyperBee
 * @copyright  Copyright (c) 2024 James Littlejohn
 * @license    http://www.gnu.org/licenses/old-licenses/gpl-3.0.html
 * @version    $Id$
@@ -96,6 +96,60 @@ class HyperBee extends EventEmitter {
     await this.dbKBledger.ready()
     // this.client.replicate(this.dbKBledger.feed)
     beePubkeys.push({store:'kbledger', pubkey: b4a.toString(core5.key, 'hex')})
+    // stores of cues, media, research, markers, products/treatments
+
+    const core7 = this.store.get({ name: 'bentocues' })
+    this.dbBentocues = new Hyperbee(core7, {
+      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      valueEncoding: 'json' // same options as above
+    })
+    await this.dbBentocues.ready()
+    beePubkeys.push({store:'bentocues', pubkey: b4a.toString(core7.key, 'hex')})
+
+
+    const core8 = this.store.get({ name: 'bentodecisions' })
+    this.dbBentodecisions = new Hyperbee(core8, {
+      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      valueEncoding: 'json' // same options as above
+    })
+    await this.dbBentodecisions.ready()
+    beePubkeys.push({store:'bentodecisions', pubkey: b4a.toString(core8.key, 'hex')})
+
+
+    const core9 = this.store.get({ name: 'bentomarkers' })
+    this.dbBentomarkers = new Hyperbee(core9, {
+      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      valueEncoding: 'json' // same options as above
+    })
+    await this.dbBentomarkers.ready()
+    beePubkeys.push({store:'bentomarkers', pubkey: b4a.toString(core9.key, 'hex')})
+
+
+    const core10 = this.store.get({ name: 'research' })
+    this.dbBentoresearch = new Hyperbee(core10, {
+      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      valueEncoding: 'json' // same options as above
+    })
+    await this.dbBentoresearch.ready()
+    beePubkeys.push({store:'research', pubkey: b4a.toString(core10.key, 'hex')})
+
+
+    const core11 = this.store.get({ name: 'bentoproducts' })
+    this.dbBentoproducts = new Hyperbee(core11, {
+      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      valueEncoding: 'json' // same options as above
+    })
+    await this.dbBentoproducts.ready()
+    beePubkeys.push({store:'bentoproducts', pubkey: b4a.toString(core11.key, 'hex')})
+
+    const core12 = this.store.get({ name: 'bentoproducts' })
+    this.dbBentomedia = new Hyperbee(core12, {
+      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      valueEncoding: 'json' // same options as above
+    })
+    await this.dbBentomedia.ready()
+    beePubkeys.push({store:'bentoproducts', pubkey: b4a.toString(core12.key, 'hex')})
+
     this.emit('hbee-live')
     // return beePubkeys
     let startBeePubkey = {}
@@ -247,6 +301,230 @@ class HyperBee extends EventEmitter {
     const deleteStatus = await this.dbBentospaces.del(space.spaceid)
     let deleteInfo = {}
     deleteInfo.spaceid = space.spaceid
+    return deleteInfo
+  }
+
+  /** CUES */
+  /**
+   * save cues
+   * @method saveCues
+   *
+  */
+  saveCues = async function (cuesInfo) {
+    console.log('save cue pleleelleellel')
+    console.log(cuesInfo)
+    await this.dbBentocues.put(cuesInfo.cueid, cuesInfo.data)
+    let checkSave = await this.getCues(cuesInfo.cueid)
+    return checkSave
+  }
+
+  /**
+   * get one cue by id
+   * @method getCues
+   *
+  */
+  getCues = async function (key) {
+    const nodeData = await this.dbBentocues.get(key)
+    return nodeData
+  }
+
+  /**
+   * get all cuees
+   * @method getCuesHistory
+   *
+  */
+  getCuesHistory = async function (key) {
+    const cuesHistory = await this.dbBentocues.createReadStream()
+    let cuesData = []
+    for await (const { key, value } of cuesHistory) {
+      cuesData.push({ key, value })
+    }    
+    return cuesData
+  }
+
+  /**
+   * delete nxp ref contract from peer library
+   * @method deleteBentocue
+  */
+  deleteBentocue = async function (cue) {
+    const deleteStatus = await this.dbBentocues.del(cue.cueid)
+    let deleteInfo = {}
+    deleteInfo.spaceid = cue.cueid
+    return deleteInfo
+  }
+
+ /** MEDIA */
+  /**
+   * save media
+   * @method saveMedia
+   *
+  */
+  saveMedia = async function (mediaInfo) {
+    console.log('save cue pleleelleellel')
+    await this.dbBentomedia.put(mediaInfo.id, mediaInfo)
+    let checkSave = await this.getCues(mediaInfo.id)
+    return checkSave
+  }
+
+  /**
+   * get one cue by id
+   * @method getMedia
+   *
+  */
+  getMedia = async function (key) {
+    const nodeData = await this.dbBentomedia.get(key)
+    return nodeData
+  }
+
+  /**
+   * delete nxp ref contract from peer library
+   * @method deleteBentocue
+  */
+  deleteBentomedia = async function (media) {
+    const deleteStatus = await this.dbBentomedia.del(media.id)
+    let deleteInfo = {}
+    deleteInfo.spaceid = media.id
+    return deleteInfo
+  }
+
+  /** RESEARCH */
+  /**
+   * save research
+   * @method saveResearch
+   *
+  */
+  saveResearch = async function (cuesInfo) {
+    await this.dbBentoresearch.put(cuesInfo.cueid, cuesInfo.data)
+    let checkSave = await this.getResearch(cuesInfo.cueid)
+    return checkSave
+  }
+
+  /**
+   * get one cue by id
+   * @method getResearch
+   *
+  */
+  getResearch = async function (key) {
+    const nodeData = await this.dbBentoresearch.get(key)
+    return nodeData
+  }
+
+  /**
+   * get all research
+   * @method getResearchHistory
+   *
+  */
+  getResearchHistory = async function (key) {
+    const cuesHistory = await this.dbBentoresearch.createReadStream()
+    let cuesData = []
+    for await (const { key, value } of cuesHistory) {
+      cuesData.push({ key, value })
+    }    
+    return cuesData
+  }
+
+  /**
+   * delete contract
+   * @method deleteBentoResearch
+  */
+  deleteBentoResearch = async function (cue) {
+    const deleteStatus = await this.dbBentoresearch.del(cue.cueid)
+    let deleteInfo = {}
+    deleteInfo.spaceid = cue.cueid
+    return deleteInfo
+  }
+
+  /** MARKER */
+  /**
+   * save marker
+   * @method saveMarker
+   *
+  */
+  saveMarker = async function (cuesInfo) {
+    await this.dbBentomarkers.put(cuesInfo.cueid, cuesInfo.data)
+    let checkSave = await this.getMarker(cuesInfo.cueid)
+    return checkSave
+  }
+
+  /**
+   * get one cue by id
+   * @method getMarker
+   *
+  */
+  getMarker = async function (key) {
+    const nodeData = await this.dbBentomarkers.get(key)
+    return nodeData
+  }
+
+  /**
+   * get all research
+   * @method getMarkerHistory
+   *
+  */
+  getMarkerHistory = async function (key) {
+    const cuesHistory = await this.dbBentomarkers.createReadStream()
+    let cuesData = []
+    for await (const { key, value } of cuesHistory) {
+      cuesData.push({ key, value })
+    }    
+    return cuesData
+  }
+
+  /**
+   * delete contract
+   * @method deleteBentoMarker
+  */
+  deleteBentoMarker = async function (cue) {
+    const deleteStatus = await this.dbBentomarkers.del(cue.cueid)
+    let deleteInfo = {}
+    deleteInfo.spaceid = cue.cueid
+    return deleteInfo
+  }
+
+  /** Product */
+  /**
+   * save product
+   * @method saveProduct
+   *
+  */
+  saveProduct = async function (cuesInfo) {
+    await this.dbBentoproducts.put(cuesInfo.cueid, cuesInfo.data)
+    let checkSave = await this.getProduct(cuesInfo.cueid)
+    return checkSave
+  }
+
+  /**
+   * get one cue by id
+   * @method getProduct
+   *
+  */
+  getProduct = async function (key) {
+    const nodeData = await this.dbBentoproducts.get(key)
+    return nodeData
+  }
+
+  /**
+   * get all prodcut
+   * @method getProductHistory
+   *
+  */
+  getProductHistory = async function (key) {
+    const cuesHistory = await this.dbBentoproducts.createReadStream()
+    let cuesData = []
+    for await (const { key, value } of cuesHistory) {
+      cuesData.push({ key, value })
+    }    
+    return cuesData
+  }
+
+  /**
+   * delete contract
+   * @method deleteBentoProduct
+  */
+  deleteBentoMarker = async function (cue) {
+    const deleteStatus = await this.dbBentoproducts.del(cue.cueid)
+    let deleteInfo = {}
+    deleteInfo.spaceid = cue.cueid
     return deleteInfo
   }
 
