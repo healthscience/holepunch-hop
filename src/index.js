@@ -76,9 +76,17 @@ class HolepunchWorker extends EventEmitter {
     this.wsocket = ws
     this.BeeData.setWebsocket(ws)
     this.DriveFiles.setWebsocket(ws)
-    this.activateHypercores()
+    // this.activateHypercores()
   }
 
+  /**
+   * active hypercores auth verified
+   * @method startStores
+   *
+  */
+  startStores = function (ws) {
+    this.activateHypercores()
+  }
 
   /**
   * listen for outputs from workers
@@ -89,7 +97,7 @@ class HolepunchWorker extends EventEmitter {
     this.Peers.on('peer-network', (data) => {
       this.wsocket.send(JSON.stringify(data))
     })
-    // peer connection active
+    // peer connection active for first time
     this.Peers.on('peer-connect', (data) => {
       let taskCheck = 0
       let firstCheck = this.Peers.peerHolder[data]
@@ -103,16 +111,38 @@ class HolepunchWorker extends EventEmitter {
       // if (this.Peers.peerHolder[data].data.boardID !== undefined) {
       // any existing peers
       let holderCheck = Object.keys(this.Peers.peerHolder)
+      // now first time, check if any message can be send?
       if (holderCheck !== 0 && taskCheck === 0) {
-        this.Peers.writeToPublicLibrary(data)
-      } else {
-        this.Peers.writeTonetwork(data)
+        console.log('HOP--write publis lib???')
+        // switch between 
+        console.log(holderCheck)
+        console.log(taskCheck)
+        let peerFirstID = holderCheck[0]
+        console.log(peerFirstID)
+        console.log(this.Peers.peerHolder)
+        // which direction connection, client or from a peer on the network?
+        if (this.Peers.peerHolder[peerFirstID]?.data !== undefined) {
+          let dataLive = this.Peers.peerHolder[peerFirstID].data.name
+          if (dataLive === 'cue-space') {
+            this.Peers.writeToCueSpace(this.Peers.peerHolder[peerFirstID].publickey)
+          } else {
+          this.Peers.writeToPublicLibrary(data)
+          }
+
+        } else {
+          console.log('write to entwoir on start')
+          this.Peers.writeTonetwork(data)
+        }
       }
 
     })
     // data for beebee
     this.Peers.on('beebee-data', (data) => {
       this.emit('peer-topeer', data)
+    })
+    this.Peers.on('cuespace-notification', (data) => {
+      console.log('cue space ntototoo')
+      this.emit('peer-cuespace', data)
     })
     // public library notification
     this.Peers.on('publiclibrarynotification', (data) => {
@@ -157,6 +187,21 @@ class HolepunchWorker extends EventEmitter {
         } else {
           this.warmPeers.push(message.data)
           this.Peers.peerJoin(message.data)
+        }
+      } else if (message.task = 'cue-space') {
+        console.log('cus space send path')
+        console.log(peerMatch)
+        if (peerMatch === true) {
+          console.log('already connect space')
+          this.Peers.peerAlreadyJoinSetData(message.data)
+          this.Peers.writeToCueSpace(message.data.publickey)
+        } else {
+          console.log('first space send')
+          this.warmPeers.push(message.data)
+          this.Peers.peerJoin(message.data)
+          // this.Peers.peerAlreadyJoinSetData(message.data)
+          // this.Peers.writeToCueSpace(message.data.publickey)
+          console.log('space suce peepr ot sent')
         }
       } else if (message.task === 'peer-board') {
         if (peerMatch === true) {

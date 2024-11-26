@@ -142,13 +142,13 @@ class HyperBee extends EventEmitter {
     await this.dbBentoproducts.ready()
     beePubkeys.push({store:'bentoproducts', pubkey: b4a.toString(core11.key, 'hex')})
 
-    const core12 = this.store.get({ name: 'bentoproducts' })
+    const core12 = this.store.get({ name: 'bentomedia' })
     this.dbBentomedia = new Hyperbee(core12, {
       keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentomedia.ready()
-    beePubkeys.push({store:'bentoproducts', pubkey: b4a.toString(core12.key, 'hex')})
+    beePubkeys.push({store:'bentomedia', pubkey: b4a.toString(core12.key, 'hex')})
 
     this.emit('hbee-live')
     // return beePubkeys
@@ -378,7 +378,7 @@ class HyperBee extends EventEmitter {
 
   /**
    * delete nxp ref contract from peer library
-   * @method deleteBentocue
+   * @method deleteBentomedia
   */
   deleteBentomedia = async function (media) {
     const deleteStatus = await this.dbBentomedia.del(media.id)
@@ -428,9 +428,9 @@ class HyperBee extends EventEmitter {
    * @method deleteBentoResearch
   */
   deleteBentoResearch = async function (cue) {
-    const deleteStatus = await this.dbBentoresearch.del(cue.cueid)
+    const deleteStatus = await this.dbBentoresearch.del(cue.id)
     let deleteInfo = {}
-    deleteInfo.spaceid = cue.cueid
+    deleteInfo.spaceid = cue.id
     return deleteInfo
   }
 
@@ -475,9 +475,9 @@ class HyperBee extends EventEmitter {
    * @method deleteBentoMarker
   */
   deleteBentoMarker = async function (cue) {
-    const deleteStatus = await this.dbBentomarkers.del(cue.cueid)
+    const deleteStatus = await this.dbBentomarkers.del(cue.id)
     let deleteInfo = {}
-    deleteInfo.spaceid = cue.cueid
+    deleteInfo.spaceid = cue.id
     return deleteInfo
   }
 
@@ -513,7 +513,7 @@ class HyperBee extends EventEmitter {
     let cuesData = []
     for await (const { key, value } of cuesHistory) {
       cuesData.push({ key, value })
-    }    
+    }
     return cuesData
   }
 
@@ -521,10 +521,10 @@ class HyperBee extends EventEmitter {
    * delete contract
    * @method deleteBentoProduct
   */
-  deleteBentoMarker = async function (cue) {
-    const deleteStatus = await this.dbBentoproducts.del(cue.cueid)
+  deleteBentoProduct = async function (cue) {
+    const deleteStatus = await this.dbBentoproducts.del(cue.id)
     let deleteInfo = {}
-    deleteInfo.spaceid = cue.cueid
+    deleteInfo.spaceid = cue.id
     return deleteInfo
   }
 

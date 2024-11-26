@@ -75,12 +75,16 @@ class NetworkPeers extends EventEmitter {
     if (Buffer.isBuffer(data)) {
       try {
         let dataShareIn = JSON.parse(data.toString())
+        console.log('data in listen bubfferr')
+        console.log(dataShareIn.type)
         if (dataShareIn.type === 'chart') {
           this.emit('beebee-data', dataShareIn)
           // need to look at NXP,  modules and within for reference contracts.
           // Need to replicate public library for contracts (repliate hyberbee)
           // Need to ask for data source e.g. file (replicate hyberdrive)
           // Lastly put together SafeFlowECS query to produce chart
+        } else if (dataShareIn.type === 'cue-space') {
+          this.emit('cuespace-notification', dataShareIn)
         } else if (dataShareIn.type === 'public-library') {
           this.emit('publiclibrarynotification', dataShareIn)
         } else if (dataShareIn.type === 'peer') {
@@ -133,6 +137,25 @@ class NetworkPeers extends EventEmitter {
     }
   }
 
+  /**
+   * write message connect peers space
+   * @method writeToCueSpace
+   *
+  */
+  writeToCueSpace = function (publickey) {
+    // check this peer has asked for space data
+    let connectTrue = publickey in this.peerConnect
+    let spaceTrue = publickey in this.peerHolder
+    if (connectTrue === true && spaceTrue === true) {
+      let libraryData = this.peerHolder[publickey]
+      let dataShare = {}
+      dataShare.data = libraryData.data
+      dataShare.type = 'cue-space'
+      this.peerConnect[publickey].write(JSON.stringify(dataShare))
+    } else {
+      console.log('no cuespace to write ie share with a peer')
+    }
+  }
 
 
   /**
@@ -141,6 +164,8 @@ class NetworkPeers extends EventEmitter {
    *
   */
   peerJoin = function (peerContext) {
+    console.log('peerJOIn')
+    console.log(peerContext)
     this.peerHolder[peerContext.publickey] = peerContext
     const noisePublicKey = Buffer.from(peerContext.publickey, 'hex') //  must be 32 bytes
     if (noisePublicKey.length === 32) {

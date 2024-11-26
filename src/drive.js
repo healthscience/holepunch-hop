@@ -218,13 +218,12 @@ class HypDrive extends EventEmitter {
    * save a stream of file ie. large file
    * @method hyperdriveStreamSave 
    *
-   */
+  */
   hyperdriveStreamSave = async function (path, data, first) {
     let ws
     if (first === true) {
       // await this.drive.del(path)
       ws = this.drive.createWriteStream(path)
-      // this.streamSavedata(path, data)
       ws.write(data)
     }
     // use listener
