@@ -150,6 +150,12 @@ class HyperBee extends EventEmitter {
     await this.dbBentomedia.ready()
     beePubkeys.push({store:'bentomedia', pubkey: b4a.toString(core12.key, 'hex')})
 
+    // await this.deleteBentocue({ cueid: '7da21b8d50c72f94595fd9617bfa2609c90d5d9c'})
+    // await this.deleteBentocue({ cueid: '8220c425a534634a44a69b6f56babaf26edf2a01'})
+    // await this.deleteBentocue({ cueid: 'ec4890f6c0b0d8f4a313136b4e7c9f425b1977a5'})
+    // await this.deleteBentocue({ cueid: 'eea2825cc91a1093594dffa9a953cbce3f77860c'})
+    // await this.deleteBentocue({ cueid: 'eee097d964fae67a6dd39abc02b0e9fd7c5f71bc'})
+    
     this.emit('hbee-live')
     // return beePubkeys
     let startBeePubkey = {}
@@ -166,6 +172,8 @@ class HyperBee extends EventEmitter {
    *
   */
   savePubliclibrary = async function (refContract) {
+    console.log('savePubliclibrary')
+    console.log(refContract)
     let beeSave = await this.dbPublicLibrary.put(refContract.data.hash, refContract.data.contract)
     // go query the key are return the info. to ensure data save asplanned.
     let saveCheck = await this.getPublicLibrary(refContract.data.hash)
@@ -266,8 +274,8 @@ class HyperBee extends EventEmitter {
    *
   */
   saveSpaceHistory = async function (spaceContract) {
-    await this.dbBentospaces.put(spaceContract.space.spaceid, spaceContract)
-    let checkSave = await this.getBentospace(spaceContract.space.spaceid)
+    await this.dbBentospaces.put(spaceContract.space.cueid, spaceContract)
+    let checkSave = await this.getBentospace(spaceContract.space.cueid)
     return checkSave
   }
 
@@ -277,8 +285,8 @@ class HyperBee extends EventEmitter {
    *
   */
   saveBentospace = async function (spaceContract) {
-    await this.dbBentospaces.put(spaceContract.spaceid, spaceContract)
-    let checkSave = await this.getBentospace(spaceContract.spaceid)
+    await this.dbBentospaces.put(spaceContract.cueid, spaceContract)
+    let checkSave = await this.getBentospace(spaceContract.cueid)
     return checkSave
   }
 
@@ -293,14 +301,29 @@ class HyperBee extends EventEmitter {
   }
 
   /**
+   * lookup bentospaces all
+   * @method getAllBentospaces
+   *
+  */
+  getAllBentospaces = async function () {
+    const spacesHistory = await this.dbBentospaces.createReadStream()
+    let spacesData = []
+    for await (const { key, value } of spacesHistory) {
+      spacesData.push({ key, value })
+    }    
+    return spacesData
+  }
+
+
+  /**
    * delete nxp ref contract from peer library
    * @method deleteBentospace
    *
   */
   deleteBentospace = async function (space) {
-    const deleteStatus = await this.dbBentospaces.del(space.spaceid)
+    const deleteStatus = await this.dbBentospaces.del(space.cueid)
     let deleteInfo = {}
-    deleteInfo.spaceid = space.spaceid
+    deleteInfo.spaceid = space.cueid
     return deleteInfo
   }
 
@@ -311,8 +334,6 @@ class HyperBee extends EventEmitter {
    *
   */
   saveCues = async function (cuesInfo) {
-    console.log('save cue pleleelleellel')
-    console.log(cuesInfo)
     await this.dbBentocues.put(cuesInfo.cueid, cuesInfo.data)
     let checkSave = await this.getCues(cuesInfo.cueid)
     return checkSave
@@ -360,9 +381,8 @@ class HyperBee extends EventEmitter {
    *
   */
   saveMedia = async function (mediaInfo) {
-    console.log('save cue pleleelleellel')
-    await this.dbBentomedia.put(mediaInfo.id, mediaInfo)
-    let checkSave = await this.getCues(mediaInfo.id)
+    await this.dbBentomedia.put(mediaInfo.cueid, mediaInfo.data)
+    let checkSave = await this.getMedia(mediaInfo.cueid)
     return checkSave
   }
 
@@ -377,10 +397,26 @@ class HyperBee extends EventEmitter {
   }
 
   /**
+   * get all media
+   * @method getMediaHistory
+   *
+  */
+  getMediaHistory = async function (key) {
+    const cuesHistory = await this.dbBentomedia.createReadStream()
+    let cuesData = []
+    for await (const { key, value } of cuesHistory) {
+      cuesData.push({ key, value })
+    }    
+    return cuesData
+  }
+
+
+  /**
    * delete nxp ref contract from peer library
    * @method deleteBentomedia
   */
   deleteBentomedia = async function (media) {
+    console.log(media)
     const deleteStatus = await this.dbBentomedia.del(media.id)
     let deleteInfo = {}
     deleteInfo.spaceid = media.id
