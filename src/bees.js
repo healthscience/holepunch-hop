@@ -423,6 +423,55 @@ class HyperBee extends EventEmitter {
     return deleteInfo
   }
 
+  /** PEERS */
+  /**
+   * save research
+   * @method saveResearch
+   *
+  */
+  savePeer = async function (peerInfo) {
+    console.log(peerInfo)
+    await this.dbPeers.put(peerInfo.publickey, peerInfo)
+    let checkSave = await this.getPeer(peerInfo.publickey)
+    return checkSave
+  }
+
+  /**
+   * get one peer by publickey
+   * @method getPeer
+   *
+  */
+  getPeer = async function (key) {
+    const nodeData = await this.dbPeers.get(key)
+    return nodeData
+  }
+
+  /**
+   * get all peers
+   * @method getPeersHistory
+   *
+  */
+  getPeersHistory = async function (key) {
+    const peerHistory = await this.dbPeers.createReadStream()
+    let peerData = []
+    for await (const { key, value } of peerHistory) {
+      peerData.push({ key, value })
+    }    
+    return peerData
+  }
+
+  /**
+   * delete contract
+   * @method deletePeer
+  */
+  deletePeer = async function (pubkey) {
+    const deleteStatus = await this.dbPeers.del(pubkey)
+    let deleteInfo = {}
+    deleteInfo.publickey = pubkey
+    return deleteInfo
+  }
+  
+
   /** RESEARCH */
   /**
    * save research

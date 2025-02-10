@@ -32,6 +32,19 @@ class NetworkPeers extends EventEmitter {
    *
   */
   networkKeys = function () {
+    console.log('swarm on start')
+    // console.log(this.swarm._discovery) // .toString('hex'))
+
+    this.swarm._discovery.forEach((value, key) => {
+      console.log('key')
+      console.log(key)
+      console.log('-----------swarm discovery IN-------------------')
+      console.log(Object.keys(value))
+      console.log(value.topic)
+      console.log(value.topic.toString('hex'))
+    })
+
+
     let peerNxKeys = {}
     peerNxKeys.publickey = this.swarm.keyPair.publicKey.toString('hex')
     let networkMessage = {}
@@ -50,6 +63,8 @@ class NetworkPeers extends EventEmitter {
   */
   listenNetwork = function () {
     this.swarm.on('connection', (conn, info) => {
+      console.log('peers LISEN ON NXT ---4-----')
+      console.log(info)
       // listen for replication
       this.store.replicate(conn)
       // listener to write message to peers or network partial or broadcast
@@ -75,7 +90,7 @@ class NetworkPeers extends EventEmitter {
     if (Buffer.isBuffer(data)) {
       try {
         let dataShareIn = JSON.parse(data.toString())
-        console.log('data in listen bubfferr')
+        console.log('data in listen bubfferr ---111----')
         console.log(dataShareIn.type)
         if (dataShareIn.type === 'chart') {
           this.emit('beebee-data', dataShareIn)
@@ -88,6 +103,10 @@ class NetworkPeers extends EventEmitter {
         } else if (dataShareIn.type === 'public-library') {
           this.emit('publiclibrarynotification', dataShareIn)
         } else if (dataShareIn.type === 'peer') {
+        } else if (dataShareIn.type === 'topic-reconnect') {
+          console.log('topic reconnec ---222----')
+          console.log(dataShareIn)
+          this.emit('peer-reconnect', dataShareIn)      
         }
         console.log(a)
       } catch (e) {
@@ -102,6 +121,8 @@ class NetworkPeers extends EventEmitter {
    *
   */
   writeTonetwork = function (publickey) {
+    console.log('write toooo nxt2')
+    console.log(publickey)
     // check this peer has asked for chart data
     let connectTrue = publickey in this.peerConnect
     let chartTrue = publickey in this.peerHolder
@@ -113,7 +134,16 @@ class NetworkPeers extends EventEmitter {
       dataShare.type = 'chart'
       this.peerConnect[publickey].write(JSON.stringify(dataShare))
     } else {
-      console.log('non chart write')
+      console.log('non chart write---first time connecting with peer')
+      console.log('now create topic to make subsequent connection seamless')
+      let topicShare = {}
+      topicShare.type = 'topic-reconnect'
+      topicShare.publickey = this.swarm.keyPair.publicKey.toString('hex')
+      topicShare.data = 'kprel135811'
+      // console.log(this.peerConnect[publickey])
+      console.log(this.warmPeers)
+      console.log(this.swarm.keyPair)
+      this.peerConnect[publickey].write(JSON.stringify(topicShare))
     }
   }
 
@@ -164,13 +194,25 @@ class NetworkPeers extends EventEmitter {
    *
   */
   peerJoin = function (peerContext) {
-    console.log('peerJOIn')
+    console.log('peerJOIn ----3----')
     console.log(peerContext)
     this.peerHolder[peerContext.publickey] = peerContext
     const noisePublicKey = Buffer.from(peerContext.publickey, 'hex') //  must be 32 bytes
     if (noisePublicKey.length === 32) {
       const peerConnect = this.swarm.joinPeer(noisePublicKey, { server: true, client: false })
     }
+  }
+
+  /**
+   * leave a direct peer connection
+   * @method peerLeave
+   *
+  */
+  peerLeave = function (peerLeaveKey) {
+    console.log('peerLeave')
+    console.log(peerContext)
+    this.peerHolder[peerLeaveKey] = {}
+    this.swarm.leavePeer(peerLeaveKey)
   }
 
   /**
@@ -202,6 +244,17 @@ class NetworkPeers extends EventEmitter {
     const peerConnect = this.swarm.join(noisePublicKey, { server: false, client: true })
     await peerConnect.flushed() // Waits for the topic to be fully announced on the DHT
   }
+
+  /**
+   * leave topic
+   * @method leaveTopic
+   *
+  */
+  leaveTopic = async function (topic) {
+    await this.swarm.leave(topic)
+  }
+
+
 
   /**
    * 

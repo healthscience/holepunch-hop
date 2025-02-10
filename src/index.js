@@ -99,6 +99,8 @@ class HolepunchWorker extends EventEmitter {
     })
     // peer connection active for first time
     this.Peers.on('peer-connect', (data) => {
+      console.log('new peer connect  ++++5++++++++++')
+      console.log(data)
       let taskCheck = 0
       let firstCheck = this.Peers.peerHolder[data]
       if (firstCheck !== undefined) {
@@ -115,11 +117,7 @@ class HolepunchWorker extends EventEmitter {
       if (holderCheck !== 0 && taskCheck === 0) {
         console.log('HOP--write publis lib???')
         // switch between 
-        console.log(holderCheck)
-        console.log(taskCheck)
         let peerFirstID = holderCheck[0]
-        console.log(peerFirstID)
-        console.log(this.Peers.peerHolder)
         // which direction connection, client or from a peer on the network?
         if (this.Peers.peerHolder[peerFirstID]?.data !== undefined) {
           let dataLive = this.Peers.peerHolder[peerFirstID].data.name
@@ -136,10 +134,15 @@ class HolepunchWorker extends EventEmitter {
       }
 
     })
+    // peer reconnection topic ie. able to reconnect again
+    this.Peers.on('peer-reconnect', (data) => {
+      this.emit('peer-reconnect', data)
+    })
     // data for beebee
     this.Peers.on('beebee-data', (data) => {
       this.emit('peer-topeer', data)
     })
+    // cue space share
     this.Peers.on('cuespace-notification', (data) => {
       console.log('cue space ntototoo')
       this.emit('peer-cuespace', data)
@@ -148,18 +151,22 @@ class HolepunchWorker extends EventEmitter {
     this.Peers.on('publiclibrarynotification', (data) => {
       this.BeeData.replicatePubliclibrary(data)
     })
+    // beebee notifications public
     this.BeeData.on('publibbeebee-notification', (data) => {
       this.emit('beebee-publib-notification', data)
     })
     // new warm incoming peer
     this.Peers.on('connect-warm', (data) => {
       let peerId = {}
-      peerId.name = 'new-peer'
+      peerId.name = 'confirm-peer-connect'
       peerId.publickey = data
       peerId.datastore = ''
+      peerId.topic = ''
+      peerId.live = true
       this.warmPeers.push(peerId)
-      this.emit('peer-incoming', peerId)
+      this.emit('peer-incoming-confirm', peerId)
     })
+    // drive listener
     this.DriveFiles.on('largefile-save', (data) => {
       this.emit('drive-save-large', data)
     })
@@ -171,6 +178,7 @@ class HolepunchWorker extends EventEmitter {
   *
   */
   networkPath = function (message) {
+    console.log('HOP--networkPath')
     if (message.action === 'share') {
       // has the peer joined already?
       let peerMatch = false
@@ -180,28 +188,25 @@ class HolepunchWorker extends EventEmitter {
         }
       }
       
-      if (message.task === 'peer-join') {
+      if (message.task === 'peer-share') {
+        console.log('share check already joined and connected?------1-------')
         if (peerMatch === true) {
           this.Peers.peerAlreadyJoinSetData(message.data)
           this.Peers.writeTonetwork(message.data.publickey)
         } else {
+          console.log('first time connect --- 2 ----')
           this.warmPeers.push(message.data)
           this.Peers.peerJoin(message.data)
         }
       } else if (message.task = 'cue-space') {
-        console.log('cus space send path')
-        console.log(peerMatch)
         if (peerMatch === true) {
-          console.log('already connect space')
           this.Peers.peerAlreadyJoinSetData(message.data)
           this.Peers.writeToCueSpace(message.data.publickey)
         } else {
-          console.log('first space send')
           this.warmPeers.push(message.data)
           this.Peers.peerJoin(message.data)
           // this.Peers.peerAlreadyJoinSetData(message.data)
           // this.Peers.writeToCueSpace(message.data.publickey)
-          console.log('space suce peepr ot sent')
         }
       } else if (message.task === 'peer-board') {
         if (peerMatch === true) {
