@@ -172,8 +172,6 @@ class HyperBee extends EventEmitter {
    *
   */
   savePubliclibrary = async function (refContract) {
-    console.log('savePubliclibrary')
-    console.log(refContract)
     let beeSave = await this.dbPublicLibrary.put(refContract.data.hash, refContract.data.contract)
     // go query the key are return the info. to ensure data save asplanned.
     let saveCheck = await this.getPublicLibrary(refContract.data.hash)
@@ -416,7 +414,6 @@ class HyperBee extends EventEmitter {
    * @method deleteBentomedia
   */
   deleteBentomedia = async function (media) {
-    console.log(media)
     const deleteStatus = await this.dbBentomedia.del(media.id)
     let deleteInfo = {}
     deleteInfo.spaceid = media.id
@@ -426,11 +423,10 @@ class HyperBee extends EventEmitter {
   /** PEERS */
   /**
    * save research
-   * @method saveResearch
+   * @method savePeer
    *
   */
   savePeer = async function (peerInfo) {
-    console.log(peerInfo)
     await this.dbPeers.put(peerInfo.publickey, peerInfo)
     let checkSave = await this.getPeer(peerInfo.publickey)
     return checkSave

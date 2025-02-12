@@ -9,9 +9,6 @@
 * @version    $Id$
 */
 import EventEmitter from 'events'
-// import DHT from '@hyperswarm/dht'
-import goodbye from 'graceful-goodbye'
-import b4a from 'b4a'
 
 
 class NetworkPeers extends EventEmitter {
@@ -43,8 +40,6 @@ class NetworkPeers extends EventEmitter {
       console.log(value.topic)
       console.log(value.topic.toString('hex'))
     })
-
-
     let peerNxKeys = {}
     peerNxKeys.publickey = this.swarm.keyPair.publicKey.toString('hex')
     let networkMessage = {}
@@ -61,17 +56,16 @@ class NetworkPeers extends EventEmitter {
    * @method listenNetwork
    *
   */
-  listenNetwork = function () {
+  listenNetwork = function  () {
     this.swarm.on('connection', (conn, info) => {
-      console.log('peers LISEN ON NXT ---4-----')
-      console.log(info)
       // listen for replication
       this.store.replicate(conn)
       // listener to write message to peers or network partial or broadcast
       let publicKeylive = info.publicKey.toString('hex')
       this.emit('connect-warm', publicKeylive)
       this.peerConnect[publicKeylive] = conn
-      this.emit('peer-connect', publicKeylive)
+      // only send message back once peer info has been saved??????????
+      //this.emit('peer-connect', publicKeylive)
       // process network message
       conn.on('data', data =>
         // assess data
@@ -90,8 +84,6 @@ class NetworkPeers extends EventEmitter {
     if (Buffer.isBuffer(data)) {
       try {
         let dataShareIn = JSON.parse(data.toString())
-        console.log('data in listen bubfferr ---111----')
-        console.log(dataShareIn.type)
         if (dataShareIn.type === 'chart') {
           this.emit('beebee-data', dataShareIn)
           // need to look at NXP,  modules and within for reference contracts.
@@ -104,11 +96,8 @@ class NetworkPeers extends EventEmitter {
           this.emit('publiclibrarynotification', dataShareIn)
         } else if (dataShareIn.type === 'peer') {
         } else if (dataShareIn.type === 'topic-reconnect') {
-          console.log('topic reconnec ---222----')
-          console.log(dataShareIn)
           this.emit('peer-reconnect', dataShareIn)      
         }
-        console.log(a)
       } catch (e) {
           return console.error('ignore err')
       }
@@ -121,8 +110,6 @@ class NetworkPeers extends EventEmitter {
    *
   */
   writeTonetwork = function (publickey) {
-    console.log('write toooo nxt2')
-    console.log(publickey)
     // check this peer has asked for chart data
     let connectTrue = publickey in this.peerConnect
     let chartTrue = publickey in this.peerHolder
@@ -134,15 +121,14 @@ class NetworkPeers extends EventEmitter {
       dataShare.type = 'chart'
       this.peerConnect[publickey].write(JSON.stringify(dataShare))
     } else {
-      console.log('non chart write---first time connecting with peer')
-      console.log('now create topic to make subsequent connection seamless')
+      let topicGeneration = 'kprel135811'
+      // need to save the topic initiator of warm peer save relationship
+      this.emit('peer-topic-save', { peerkey: publickey, topic: topicGeneration })
+      // send to other peer topic to allow reconnection in future
       let topicShare = {}
       topicShare.type = 'topic-reconnect'
       topicShare.publickey = this.swarm.keyPair.publicKey.toString('hex')
-      topicShare.data = 'kprel135811'
-      // console.log(this.peerConnect[publickey])
-      console.log(this.warmPeers)
-      console.log(this.swarm.keyPair)
+      topicShare.data = topicGeneration  
       this.peerConnect[publickey].write(JSON.stringify(topicShare))
     }
   }
@@ -189,17 +175,38 @@ class NetworkPeers extends EventEmitter {
 
 
   /**
-   * join peer to peer private (server)
+   * join peer to peer direct private (server)
    * @method peerJoin
    *
   */
   peerJoin = function (peerContext) {
-    console.log('peerJOIn ----3----')
-    console.log(peerContext)
+    // set timeer to inform if not connection can be established
+    this. checkTimerConnection(peerContext.publickey)
     this.peerHolder[peerContext.publickey] = peerContext
     const noisePublicKey = Buffer.from(peerContext.publickey, 'hex') //  must be 32 bytes
     if (noisePublicKey.length === 32) {
       const peerConnect = this.swarm.joinPeer(noisePublicKey, { server: true, client: false })
+    }
+  }
+
+  /**
+   * give 2 seconds for connection to establish
+   * @method checkTimerConnection
+   *
+  */
+  checkTimerConnection (key) {
+    // if peerconnect not set the inform beebee  not connection accepted try again
+    let localthis = this
+    // setTimeout(checkPeerState(localthis, key), 2000)
+    setTimeout(() => checkPeerState(localthis, key), 6000)
+
+    function checkPeerState (localthis, publicKeylive) {
+      if (localthis.peerConnect[publicKeylive] === undefined) {
+        // failed peer connection
+        localthis.emit('peer-share-fail', publicKeylive)
+      } else {
+        // connnection established
+      }
     }
   }
 
@@ -209,8 +216,6 @@ class NetworkPeers extends EventEmitter {
    *
   */
   peerLeave = function (peerLeaveKey) {
-    console.log('peerLeave')
-    console.log(peerContext)
     this.peerHolder[peerLeaveKey] = {}
     this.swarm.leavePeer(peerLeaveKey)
   }
@@ -235,11 +240,22 @@ class NetworkPeers extends EventEmitter {
   }
 
   /**
-   * listen for topics as a client
-   * @method listenClient
+   * out message topics as a client
+   * @method topicConnect
    *
   */
-  listenClient = async function (topic) {
+  topiConnect = async function (topic) {
+    const noisePublicKey = Buffer.alloc(32).fill(topic) // A topic must be 32 bytes
+    const peerConnect = this.swarm.join(noisePublicKey, { server: true, client: false })
+    await peerConnect.flushed() // Waits for the topic to be fully announced on the DHT
+  }
+
+  /**
+   * out message topics as a client
+   * @method topicListen
+   *
+  */
+  topicListen = async function (topic) {
     const noisePublicKey = Buffer.alloc(32).fill(topic) // A topic must be 32 bytes
     const peerConnect = this.swarm.join(noisePublicKey, { server: false, client: true })
     await peerConnect.flushed() // Waits for the topic to be fully announced on the DHT
@@ -252,42 +268,6 @@ class NetworkPeers extends EventEmitter {
   */
   leaveTopic = async function (topic) {
     await this.swarm.leave(topic)
-  }
-
-
-
-  /**
-   * 
-   * @method listen
-   *
-  */
-  listen = function () {
-    console.log('listen')
-  }
-
-  /**
-   * setup peers protocol
-   * @method setupHyerPeers
-   *
-  */
-  setupHyerPeers = function () {
-    /* const dht = new DHT()
-
-    // This keypair is your peer identifier in the DHT
-    const keyPair = DHT.keyPair()
-
-    const server = dht.createServer(conn => {
-      console.log('got connection!')
-      process.stdin.pipe(conn).pipe(process.stdout)
-    })
-
-    server.listen(keyPair).then(() => {
-      console.log('listening on:', b4a.toString(keyPair.publicKey, 'hex'))
-    })
-
-    // Unnannounce the public key before exiting the process
-    // (This is not a requirement, but it helps avoid DHT pollution)
-    goodbye(() => server.close()) */
   }
 
 }
