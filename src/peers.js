@@ -21,6 +21,7 @@ class NetworkPeers extends EventEmitter {
     this.drive = {}
     this.peerHolder = {}
     this.peerConnect = {}
+    this.peersRole = {}
   }
 
   /**
@@ -58,14 +59,12 @@ class NetworkPeers extends EventEmitter {
   */
   listenNetwork = function  () {
     this.swarm.on('connection', (conn, info) => {
-      // listen for replication
-      this.store.replicate(conn)
-      // listener to write message to peers or network partial or broadcast
+      // save peer connection instance for ongoing communication
       let publicKeylive = info.publicKey.toString('hex')
-      this.emit('connect-warm', publicKeylive)
       this.peerConnect[publicKeylive] = conn
-      // only send message back once peer info has been saved??????????
-      //this.emit('peer-connect', publicKeylive)
+      this.emit('connect-warm-first', publicKeylive)
+      // listen for replication  NEED UPTATED LOGIC
+      // this.store.replicate(conn)
       // process network message
       conn.on('data', data =>
         // assess data
@@ -76,6 +75,17 @@ class NetworkPeers extends EventEmitter {
   }
 
   /**
+   * set role in peer to peer relationship,  invte or receive?
+   * @method setRole
+   *
+  */
+  setRole = function (pubKey) {
+    console.log('check if already set')
+    console.log(this.peersRole)
+    let setRole = { send: 'prime' , invite: pubKey}
+    this.peersRole[pubKey] = setRole
+  }
+  /**
    * 
    * @method assessData data and act
    *
@@ -84,7 +94,10 @@ class NetworkPeers extends EventEmitter {
     if (Buffer.isBuffer(data)) {
       try {
         let dataShareIn = JSON.parse(data.toString())
-        if (dataShareIn.type === 'chart') {
+        console.log('assess edata')
+        console.log(dataShareIn)
+        if (dataShareIn.type === 'private-chart') {
+          console.log(' yes route back to peer pelase')
           this.emit('beebee-data', dataShareIn)
           // need to look at NXP,  modules and within for reference contracts.
           // Need to replicate public library for contracts (repliate hyberbee)
@@ -96,7 +109,8 @@ class NetworkPeers extends EventEmitter {
           this.emit('publiclibrarynotification', dataShareIn)
         } else if (dataShareIn.type === 'peer') {
         } else if (dataShareIn.type === 'topic-reconnect') {
-          this.emit('peer-reconnect', dataShareIn)      
+          // peer has share a topic for future reconnect
+          this.emit('peer-reconnect-topic', dataShareIn)      
         }
       } catch (e) {
           return console.error('ignore err')
@@ -109,18 +123,19 @@ class NetworkPeers extends EventEmitter {
    * @method writeTonetwork
    *
   */
-  writeTonetwork = function (publickey) {
+  writeTonetwork = function (data, messType) {
     // check this peer has asked for chart data
-    let connectTrue = publickey in this.peerConnect
-    let chartTrue = publickey in this.peerHolder
-    if (connectTrue === true && chartTrue === true) {
-      let chartData = this.peerHolder[publickey]
-      let dataShare = {}
-      dataShare.hop = chartData.hop
-      dataShare.data = chartData.data
-      dataShare.type = 'chart'
-      this.peerConnect[publickey].write(JSON.stringify(dataShare))
-    } else {
+    console.log('share topic to peer')
+    let dataSend = data
+    this.peerConnect[data].write(JSON.stringify(dataSend))
+  }
+
+  /**
+   * write message to network
+   * @method writeTonetworkTopic
+   *
+  */
+  writeTonetworkTopic = function (publickey) {
       let topicGeneration = 'kprel135811'
       // need to save the topic initiator of warm peer save relationship
       this.emit('peer-topic-save', { peerkey: publickey, topic: topicGeneration })
@@ -128,10 +143,27 @@ class NetworkPeers extends EventEmitter {
       let topicShare = {}
       topicShare.type = 'topic-reconnect'
       topicShare.publickey = this.swarm.keyPair.publicKey.toString('hex')
-      topicShare.data = topicGeneration  
+      topicShare.data = topicGeneration
+      // inform peer that topic has been created
+      console.log('share topic to peer')
+      console.log(publickey)
+      console.log(this.peerConnect[publickey])
+      console.log(topicShare)
       this.peerConnect[publickey].write(JSON.stringify(topicShare))
-    }
   }
+
+  /**
+   * write message to network
+   * @method writeTonetworkData
+   *
+  */
+  writeTonetworkData = function (publickey, dataShare) {
+    console.log('send data over network to a peer chart display')
+    console.log(publickey)
+    console.log(dataShare)
+    this.peerConnect[publickey].write(JSON.stringify(dataShare))
+  }
+
 
   /**
    * write message connect public library
@@ -227,6 +259,7 @@ class NetworkPeers extends EventEmitter {
   */
   peerAlreadyJoinSetData = function (peerContext) {
     this.peerHolder[peerContext.publickey] = peerContext
+    return true
   }
 
 
@@ -244,7 +277,7 @@ class NetworkPeers extends EventEmitter {
    * @method topicConnect
    *
   */
-  topiConnect = async function (topic) {
+  topicConnect = async function (topic) {
     const noisePublicKey = Buffer.alloc(32).fill(topic) // A topic must be 32 bytes
     const peerConnect = this.swarm.join(noisePublicKey, { server: true, client: false })
     await peerConnect.flushed() // Waits for the topic to be fully announced on the DHT

@@ -34,7 +34,6 @@ class HolepunchWorker extends EventEmitter {
     this.core3 = {}
     this.discKeypeer = ''
     this.readcore = null
-    this.peerRole = {}
     this.warmPeers = []
     this.startHolepunch()
     this.networkListeners()
@@ -98,9 +97,10 @@ class HolepunchWorker extends EventEmitter {
     this.Peers.on('peer-network', (data) => {
       this.wsocket.send(JSON.stringify(data))
     })
-    // peer connection active for first time
+    // peer connection active for first time 
     this.Peers.on('peer-connect', (data) => {
-      this.warmPeerPrepare(data)
+      console.log('still used????')
+     //this.warmPeerPrepare(data)
     })
     // share connection failed
     this.Peers.on('peer-share-fail', (data) => {
@@ -115,11 +115,12 @@ class HolepunchWorker extends EventEmitter {
       await this.emit('peer-topic-save', data)    
     })
     // peer reconnection topic ie. able to reconnect again
-    this.Peers.on('peer-reconnect', (data) => {
-      this.emit('peer-reconnect', data)
+    this.Peers.on('peer-reconnect-topic', (data) => {
+      this.emit('peer-reconnect-topic', data)
     })
     // data for beebee
     this.Peers.on('beebee-data', (data) => {
+      console.log('data for peer bbeebee box')
       this.emit('peer-topeer', data)
     })
     // cue space share
@@ -135,12 +136,18 @@ class HolepunchWorker extends EventEmitter {
       this.emit('beebee-publib-notification', data)
     })
     // new warm incoming peer
-    this.Peers.on('connect-warm', (data) => {
+    this.Peers.on('connect-warm-first', (data) => {
+      console.log('connect-warm-first', data)
       let peerInfo = this.Peers.peerHolder[data]
       if (peerInfo === undefined) {
         // receiving peer
         peerInfo = { name: 'peernew'}
-      }
+      } /* else {
+        console.log('check if any daata wants to be share too?')
+        let peerInfoData = peerInfo.data
+        console.log(peerInfoData)
+        this.warmPeerPrepare(data)
+      } */
       let peerId = {}
       peerId.name = peerInfo.name
       peerId.publickey = data
@@ -149,7 +156,7 @@ class HolepunchWorker extends EventEmitter {
       peerId.topic = ''
       peerId.live = false
       this.warmPeers.push(peerId)
-      this.emit('peer-incoming-confirm', peerId)
+      this.emit('peer-incoming-save', peerId)
     })
     // drive listener
     this.DriveFiles.on('largefile-save', (data) => {
@@ -171,16 +178,16 @@ class HolepunchWorker extends EventEmitter {
           peerMatch = true
         }
       }
-      
-      if (message.task === 'peer-share') {
+      if (message.task === 'peer-share-invite') {
         // keep track of role, reciving or extended invite
-        let setRole = { rec: 'prime' , ext: message.data.publickey}
-        this.peersRole[message.data.publickey] = setRole
+        this.Peers.setRole(message.data.publickey)
         if (peerMatch === true) {
           this.Peers.peerAlreadyJoinSetData(message.data)
-          this.Peers.writeTonetwork(message.data.publickey)
+          // this.Peers.writeTonetwork(message.data.publickey)
+          this.warmPeerPrepare(message.data.publickey, true)
         } else {
           this.warmPeers.push(message.data)
+          this.Peers.peerAlreadyJoinSetData(message.data)
           this.Peers.peerJoin(message.data)
         }
       } else if (message.task === 'peer-share-topic') {
@@ -217,40 +224,39 @@ class HolepunchWorker extends EventEmitter {
 
 
   /**
-   * prepare data structures for warm peer connection
+   * prepare data to send to a warm peer
    * @method warmPeerPrepare
    */
-  warmPeerPrepare = function (data) {
-    let taskCheck = 0
-    let firstCheck = this.Peers.peerHolder[data]
-    if (firstCheck !== undefined) {
-      if (this.Peers.peerHolder[data]?.data?.labels !== undefined) {
-        taskCheck = this.Peers.peerHolder[data].data.labels.length
-      }
-    } else {
-      taskCheck = 0
-    }
-    // if (this.Peers.peerHolder[data].data.boardID !== undefined) {
-    // any existing peers
-    let holderCheck = Object.keys(this.Peers.peerHolder)
-    // now first time, check if any message can be send?
-    if (holderCheck !== 0 && taskCheck === 0) {
-      // switch between 
-      let peerFirstID = holderCheck[0]
-      // which direction connection, client or from a peer on the network?
-      if (this.Peers.peerHolder[peerFirstID]?.data !== undefined) {
-        let dataLive = this.Peers.peerHolder[peerFirstID].data.name
-        if (dataLive === 'cue-space') {
-          this.Peers.writeToCueSpace(this.Peers.peerHolder[peerFirstID].publickey)
-        } else {
-        this.Peers.writeToPublicLibrary(data)
-        }
-
+  warmPeerPrepare = function (data, existing) {
+    // two checks, if topic send to other peer
+    if (existing !== true) {
+      let peerRole = this.Peers.peersRole[data]
+      if (peerRole === undefined) {
+        this.Peers.writeTonetworkTopic(data)
       } else {
+        console.log(' this peer set the topic')
+      }
+    }
+    // if data within coming then process that
+    let peerDataExist = this.Peers.peerHolder[data]
+    if (peerDataExist === undefined) {
+      console.log('no data to send')
+    } else {
+      // what type of data being shared?
+      if (peerDataExist.data.type === 'private-chart') {
+        this.Peers.writeTonetworkData(data, peerDataExist.data)
+      } else if (peerDataExist.data.type === 'cue-space') {
+        console.log('cue space')
+        this.Peers.writeToCueSpace(this.Peers.peerHolder[peerFirstID].publickey)
+      } else if (peerDataExist.data.type === 'public-library') {
+        console.log('library ssync')
+        this.Peers.writeToPublicLibrary(data)
+      } else if (peerDataExist.data.type === 'text-message') {
+        // simpole text message
+        console.log('text message')
         this.Peers.writeTonetwork(data)
       }
     }
- 
   }
 
   /**
