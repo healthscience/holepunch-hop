@@ -48,7 +48,7 @@ class HolepunchWorker extends EventEmitter {
     this.store = new Corestore(os.homedir() + '/.hop-storage')
     this.swarm = new Hyperswarm()
     // make replication possible
-    // this.swarm.on('connection', conn => this.store.replicate(conn))
+    this.swarm.on('connection', conn => this.store.replicate(conn))
     goodbye(() => this.swarm.destroy())
     this.BeeData = new BeeWorker(this.store, this.swarm)
     this.DriveFiles = new DriveWorker(this.store, this.swarm)
@@ -99,7 +99,6 @@ class HolepunchWorker extends EventEmitter {
     })
     // peer connection active for first time 
     this.Peers.on('peer-connect', (data) => {
-      console.log('still used????')
      //this.warmPeerPrepare(data)
     })
     // share connection failed
@@ -120,7 +119,6 @@ class HolepunchWorker extends EventEmitter {
     })
     // data for beebee
     this.Peers.on('beebee-data', (data) => {
-      console.log('data for peer bbeebee box')
       this.emit('peer-topeer', data)
     })
     // cue space share
@@ -137,17 +135,11 @@ class HolepunchWorker extends EventEmitter {
     })
     // new warm incoming peer
     this.Peers.on('connect-warm-first', (data) => {
-      console.log('connect-warm-first', data)
       let peerInfo = this.Peers.peerHolder[data]
       if (peerInfo === undefined) {
         // receiving peer
         peerInfo = { name: 'peernew'}
-      } /* else {
-        console.log('check if any daata wants to be share too?')
-        let peerInfoData = peerInfo.data
-        console.log(peerInfoData)
-        this.warmPeerPrepare(data)
-      } */
+      }
       let peerId = {}
       peerId.name = peerInfo.name
       peerId.publickey = data
@@ -193,17 +185,7 @@ class HolepunchWorker extends EventEmitter {
       } else if (message.task === 'peer-share-topic') {
         // existing peers reconnecting via topic
         this.Peers.topicConnect(message.data)
-      } else if (message.task = 'cue-space') {
-        if (peerMatch === true) {
-          this.Peers.peerAlreadyJoinSetData(message.data)
-          this.Peers.writeToCueSpace(message.data.publickey)
-        } else {
-          this.warmPeers.push(message.data)
-          this.Peers.peerJoin(message.data)
-          // this.Peers.peerAlreadyJoinSetData(message.data)
-          // this.Peers.writeToCueSpace(message.data.publickey)
-        }
-      } else if (message.task === 'peer-board') {
+      } else if (message.task === 'public-n1-experiment') {
         if (peerMatch === true) {
          this.Peers.peerAlreadyJoinSetData(message.data)
          this.Peers.writeToPublicLibrary(message.data.publickey)
@@ -213,6 +195,16 @@ class HolepunchWorker extends EventEmitter {
           // now set data and write to public library info.
           this.Peers.peerAlreadyJoinSetData(message.data)
           this.Peers.writeToPublicLibrary(message.data.publickey)
+        }
+      } else if (message.task = 'cue-space') {
+        if (peerMatch === true) {
+          this.Peers.peerAlreadyJoinSetData(message.data)
+          this.Peers.writeToCueSpace(message.data.publickey)
+        } else {
+          this.warmPeers.push(message.data)
+          this.Peers.peerJoin(message.data)
+          // this.Peers.peerAlreadyJoinSetData(message.data)
+          // this.Peers.writeToCueSpace(message.data.publickey)
         }
       } else if (message.task === 'peer-write') {
         this.emit('peer-write', message.data)
@@ -240,21 +232,22 @@ class HolepunchWorker extends EventEmitter {
     // if data within coming then process that
     let peerDataExist = this.Peers.peerHolder[data]
     if (peerDataExist === undefined) {
-      console.log('no data to send')
     } else {
       // what type of data being shared?
-      if (peerDataExist.data.type === 'private-chart') {
-        this.Peers.writeTonetworkData(data, peerDataExist.data)
-      } else if (peerDataExist.data.type === 'cue-space') {
-        console.log('cue space')
-        this.Peers.writeToCueSpace(this.Peers.peerHolder[peerFirstID].publickey)
-      } else if (peerDataExist.data.type === 'public-library') {
-        console.log('library ssync')
-        this.Peers.writeToPublicLibrary(data)
-      } else if (peerDataExist.data.type === 'text-message') {
-        // simpole text message
-        console.log('text message')
-        this.Peers.writeTonetwork(data)
+      // check for data along with new peer?
+      if (peerDataExist.data !== undefined) {
+        if (peerDataExist.data.type === 'private-chart') {
+          this.Peers.writeTonetworkData(data, peerDataExist.data)
+        } else if (peerDataExist.data.type === 'private-cue-space') {
+          this.Peers.writeToCueSpace(this.Peers.peerHolder[peerFirstID].publickey)
+        } else if (peerDataExist.data.type === 'public-n1-experiment') {
+          this.Peers.writeTonetworkData(data, peerDataExist.data)
+        } else if (peerDataExist.data.type === 'public-library') {
+          this.Peers.writeToPublicLibrary(data)
+        } else if (peerDataExist.data.type === 'text-message') {
+          // simpole text message
+          this.Peers.writeTonetwork(data)
+        }
       }
     }
   }

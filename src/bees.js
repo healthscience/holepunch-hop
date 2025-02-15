@@ -46,14 +46,13 @@ class HyperBee extends EventEmitter {
       valueEncoding: 'json' // same options as above
     })
     await this.dbPublicLibrary.ready()
-    beePubkeys.push({ store: 'publiclibrary', pubkey: b4a.toString(core.key, 'hex')})
+    beePubkeys.push({ store: 'publiclibrary', pubkey: b4a.toString(this.dbPublicLibrary.key, 'hex')})
     // allow other peer access to public library  (need to check for DDOS ie over asked)
-    // join a topic
+    // join a topic for network 
     const discovery = this.swarm.join(this.dbPublicLibrary.discoveryKey)
     // Only display the key once the Hyperbee has been announced to the DHT
     discovery.flushed().then(() => {
     })
-
 
     const core2 = this.store.get({ name: 'peerlibrary' })
     this.dbPeerLibrary = new Hyperbee(core2, {
@@ -149,12 +148,6 @@ class HyperBee extends EventEmitter {
     })
     await this.dbBentomedia.ready()
     beePubkeys.push({store:'bentomedia', pubkey: b4a.toString(core12.key, 'hex')})
-
-    // await this.deleteBentocue({ cueid: '7da21b8d50c72f94595fd9617bfa2609c90d5d9c'})
-    // await this.deleteBentocue({ cueid: '8220c425a534634a44a69b6f56babaf26edf2a01'})
-    // await this.deleteBentocue({ cueid: 'ec4890f6c0b0d8f4a313136b4e7c9f425b1977a5'})
-    // await this.deleteBentocue({ cueid: 'eea2825cc91a1093594dffa9a953cbce3f77860c'})
-    // await this.deleteBentocue({ cueid: 'eee097d964fae67a6dd39abc02b0e9fd7c5f71bc'})
     
     this.emit('hbee-live')
     // return beePubkeys

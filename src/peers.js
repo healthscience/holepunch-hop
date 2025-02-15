@@ -30,17 +30,17 @@ class NetworkPeers extends EventEmitter {
    *
   */
   networkKeys = function () {
-    console.log('swarm on start')
+    // console.log('swarm on start')
     // console.log(this.swarm._discovery) // .toString('hex'))
 
-    this.swarm._discovery.forEach((value, key) => {
+    /*this.swarm._discovery.forEach((value, key) => {
       console.log('key')
       console.log(key)
       console.log('-----------swarm discovery IN-------------------')
       console.log(Object.keys(value))
       console.log(value.topic)
       console.log(value.topic.toString('hex'))
-    })
+    }) */
     let peerNxKeys = {}
     peerNxKeys.publickey = this.swarm.keyPair.publicKey.toString('hex')
     let networkMessage = {}
@@ -64,7 +64,7 @@ class NetworkPeers extends EventEmitter {
       this.peerConnect[publicKeylive] = conn
       this.emit('connect-warm-first', publicKeylive)
       // listen for replication  NEED UPTATED LOGIC
-      // this.store.replicate(conn)
+      this.store.replicate(conn)
       // process network message
       conn.on('data', data =>
         // assess data
@@ -80,8 +80,6 @@ class NetworkPeers extends EventEmitter {
    *
   */
   setRole = function (pubKey) {
-    console.log('check if already set')
-    console.log(this.peersRole)
     let setRole = { send: 'prime' , invite: pubKey}
     this.peersRole[pubKey] = setRole
   }
@@ -94,16 +92,13 @@ class NetworkPeers extends EventEmitter {
     if (Buffer.isBuffer(data)) {
       try {
         let dataShareIn = JSON.parse(data.toString())
-        console.log('assess edata')
-        console.log(dataShareIn)
         if (dataShareIn.type === 'private-chart') {
-          console.log(' yes route back to peer pelase')
           this.emit('beebee-data', dataShareIn)
           // need to look at NXP,  modules and within for reference contracts.
           // Need to replicate public library for contracts (repliate hyberbee)
           // Need to ask for data source e.g. file (replicate hyberdrive)
           // Lastly put together SafeFlowECS query to produce chart
-        } else if (dataShareIn.type === 'cue-space') {
+        } else if (dataShareIn.type === 'private-cue-space') {
           this.emit('cuespace-notification', dataShareIn)
         } else if (dataShareIn.type === 'public-library') {
           this.emit('publiclibrarynotification', dataShareIn)
@@ -125,7 +120,6 @@ class NetworkPeers extends EventEmitter {
   */
   writeTonetwork = function (data, messType) {
     // check this peer has asked for chart data
-    console.log('share topic to peer')
     let dataSend = data
     this.peerConnect[data].write(JSON.stringify(dataSend))
   }
@@ -145,10 +139,6 @@ class NetworkPeers extends EventEmitter {
       topicShare.publickey = this.swarm.keyPair.publicKey.toString('hex')
       topicShare.data = topicGeneration
       // inform peer that topic has been created
-      console.log('share topic to peer')
-      console.log(publickey)
-      console.log(this.peerConnect[publickey])
-      console.log(topicShare)
       this.peerConnect[publickey].write(JSON.stringify(topicShare))
   }
 
@@ -158,9 +148,6 @@ class NetworkPeers extends EventEmitter {
    *
   */
   writeTonetworkData = function (publickey, dataShare) {
-    console.log('send data over network to a peer chart display')
-    console.log(publickey)
-    console.log(dataShare)
     this.peerConnect[publickey].write(JSON.stringify(dataShare))
   }
 
@@ -196,10 +183,7 @@ class NetworkPeers extends EventEmitter {
     let spaceTrue = publickey in this.peerHolder
     if (connectTrue === true && spaceTrue === true) {
       let libraryData = this.peerHolder[publickey]
-      let dataShare = {}
-      dataShare.data = libraryData.data
-      dataShare.type = 'cue-space'
-      this.peerConnect[publickey].write(JSON.stringify(dataShare))
+      this.peerConnect[publickey].write(JSON.stringify(libraryData))
     } else {
       console.log('no cuespace to write ie share with a peer')
     }
