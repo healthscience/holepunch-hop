@@ -760,8 +760,6 @@ class HyperBee extends EventEmitter {
 
   }
 
-
-
   /**
    * delete nxp ref contract public
    * @method deleteRefcontPubliclibrary
@@ -787,7 +785,6 @@ class HyperBee extends EventEmitter {
     deleteInfo.nxp = nxpID
     return deleteInfo
   }
-
 
   /**
    * repicate the publiclibrary peer to peer
@@ -918,10 +915,10 @@ class HyperBee extends EventEmitter {
 
   /**
    * repicate the publiclibrary peer to peer
-   * @method replicatePubliclibraryOLD
+   * @method ryOLD
    *
   */
-  replicatePubliclibraryOLD = async function (key) {
+  ryOLD = async function (key) {
     // key = '3ec0f3b78a0cfe574c4be89b1d703a65f018c0b73ad77e52ac65645d8f51676a'
     const store = this.client.corestore('peerspace-hyperbeetemp')
     const core = this.store.get(key)

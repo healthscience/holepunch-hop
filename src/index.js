@@ -124,6 +124,12 @@ class HolepunchWorker extends EventEmitter {
     // cue space share
     this.Peers.on('cuespace-notification', (data) => {
       this.emit('peer-cuespace', data)
+      // check if bentoboxN1 included?
+      if (data.data.content.bbn1.publicN1contracts.length > 0) {
+        for (let n1Cont of data.data.content.bbn1.publicN1contracts) {
+          this.BeeData.replicatePubliclibrary({ data: n1Cont })
+        }
+      }
     })
     // public library notification
     this.Peers.on('publiclibrarynotification', (data) => {
