@@ -111,11 +111,13 @@ class HolepunchWorker extends EventEmitter {
     })
     // save peer topic
     this.Peers.on('peer-topic-save', async (data) => {
-      await this.emit('peer-topic-save', data)    
+      await this.emit('peer-topic-update', data)    
     })
     // peer reconnection topic ie. able to reconnect again
     this.Peers.on('peer-reconnect-topic', (data) => {
-      this.emit('peer-reconnect-topic', data)
+      this.emit('peer-reconnect-topic-notify', data)
+      // aslo update saved contract to add topic
+      this.emit('peer-topic-save', data)
     })
     // data for beebee
     this.Peers.on('beebee-data', (data) => {
@@ -141,11 +143,13 @@ class HolepunchWorker extends EventEmitter {
     })
     // new warm incoming peer
     this.Peers.on('connect-warm-first', (data) => {
+      // check re establishing peer to peer of first time connection?
       let peerInfo = this.Peers.peerHolder[data]
       if (peerInfo === undefined) {
         // receiving peer
         peerInfo = { name: 'peernew'}
       }
+      // setup template for relationship
       let peerId = {}
       peerId.name = peerInfo.name
       peerId.publickey = data
@@ -170,12 +174,58 @@ class HolepunchWorker extends EventEmitter {
   networkPath = function (message) {
     if (message.action === 'share') {
       // has the peer joined already?
+      let peerTopeerState =this.Peers.checkConnectivityStatus(message, this.warmPeers)
+      console.log('peerTopeerState', peerTopeerState)
       let peerMatch = false
       for (let wpeer of this.warmPeers) {
         if (wpeer.publickey = message.data.publickey) {
           peerMatch = true
         }
       }
+      // new peer?
+      if (peerTopeerState.live === false && peerTopeerState.existing === false) {
+        console.log('first time peers ever tried to connect  Yes')
+        this.Peers.setRole(message.data.publickey)
+        // new peer keep track and start join process
+        this.warmPeers.push(message.data)
+        this.Peers.peerAlreadyJoinSetData(message.data)
+        this.Peers.peerJoin(message.data)
+      } else {
+        // twooptions  peer still online so reconnect,  or both been offline, reconnect via topic
+        console.log('reconnection path')
+        // try to connect like first time
+        this.warmPeers.push(message.data)
+        this.Peers.peerAlreadyJoinSetData(message.data)
+        // this.Peers.peerJoin(message.data)
+        // check if joined now?
+        let reEstablishShort = this.Peers.checkConnectivityStatus(message, this.warmPeers)
+        if (reEstablishShort.live === true) {
+          console.log('reconnected SHOERT')
+        } else {
+          // one peer server one peer client on topic  based upon who set the topic
+          if (reEstablishShort.peer.value.settopic === true) {
+            console.log('topic sender start')
+            this.Peers.topicConnect(reEstablishShort.peer.value.topic)
+            // listener will pickup connection again, then write to network is avaiable again, shift to direct mode?
+          } else {
+            console.log('topic client start')
+            this.Peers.topicListen(reEstablishShort.peer.value.topic, message.data.publickey)
+          }
+        }
+        // any data to write to network?
+        if (peerTopeerState.task === 'peer-share-invite') {
+          console.log('share invite')
+        } else if (peerTopeerState.task === 'peer-share-topic') {
+          console.log('topic setting on first peer to peer connection')
+        } else if (peerTopeerState.task === 'public-n1-experiment') {
+          console.log('n1 sharing')
+        } else if (peerTopeerState.task = 'cue-space') {
+          console.log('cue space sharing')
+        } else if (peerTopeerState.task === 'peer-write') {
+          console.log('write to network')
+        }
+      }
+      /*
       if (message.task === 'peer-share-invite') {
         // keep track of role, reciving or extended invite
         this.Peers.setRole(message.data.publickey)
@@ -184,17 +234,23 @@ class HolepunchWorker extends EventEmitter {
           // this.Peers.writeTonetwork(message.data.publickey)
           this.warmPeerPrepare(message.data.publickey, true)
         } else {
-          this.warmPeers.push(message.data)
-          this.Peers.peerAlreadyJoinSetData(message.data)
-          this.Peers.peerJoin(message.data)
+          // new peer or turnning with topic
+          let topic = false
+          if (topic === false) {
+              this.warmPeers.push(message.data)
+              this.Peers.peerAlreadyJoinSetData(message.data)
+              this.Peers.peerJoin(message.data)
+          } else {
+            console.log('try start with topic')
+          }
         }
       } else if (message.task === 'peer-share-topic') {
         // existing peers reconnecting via topic
         this.Peers.topicConnect(message.data)
       } else if (message.task === 'public-n1-experiment') {
         if (peerMatch === true) {
-         this.Peers.peerAlreadyJoinSetData(message.data)
-         this.Peers.writeToPublicLibrary(message.data.publickey)
+        this.Peers.peerAlreadyJoinSetData(message.data)
+        this.Peers.writeToPublicLibrary(message.data.publickey)
         } else {
           this.warmPeers.push(message.data)
           this.Peers.peerJoin(message.data)
@@ -216,10 +272,9 @@ class HolepunchWorker extends EventEmitter {
         this.emit('peer-write', message.data)
       } else if (message.task === 'topic') {
         // this.Peers.peerTopic(message.data.topic)
-      }
-    }
+      } */
+    } 
   }
-
 
   /**
    * prepare data to send to a warm peer
