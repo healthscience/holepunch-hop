@@ -175,7 +175,7 @@ class HolepunchWorker extends EventEmitter {
     if (message.action === 'share') {
       // has the peer joined already?
       let peerTopeerState =this.Peers.checkConnectivityStatus(message, this.warmPeers)
-      console.log('peerTopeerState', peerTopeerState)
+      // console.log('peerTopeerState', peerTopeerState)
       let peerMatch = false
       for (let wpeer of this.warmPeers) {
         if (wpeer.publickey = message.data.publickey) {
@@ -184,7 +184,7 @@ class HolepunchWorker extends EventEmitter {
       }
       // new peer?
       if (peerTopeerState.live === false && peerTopeerState.existing === false) {
-        console.log('first time peers ever tried to connect  Yes')
+        console.log('1 first time peers ever tried to connect  Yes')
         this.Peers.setRole(message.data.publickey)
         // new peer keep track and start join process
         this.warmPeers.push(message.data)
@@ -192,28 +192,31 @@ class HolepunchWorker extends EventEmitter {
         this.Peers.peerJoin(message.data)
       } else {
         // twooptions  peer still online so reconnect,  or both been offline, reconnect via topic
-        console.log('reconnection path')
+        console.log('2 reconnection path')
         // try to connect like first time
         this.warmPeers.push(message.data)
         this.Peers.peerAlreadyJoinSetData(message.data)
         // this.Peers.peerJoin(message.data)
         // check if joined now?
         let reEstablishShort = this.Peers.checkConnectivityStatus(message, this.warmPeers)
+        this.Peers.setRestablished(message.data.publickey, reEstablishShort)
+        console.log('reEstablishShort', reEstablishShort)
         if (reEstablishShort.live === true) {
-          console.log('reconnected SHOERT')
+          console.log(' 2a reconnected SHOERT')
+          console.log(reEstablishShort.peer.value)
         } else {
           // one peer server one peer client on topic  based upon who set the topic
           if (reEstablishShort.peer.value.settopic === true) {
-            console.log('topic sender start')
+            console.log(' 2btopic sender start')
             this.Peers.topicConnect(reEstablishShort.peer.value.topic)
             // listener will pickup connection again, then write to network is avaiable again, shift to direct mode?
           } else {
-            console.log('topic client start')
+            console.log('2bbtopic client start')
             this.Peers.topicListen(reEstablishShort.peer.value.topic, message.data.publickey)
           }
         }
         // any data to write to network?
-        if (peerTopeerState.task === 'peer-share-invite') {
+        /* if (peerTopeerState.task === 'peer-share-invite') {
           console.log('share invite')
         } else if (peerTopeerState.task === 'peer-share-topic') {
           console.log('topic setting on first peer to peer connection')
@@ -223,7 +226,7 @@ class HolepunchWorker extends EventEmitter {
           console.log('cue space sharing')
         } else if (peerTopeerState.task === 'peer-write') {
           console.log('write to network')
-        }
+        } */
       }
       /*
       if (message.task === 'peer-share-invite') {
