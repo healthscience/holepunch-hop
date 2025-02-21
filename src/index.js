@@ -176,7 +176,6 @@ class HolepunchWorker extends EventEmitter {
     if (message.action === 'share') {
       // has the peer joined already?
       let peerTopeerState =this.Peers.checkConnectivityStatus(message, this.warmPeers)
-      // console.log('peerTopeerState', peerTopeerState)
       let peerMatch = false
       for (let wpeer of this.warmPeers) {
         if (wpeer.publickey = message.data.publickey) {
@@ -185,7 +184,6 @@ class HolepunchWorker extends EventEmitter {
       }
       // new peer?
       if (peerTopeerState.live === false && peerTopeerState.existing === false) {
-        console.log('1 first time peers ever tried to connect  Yes')
         this.Peers.setRole(message.data.publickey)
         // new peer keep track and start join process
         this.warmPeers.push(message.data)
@@ -193,7 +191,6 @@ class HolepunchWorker extends EventEmitter {
         this.Peers.peerJoin(message.data)
       } else {
         // twooptions  peer still online so reconnect,  or both been offline, reconnect via topic, if topic first time or subdquesnt?
-        console.log('2 reconnection path')
         // try to connect like first time
         this.warmPeers.push(message.data)
         this.Peers.peerAlreadyJoinSetData(message.data)
@@ -201,12 +198,9 @@ class HolepunchWorker extends EventEmitter {
         // check if joined now?
         let reEstablishShort = this.Peers.checkConnectivityStatus(message, this.warmPeers)
         this.Peers.setRestablished(message.data.publickey, reEstablishShort)
-        console.log('reEstablishShort', reEstablishShort)
         if (reEstablishShort.live === true) {
-          console.log(' 2a reconnected SHOERT')
           // first time use or returning use?
           if (Object.keys(reEstablishShort.peer).length === 0) {
-            console.log('first time short')
             let peerActionData = this.Peers.peerHolder[message.data.publickey]
             this.Peers.routeDataPath(message.data.publickey, peerActionData.data)
           } else {
@@ -215,7 +209,6 @@ class HolepunchWorker extends EventEmitter {
               this.Peers.routeDataPath(message.data.publickey, peerActionData.data)
             } else {
             // returning peer via topic
-            console.log('returning topic share')
             let peerActionData = this.Peers.peerHolder[message.data.publickey]
             this.Peers.routeDataPath(reEstablishShort.peer.value.livePeerkey, peerActionData.data)
             }
@@ -223,11 +216,8 @@ class HolepunchWorker extends EventEmitter {
         } else {
           // one peer server one peer client on topic  based upon who set the topic
           if (reEstablishShort.peer.value.settopic === true) {
-            console.log(' 2btopic sender start')
             this.Peers.topicConnect(reEstablishShort.peer.value.topic)
-            // listener will pickup connection again, then write to network is avaiable again, shift to direct mode?
           } else {
-            console.log('2bbtopic client start')
             this.Peers.topicListen(reEstablishShort.peer.value.topic, message.data.publickey)
           }
         }
