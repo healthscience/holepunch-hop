@@ -34,7 +34,7 @@ class HolepunchWorker extends EventEmitter {
     this.core3 = {}
     this.discKeypeer = ''
     this.readcore = null
-    this.warmPeers = []
+    this.warmPeers = [] // ikeep track of live incoming sharing
     this.startHolepunch()
     this.networkListeners()
   }
@@ -157,6 +157,7 @@ class HolepunchWorker extends EventEmitter {
       peerId.settopic = false
       peerId.topic = ''
       peerId.live = false
+      peerId.livePeerkey = ''
       this.warmPeers.push(peerId)
       this.emit('peer-incoming-save', peerId)
     })
@@ -191,7 +192,7 @@ class HolepunchWorker extends EventEmitter {
         this.Peers.peerAlreadyJoinSetData(message.data)
         this.Peers.peerJoin(message.data)
       } else {
-        // twooptions  peer still online so reconnect,  or both been offline, reconnect via topic
+        // twooptions  peer still online so reconnect,  or both been offline, reconnect via topic, if topic first time or subdquesnt?
         console.log('2 reconnection path')
         // try to connect like first time
         this.warmPeers.push(message.data)
@@ -203,7 +204,22 @@ class HolepunchWorker extends EventEmitter {
         console.log('reEstablishShort', reEstablishShort)
         if (reEstablishShort.live === true) {
           console.log(' 2a reconnected SHOERT')
-          console.log(reEstablishShort.peer.value)
+          // first time use or returning use?
+          if (Object.keys(reEstablishShort.peer).length === 0) {
+            console.log('first time short')
+            let peerActionData = this.Peers.peerHolder[message.data.publickey]
+            this.Peers.routeDataPath(message.data.publickey, peerActionData.data)
+          } else {
+            if (reEstablishShort.peer.value?.livePeerkey.length === 0) {
+              let peerActionData = this.Peers.peerHolder[message.data.publickey]
+              this.Peers.routeDataPath(message.data.publickey, peerActionData.data)
+            } else {
+            // returning peer via topic
+            console.log('returning topic share')
+            let peerActionData = this.Peers.peerHolder[message.data.publickey]
+            this.Peers.routeDataPath(reEstablishShort.peer.value.livePeerkey, peerActionData.data)
+            }
+          }
         } else {
           // one peer server one peer client on topic  based upon who set the topic
           if (reEstablishShort.peer.value.settopic === true) {
@@ -215,67 +231,7 @@ class HolepunchWorker extends EventEmitter {
             this.Peers.topicListen(reEstablishShort.peer.value.topic, message.data.publickey)
           }
         }
-        // any data to write to network?
-        /* if (peerTopeerState.task === 'peer-share-invite') {
-          console.log('share invite')
-        } else if (peerTopeerState.task === 'peer-share-topic') {
-          console.log('topic setting on first peer to peer connection')
-        } else if (peerTopeerState.task === 'public-n1-experiment') {
-          console.log('n1 sharing')
-        } else if (peerTopeerState.task = 'cue-space') {
-          console.log('cue space sharing')
-        } else if (peerTopeerState.task === 'peer-write') {
-          console.log('write to network')
-        } */
       }
-      /*
-      if (message.task === 'peer-share-invite') {
-        // keep track of role, reciving or extended invite
-        this.Peers.setRole(message.data.publickey)
-        if (peerMatch === true) {
-          this.Peers.peerAlreadyJoinSetData(message.data)
-          // this.Peers.writeTonetwork(message.data.publickey)
-          this.warmPeerPrepare(message.data.publickey, true)
-        } else {
-          // new peer or turnning with topic
-          let topic = false
-          if (topic === false) {
-              this.warmPeers.push(message.data)
-              this.Peers.peerAlreadyJoinSetData(message.data)
-              this.Peers.peerJoin(message.data)
-          } else {
-            console.log('try start with topic')
-          }
-        }
-      } else if (message.task === 'peer-share-topic') {
-        // existing peers reconnecting via topic
-        this.Peers.topicConnect(message.data)
-      } else if (message.task === 'public-n1-experiment') {
-        if (peerMatch === true) {
-        this.Peers.peerAlreadyJoinSetData(message.data)
-        this.Peers.writeToPublicLibrary(message.data.publickey)
-        } else {
-          this.warmPeers.push(message.data)
-          this.Peers.peerJoin(message.data)
-          // now set data and write to public library info.
-          this.Peers.peerAlreadyJoinSetData(message.data)
-          this.Peers.writeToPublicLibrary(message.data.publickey)
-        }
-      } else if (message.task = 'cue-space') {
-        if (peerMatch === true) {
-          this.Peers.peerAlreadyJoinSetData(message.data)
-          this.Peers.writeToCueSpace(message.data.publickey)
-        } else {
-          this.warmPeers.push(message.data)
-          this.Peers.peerJoin(message.data)
-          // this.Peers.peerAlreadyJoinSetData(message.data)
-          // this.Peers.writeToCueSpace(message.data.publickey)
-        }
-      } else if (message.task === 'peer-write') {
-        this.emit('peer-write', message.data)
-      } else if (message.task === 'topic') {
-        // this.Peers.peerTopic(message.data.topic)
-      } */
     } 
   }
 

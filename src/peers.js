@@ -20,7 +20,7 @@ class NetworkPeers extends EventEmitter {
     this.swarm = swarm
     this.drive = {}
     this.peerPrime = ''
-    this.peerNetwork = []
+    this.peerNetwork = [] // set on loading library via HOP
     this.peerEstContext = {}
     this.peerHolder = {}
     this.peerConnect = {}
@@ -93,70 +93,82 @@ class NetworkPeers extends EventEmitter {
       // save peer connection instance for ongoing communication
       console.log('peer connection establihsed======================================')
       // console.log(conn)
-      console.log('=================================================================')
-      console.log(info)
+      // console.log(info)
       // listen for replication  NEED UPTATED LOGIC
       this.store.replicate(conn)
       // assess if token is present to match to exsing peer account ID?
       let publicKeylive = info.publicKey.toString('hex')
-      console.log(publicKeylive)
       let topicKeylive = info.topics
-      console.log('topic holder')
-      console.log(this.topicHolder)
-
       // check if joined now?
-      console.log('reEstablishShort')
-      console.log(this.peerEstContext)
       let discoveryTopicInfo = this.checkDisoveryStatus()
-      console.log(discoveryTopicInfo)
-      // console.log(this.peerEstContext[])
-      BREAK
-      // if client will get back new public key for topic peer and topic
-      // check send holder ie did this peer act as server?
-      /* let topicIn = 'rec' //topicKeylive[0].toString('hex')
-      let peerServerActive = false
-      for (let perServer of this.sendTopicHolder) {
-        if (perServer.topic === topicIn) {
-          console.log('yes server for this topoic seup')
-          peerServerActive = true
+      let topicServer = this.topicHolder[discoveryTopicInfo.topic]
+      let serverStatus = false
+      if (topicServer !== undefined) {
+        if (Object.keys(topicServer).length > 0) {
+          serverStatus = true
         }
-      } 
-      console.log('peerServerActive====', peerServerActive) */
-      // check if topic re establish or first time?
-      if (topicKeylive.length > 0) {
+      }
+      // check if toppic  ONLY client will
+      if (topicKeylive.length > 0 || serverStatus === true) {
         // keep track of connection
         this.peerConnect[publicKeylive] = conn
-        console.log('yes connection via topic')
-        let topicIn = topicKeylive[0].toString('hex')
-        let topicMatch = this.topicHolder[topicIn]
-        if (Object.keys(topicMatch).length > 0) {
-          console.log('topic found and connected')
-          // looks at what needs data needs cshared
-          // match new public key to saved publickey
-          topicMatch.currentPubkey = publicKeylive
-          this.topicHolder[topicIn] = topicMatch
-          console.log('update with new pubilc key for this session')
-          console.log(this.topicHolder)
-          this.dataFlowCheck(topicIn, 'client')
+        if (topicKeylive.length > 0) {
+          let topicIn = topicKeylive[0].toString('hex')
+          let topicMatch = this.topicHolder[topicIn]
+          if (Object.keys(topicMatch).length > 0) {
+            // looks at what needs data needs cshared
+            // match new public key to saved publickey
+            topicMatch.currentPubkey = publicKeylive
+            this.topicHolder[topicIn] = topicMatch
+            this.dataFlowCheck(topicIn, 'client')
+          } else {
+            this.peerConnect[publicKeylive] = conn
+            
+          }
         } else {
-          console.log('first connect aaaa')
+          // keep track of connection
           this.peerConnect[publicKeylive] = conn
-          
+          this.dataFlowCheck(publicKeylive, 'server')
         }
+        // set to live
+        let originalKey = ''
+        for (let savePeer of this.peerNetwork) {
+          if (savePeer.value.topic === topicServer.topic) {
+            originalKey = savePeer.value.publickey    
+          }
+        }
+        // need original connection public key
+        let updatePeerStatus = []
+        for (let savePeer of this.peerNetwork) {
+          if (savePeer.key === originalKey) {
+            let updatetoLive = savePeer
+            updatetoLive.value.live = true
+            updatetoLive.value.livePeerkey = publicKeylive
+            updatePeerStatus.push(updatetoLive)
+          } else {
+            updatePeerStatus.push(savePeer)
+          }
+        }
+        this.peerNetwork = updatePeerStatus
+        console.log('update peer to live status')
+        console.log(this.peerNetwork)
+        // this.emit('peer-live-return', originalKey)
       } else {
-        console.log(' no topic topic onnection present')
         // first time or from topic reset?
-        console.log(this.topicHolder[publicKeylive])
+        // need to check from client and server side
         if (this.topicHolder[publicKeylive] === undefined) {
           // first time cheeck for data long with it?
           this.peerConnect[publicKeylive] = conn
           this.dataFlowCheck(publicKeylive, 'first')
           this.emit('connect-warm-first', publicKeylive)
         } else {
-          console.log('token')
           this.peerConnect[publicKeylive] = conn
           this.dataFlowCheck(publicKeylive, 'server')
         }
+        // set to live
+        // let peerLive = this.peerNetwork(publicKeylive)
+        // peerLive.value.live = true
+        // this.livePeers[publicKeylive] = peerLive
       }
 
       // process network message
@@ -173,33 +185,51 @@ class NetworkPeers extends EventEmitter {
    *  @method checkConnectivityStatus
   */
   checkConnectivityStatus = function (message, warmPeers) {
+    console.log('check connectivity status')
+    console.log(message)
+    console.log(this.peerNetwork)
     let ptopStatus = {}
     let savedPtoP = false
     let livePtoP = false
-    let peerInfo = {}
+    let savedpeerInfo = {}
     let peerMatch = false
+    // check saved i.e. exsting known peer
     for (let exPeer of this.peerNetwork) {
       if (exPeer.key === message.data.publickey) {
         savedPtoP = true
-        peerInfo = exPeer
+        savedpeerInfo = exPeer
       }
     }
-    for (let wpeer of warmPeers) {
-      // connection open and live directly between two peers?
-      let openConn = this.peerConnect[message.data.publickey]
-      if (openConn !== undefined) {
-       livePtoP = true 
-      }
-      // peer existing
-      if (wpeer.publickey = message.data.publickey) {
-        peerMatch = true
+    // chech is peer is live
+    let peerLiveStatus = false
+    for (let sPeer of this.peerNetwork) {
+      if (sPeer.key === message.data.publickey) {
+        peerLiveStatus = sPeer.value.live
+      }      
+    }
+    // is first time or ongoing?
+    if (peerLiveStatus === true) {
+      livePtoP = true
+    } else {
+      // first time connection
+      for (let wpeer of warmPeers) {
+        // connection open and live directly between two peers?
+        let openConn = this.peerConnect[message.data.publickey]
+        if (openConn !== undefined) {
+        livePtoP = true 
+        }
+        // peer existing
+        if (wpeer.publickey = message.data.publickey) {
+          peerMatch = true
+        }
       }
     }
     // set the status
-    ptopStatus.live = livePtoP
-    ptopStatus.peer = peerInfo
+    ptopStatus.peer = savedpeerInfo
     // settopic
     ptopStatus.existing = savedPtoP
+    // live
+    ptopStatus.live = livePtoP
     ptopStatus.role = this.peersRole[message.data.publickey]
     ptopStatus.data = message.data
     ptopStatus.action = message.action
@@ -218,7 +248,7 @@ class NetworkPeers extends EventEmitter {
     let peerTopeerState = {}
     let matchPeer = {}
     if (role === 'client') {
-      matchPeer =this.topicHolder[topicIn]
+      matchPeer = this.topicHolder[topicIn]
       let peerActionData = this.peerHolder[matchPeer.peerKey]
       peerTopeerState = peerActionData.data
     } else if (role === 'server') {
@@ -230,8 +260,6 @@ class NetworkPeers extends EventEmitter {
         let discovery = this.swarm.status(noisePublicKey)
         let discoverTopic = discovery.topic.toString('hex')
         if (discoverTopic === topicH.topic) {
-          // let getRemote = discovery.swarm.connections.get('remotePublicKey')
-          // conosle.log(getRemote)
           discovery.swarm.connections.forEach((value, key) => {
             checkDiscoveryTopic.server = value.publicKey.toString('hex')
             checkDiscoveryTopic.client = value.remotePublicKey.toString('hex')
@@ -254,26 +282,13 @@ class NetworkPeers extends EventEmitter {
       }
       // check for data
       let peerActionData = this.peerHolder[peerMTopic.key]
-      console.log('peerActionData', peerActionData)
-      console.log(peerActionData)
       if (peerActionData !== undefined) {
         peerTopeerState = peerActionData.data
       } else {
         peerTopeerState = {}
       }
-      /*
-        matchPeer.currentPubkey = topicIn
-        for (let topicH of this.sendTopicHolder) {
-          const noisePublicKey = Buffer.from(topicH.topic, 'hex')
-          let discovery = this.swarm.status(noisePublicKey)
-        }
-        let peerActionData = this.peerHolder[topicIn]
-        peerTopeerState = peerActionData.data
-      */
       } else if (role === 'first') {
-        console.log('first')
         let peerActionData = this.peerHolder[topicIn]
-        console.log(peerActionData)
         if (peerActionData === undefined) {
           peerTopeerState = {}
         } else {
@@ -285,22 +300,15 @@ class NetworkPeers extends EventEmitter {
         }
       }
     // any data to write to network?
-    console.log('peerTopeerState', peerTopeerState)
     let checkDataShare = Object.keys(peerTopeerState).length
-    if (checkDataShare === 0) {
+    if (checkDataShare > 0) {
       if (peerTopeerState.type === 'peer-share-invite') {
-        console.log('share invite')
       } else if (peerTopeerState.type === 'private-chart') {  
-        console.log('privatge chart data to share')
         this.writeTonetworkData(matchPeer.currentPubkey, peerTopeerState)
       } else if (peerTopeerState.type === 'peer-share-topic') {
-        console.log('topic setting on first peer to peer connection')
       } else if (peerTopeerState.type === 'public-n1-experiment') {
-        console.log('n1 sharing')
       } else if (peerTopeerState.type === 'cue-space') {
-        console.log('cue space sharing')
       } else if (peerTopeerState.type === 'peer-write') {
-        console.log('write to network')
       }
     } 
   }
@@ -329,6 +337,27 @@ class NetworkPeers extends EventEmitter {
     return checkDiscoveryTopic
   }
 
+
+  /**
+   * check discovery status on network
+   * @method routeDataPath
+   *
+  */
+  routeDataPath = function (livePubkey, peerTopeerState) {
+    // any data to write to network?
+    let checkDataShare = Object.keys(peerTopeerState).length
+    if (checkDataShare > 0) {
+      if (peerTopeerState.type === 'peer-share-invite') {
+      } else if (peerTopeerState.type === 'private-chart') {  
+        this.writeTonetworkData(livePubkey, peerTopeerState)
+      } else if (peerTopeerState.type === 'peer-share-topic') {
+      } else if (peerTopeerState.type === 'public-n1-experiment') {
+      } else if (peerTopeerState.type === 'cue-space') {
+      } else if (peerTopeerState.type === 'peer-write') {
+      }
+    }
+  }
+
   /**
    * 
    * @method assessData data and act
@@ -351,7 +380,6 @@ class NetworkPeers extends EventEmitter {
           this.emit('publiclibrarynotification', dataShareIn)
         } else if (dataShareIn.type === 'peer') {
         } else if (dataShareIn.type === 'topic-reconnect') {
-          console.log('PEER RECONNECT TOPIC', dataShareIn)
           // peer has share a topic for future reconnect
           // check if publickey is  topic key if yes, already active do nothing
           let topicMatch = this.topicHolder[dataShareIn.topic]
@@ -527,7 +555,6 @@ class NetworkPeers extends EventEmitter {
    *
   */
   topicConnect = async function (topic) {
-    console.log('topicConnect', topic)
     // const noisePublicKey = Buffer.alloc(32).fill(topic) // A topic must be 32 bytes
     // console.log('noisePublicKey server', noisePublicKey)
     const noisePublicKey = Buffer.from(topic, 'hex') //  must be 32 bytes
@@ -546,7 +573,6 @@ class NetworkPeers extends EventEmitter {
    *
   */
   topicListen = async function (topic, peerKey) {
-    console.log('topicListen', topic, peerKey)
     // const noisePublicKey = Buffer.alloc(32).fill(topic) // A topic must be 32 bytes
     // let topicKeylive = noisePublicKey.toString('hex')
     const noisePublicKey = Buffer.from(topic, 'hex') //  must be 32 bytes
