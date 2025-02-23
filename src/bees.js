@@ -971,9 +971,6 @@ class HyperBee extends EventEmitter {
 
     await this.client.replicate(beeResults.feed) // fetch from the network
     await beeResults.ready()
-    // console.log('value for key ie results dataPrint')
-    // console.log(await beeResults.get('005ad9c1c29b6b730b6e9f73dd108f8c716a6075'))
-    // console.log('after get uuid')
     let rs = beeResults.createReadStream() // anything >=a and <=d
 
     for await (const { key, value } of rs) {

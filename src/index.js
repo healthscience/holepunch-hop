@@ -117,7 +117,8 @@ class HolepunchWorker extends EventEmitter {
     this.Peers.on('peer-reconnect-topic', (data) => {
       this.emit('peer-reconnect-topic-notify', data)
       // aslo update saved contract to add topic
-      this.emit('peer-topic-save', data)
+      // this.emit('peer-topic-save', data)
+      this.emit('peer-topic-update', data)
     })
     // data for beebee
     this.Peers.on('beebee-data', (data) => {
@@ -161,6 +162,12 @@ class HolepunchWorker extends EventEmitter {
       this.warmPeers.push(peerId)
       this.emit('peer-incoming-save', peerId)
     })
+    // peer live on network?
+    this.Peers.on('peer-live-network', (data) => {
+      let peerLive = {}
+      peerLive.publickey = data
+      this.emit('peer-live-notify', peerLive)
+    })
     // drive listener
     this.DriveFiles.on('largefile-save', (data) => {
       this.emit('drive-save-large', data)
@@ -174,55 +181,60 @@ class HolepunchWorker extends EventEmitter {
   */
   networkPath = function (message) {
     if (message.action === 'share') {
-      // has the peer joined already?
-      let peerTopeerState =this.Peers.checkConnectivityStatus(message, this.warmPeers)
-      let peerMatch = false
-      for (let wpeer of this.warmPeers) {
-        if (wpeer.publickey = message.data.publickey) {
-          peerMatch = true
+
+      if (message.task === 'peer-share-invite' || message.task === 'peer-share-topic') {
+        // has the peer joined already?
+        let peerTopeerState = this.Peers.checkConnectivityStatus(message, this.warmPeers)
+        let peerMatch = false
+        for (let wpeer of this.warmPeers) {
+          if (wpeer.publickey = message.data.publickey) {
+            peerMatch = true
+          }
         }
-      }
-      // new peer?
-      if (peerTopeerState.live === false && peerTopeerState.existing === false) {
-        this.Peers.setRole(message.data.publickey)
-        // new peer keep track and start join process
-        this.warmPeers.push(message.data)
-        this.Peers.peerAlreadyJoinSetData(message.data)
-        this.Peers.peerJoin(message.data)
-      } else {
-        // twooptions  peer still online so reconnect,  or both been offline, reconnect via topic, if topic first time or subdquesnt?
-        // try to connect like first time
-        this.warmPeers.push(message.data)
-        this.Peers.peerAlreadyJoinSetData(message.data)
-        // this.Peers.peerJoin(message.data)
-        // check if joined now?
-        let reEstablishShort = this.Peers.checkConnectivityStatus(message, this.warmPeers)
-        this.Peers.setRestablished(message.data.publickey, reEstablishShort)
-        if (reEstablishShort.live === true) {
-          // first time use or returning use?
-          if (Object.keys(reEstablishShort.peer).length === 0) {
-            let peerActionData = this.Peers.peerHolder[message.data.publickey]
-            this.Peers.routeDataPath(message.data.publickey, peerActionData.data)
-          } else {
-            if (reEstablishShort.peer.value?.livePeerkey.length === 0) {
+        // new peer?
+        if (peerTopeerState.live === false && peerTopeerState.existing === false) {
+          this.Peers.setRole({ pubkey: message.data.publickey, codename: message.data.codename })
+          // new peer keep track and start join process
+          this.warmPeers.push(message.data)
+          this.Peers.peerAlreadyJoinSetData(message.data)
+          this.Peers.peerJoin(message.data)
+        } else {
+          // twooptions  peer still online so reconnect,  or both been offline, reconnect via topic, if topic first time or subdquesnt?
+          // try to connect like first time
+          this.warmPeers.push(message.data)
+          this.Peers.peerAlreadyJoinSetData(message.data)
+          // this.Peers.peerJoin(message.data)
+          // check if joined now?
+          let reEstablishShort = this.Peers.checkConnectivityStatus(message, this.warmPeers)
+          this.Peers.setRestablished(message.data.publickey, reEstablishShort)
+          if (reEstablishShort.live === true) {
+            // first time use or returning use?
+            if (Object.keys(reEstablishShort.peer).length === 0) {
               let peerActionData = this.Peers.peerHolder[message.data.publickey]
               this.Peers.routeDataPath(message.data.publickey, peerActionData.data)
             } else {
-            // returning peer via topic
-            let peerActionData = this.Peers.peerHolder[message.data.publickey]
-            this.Peers.routeDataPath(reEstablishShort.peer.value.livePeerkey, peerActionData.data)
+              if (reEstablishShort.peer.value?.livePeerkey.length === 0) {
+                let peerActionData = this.Peers.peerHolder[message.data.publickey]
+                this.Peers.routeDataPath(message.data.publickey, peerActionData.data)
+              } else {
+              // returning peer via topic
+              let peerActionData = this.Peers.peerHolder[message.data.publickey]
+              this.Peers.routeDataPath(reEstablishShort.peer.value.livePeerkey, peerActionData.data)
+              }
+            }
+          } else {
+            // one peer server one peer client on topic  based upon who set the topic
+            if (reEstablishShort.peer.value.settopic === true) {
+              this.Peers.topicConnect(reEstablishShort.peer.value.topic)
+            } else {
+              this.Peers.topicListen(reEstablishShort.peer.value.topic, message.data.publickey)
             }
           }
-        } else {
-          // one peer server one peer client on topic  based upon who set the topic
-          if (reEstablishShort.peer.value.settopic === true) {
-            this.Peers.topicConnect(reEstablishShort.peer.value.topic)
-          } else {
-            this.Peers.topicListen(reEstablishShort.peer.value.topic, message.data.publickey)
-          }
         }
+      } else if (message.task === 'peer-share-codename') {
+        this.Peers.setRole({ pubkey: message.data.publickey, codename: message.data.codename })
       }
-    } 
+    }
   }
 
   /**
@@ -232,11 +244,31 @@ class HolepunchWorker extends EventEmitter {
   warmPeerPrepare = function (data, existing) {
     // two checks, if topic send to other peer
     if (existing !== true) {
+      // need to match peer invited with live warm peers??
+      let codeNameInvite = ''
+      let livePeers = Object.keys(this.Peers.peerConnect)
+      for (let peer of livePeers) {
+        let pubKeyInviteOut = this.Peers.peerConnect[peer].publicKey.toString('hex')
+        let inviteIn = this.Peers.peersRole[pubKeyInviteOut]
+        if (inviteIn !== undefined) {
+          if (pubKeyInviteOut === inviteIn.invite.pubkey) {
+            codeNameInvite = { codename: inviteIn.invite.codename, invitePubkey: peer } 
+          }
+        }
+      }
       let peerRole = this.Peers.peersRole[data]
       if (peerRole === undefined) {
-        this.Peers.writeTonetworkTopic(data)
+        // also add codename to message
+        let codeNameInform = {}
+        codeNameInform.type = 'codeNameInform'
+        codeNameInform.action = 'set'
+        codeNameInform.data = { inviteCode: codeNameInvite , publickey: data }
+        // let peerInInfo = this.Peers.peersRole[data]
+        this.emit('codename-info-invite', codeNameInform)
+        // send codename along with topic
+        this.Peers.writeTonetworkTopic(data, codeNameInform)
       } else {
-        console.log(' this peer set the topic')
+        console.log('topic set by this peer')
       }
     }
     // if data within coming then process that
