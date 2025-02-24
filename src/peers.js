@@ -437,10 +437,15 @@ class NetworkPeers extends EventEmitter {
       if (peerTopeerState.type === 'peer-share-invite') {
       } else if (peerTopeerState.type === 'private-chart') {  
         this.writeTonetworkData(livePubkey, peerTopeerState)
-      } else if (peerTopeerState.type === 'peer-share-topic') {
       } else if (peerTopeerState.type === 'public-n1-experiment') {
-      } else if (peerTopeerState.type === 'cue-space') {
+        this.writeToPublicLibrary(livePubkey, peerTopeerState)
+      } else if (peerTopeerState.type === 'private-cue-space') {
+        console.log('write to cue space')
+        this.writeToCueSpace(livePubkey, peerTopeerState)
       } else if (peerTopeerState.type === 'peer-write') {
+        this.Peers.writeTonetwork(peerTopeerState)
+      } else if (peerTopeerState.type === 'public-library') {
+        this.Peers.writeToPublicLibrary(data)
       }
     }
   }
@@ -494,19 +499,12 @@ class NetworkPeers extends EventEmitter {
    * @method writeToPublicLibrary
    *
   */
-  writeToPublicLibrary = function (publickey) {
+  writeToPublicLibrary = function (publickey, data) {
     // check this peer has asked for chart data
-    let connectTrue = publickey in this.peerConnect
-    let libraryTrue = publickey in this.peerHolder
-    if (connectTrue === true && libraryTrue === true) {
-      let libraryData = this.peerHolder[publickey]
       let dataShare = {}
-      dataShare.data = libraryData.data
+      dataShare.data = data
       dataShare.type = 'public-library'
       this.peerConnect[publickey].write(JSON.stringify(dataShare))
-    } else {
-      console.log('no board to write ie share with a peer')
-    }
   }
 
   /**
@@ -514,16 +512,8 @@ class NetworkPeers extends EventEmitter {
    * @method writeToCueSpace
    *
   */
-  writeToCueSpace = function (publickey) {
-    // check this peer has asked for space data
-    let connectTrue = publickey in this.peerConnect
-    let spaceTrue = publickey in this.peerHolder
-    if (connectTrue === true && spaceTrue === true) {
-      let libraryData = this.peerHolder[publickey]
-      this.peerConnect[publickey].write(JSON.stringify(libraryData))
-    } else {
-      console.log('no cuespace to write ie share with a peer')
-    }
+  writeToCueSpace = function (publickey, data) {
+    this.peerConnect[publickey].write(JSON.stringify(data))
   }
 
   /**

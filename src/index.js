@@ -179,7 +179,11 @@ class HolepunchWorker extends EventEmitter {
   * @method networkPath
   *
   */
-  networkPath = function (message) {
+networkPath = function (message) {
+  console.log('network path')
+  console.log(message)
+    // check if joined now?
+    let reEstablishShort = this.Peers.checkConnectivityStatus(message, this.warmPeers)
     if (message.action === 'share') {
 
       if (message.task === 'peer-share-invite' || message.task === 'peer-share-topic') {
@@ -204,8 +208,7 @@ class HolepunchWorker extends EventEmitter {
           this.warmPeers.push(message.data)
           this.Peers.peerAlreadyJoinSetData(message.data)
           // this.Peers.peerJoin(message.data)
-          // check if joined now?
-          let reEstablishShort = this.Peers.checkConnectivityStatus(message, this.warmPeers)
+
           this.Peers.setRestablished(message.data.publickey, reEstablishShort)
           if (reEstablishShort.live === true) {
             // first time use or returning use?
@@ -233,6 +236,14 @@ class HolepunchWorker extends EventEmitter {
         }
       } else if (message.task === 'peer-share-codename') {
         this.Peers.setRole({ pubkey: message.data.publickey, codename: message.data.codename })
+      } else if (message.task === 'cue-space') {
+        this.Peers.peerAlreadyJoinSetData(message.data)
+        let peerActionData = this.Peers.peerHolder[message.data.publickey]
+        this.Peers.routeDataPath(reEstablishShort.peer.value.livePeerkey, peerActionData.data)
+      } else if (message.task === 'public-n1-experiment') {
+        this.Peers.peerAlreadyJoinSetData(message.data)
+        let peerActionData = this.Peers.peerHolder[message.data.publickey]
+        this.Peers.routeDataPath(reEstablishShort.peer.value.livePeerkey, peerActionData.data)
       }
     }
   }
