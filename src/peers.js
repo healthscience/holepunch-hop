@@ -91,9 +91,6 @@ class NetworkPeers extends EventEmitter {
   listenNetwork = function  () {
     this.swarm.on('connection', (conn, info) => {
       // save peer connection instance for ongoing communication
-      // console.log('peer connection establihsed======================================')
-      // console.log(conn)
-      // console.log(info)
       // listen for replication  NEED UPTATED LOGIC
       this.store.replicate(conn)
       // assess if token is present to match to exsing peer account ID?
@@ -311,6 +308,14 @@ class NetworkPeers extends EventEmitter {
   */
   inviteDecoded = function (invite) {
     let splitInvite = invite.publickey.split('-')
+    if (splitInvite.length === 1) {
+      splitInvite = []
+      splitInvite.push('hop')
+      splitInvite.push(invite.publickey)
+      splitInvite.push('---')
+    } else {
+      // first time split fine
+    }
     return splitInvite
   }
 
@@ -593,7 +598,6 @@ class NetworkPeers extends EventEmitter {
   */
   topicConnect = async function (topic) {
     // const noisePublicKey = Buffer.alloc(32).fill(topic) // A topic must be 32 bytes
-    // console.log('noisePublicKey server', noisePublicKey)
     const noisePublicKey = Buffer.from(topic, 'hex') //  must be 32 bytes
     if (noisePublicKey.length === 32) {
       let topicKeylive = noisePublicKey.toString('hex')
