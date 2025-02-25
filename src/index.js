@@ -115,10 +115,16 @@ class HolepunchWorker extends EventEmitter {
     })
     // peer reconnection topic ie. able to reconnect again
     this.Peers.on('peer-reconnect-topic', (data) => {
+      console.log('reconnect topic')
+      console.log(data)
       this.emit('peer-reconnect-topic-notify', data)
       // aslo update saved contract to add topic
       // this.emit('peer-topic-save', data)
       this.emit('peer-topic-update', data)
+    })
+    // codename matching
+    this.Peers.on('peer-codename-match', (data) => {
+      console.log('codename match start ---------')
     })
     // data for beebee
     this.Peers.on('beebee-data', (data) => {
@@ -144,16 +150,22 @@ class HolepunchWorker extends EventEmitter {
     })
     // new warm incoming peer
     this.Peers.on('connect-warm-first', (data) => {
+      console.log('connect-warm-first')
       // check re establishing peer to peer of first time connection?
-      let peerInfo = this.Peers.peerHolder[data]
-      if (peerInfo === undefined) {
+      let peerInfoName = 'not matched' //this.Peers.peerHolder[data]
+      // check role and match codename
+      // let peerRole = this.Peers.matchCodename(data.publickey)
+      // console.log('-match incoming peer to peer invite set name')
+      // console.log(peerRole)
+      /* if (peerRole.name.length > 0) {
         // receiving peer
-        peerInfo = { name: 'peernew'}
-      }
+        peerInfoName = peerRole.name
+      } */
       // setup template for relationship
       let peerId = {}
-      peerId.name = peerInfo.name
-      peerId.publickey = data
+      peerId.name = peerInfoName
+      peerId.publickey = data.publickey
+      peerId.roletaken = data.roletaken
       peerId.longterm = true
       peerId.settopic = false
       peerId.topic = ''
@@ -179,16 +191,14 @@ class HolepunchWorker extends EventEmitter {
   * @method networkPath
   *
   */
-networkPath = function (message) {
-  console.log('network path')
-  console.log(message)
-    // check if joined now?
-    let reEstablishShort = this.Peers.checkConnectivityStatus(message, this.warmPeers)
+  networkPath = function (message) {
+    console.log('network path')
+    console.log(message)
     if (message.action === 'share') {
-
+      // check if joined now?
+      let reEstablishShort = this.Peers.checkConnectivityStatus(message, this.warmPeers, 'invite-gen')
       if (message.task === 'peer-share-invite' || message.task === 'peer-share-topic') {
         // has the peer joined already?
-        let peerTopeerState = this.Peers.checkConnectivityStatus(message, this.warmPeers)
         let peerMatch = false
         for (let wpeer of this.warmPeers) {
           if (wpeer.publickey = message.data.publickey) {
@@ -196,8 +206,9 @@ networkPath = function (message) {
           }
         }
         // new peer?
+        let peerTopeerState = this.Peers.checkConnectivityStatus(message, this.warmPeers, 'share-path')
         if (peerTopeerState.live === false && peerTopeerState.existing === false) {
-          this.Peers.setRole({ pubkey: message.data.publickey, codename: message.data.codename })
+          this.Peers.setRole({ pubkey: message.data.publickey, codename: message.data.codename, name: '' })
           // new peer keep track and start join process
           this.warmPeers.push(message.data)
           this.Peers.peerAlreadyJoinSetData(message.data)
@@ -235,7 +246,8 @@ networkPath = function (message) {
           }
         }
       } else if (message.task === 'peer-share-codename') {
-        this.Peers.setRole({ pubkey: message.data.publickey, codename: message.data.codename })
+        // from peer generating the invite
+        this.Peers.setRole({ pubkey: message.data.publickey, codename: message.data.codename, name: message.data.name })
       } else if (message.task === 'cue-space') {
         this.Peers.peerAlreadyJoinSetData(message.data)
         let peerActionData = this.Peers.peerHolder[message.data.publickey]
@@ -243,6 +255,8 @@ networkPath = function (message) {
       } else if (message.task === 'public-n1-experiment') {
         this.Peers.peerAlreadyJoinSetData(message.data)
         let peerActionData = this.Peers.peerHolder[message.data.publickey]
+        conosle.log('n1')
+        console.log(reEstablishShort)
         this.Peers.routeDataPath(reEstablishShort.peer.value.livePeerkey, peerActionData.data)
       }
     }
@@ -253,41 +267,73 @@ networkPath = function (message) {
    * @method warmPeerPrepare
    */
   warmPeerPrepare = function (data, existing) {
+    console.log('warm peer prepare')
+    console.log(data)
     // two checks, if topic send to other peer
     if (existing !== true) {
-      // need to match peer invited with live warm peers??
-      let codeNameInvite = ''
-      let livePeers = Object.keys(this.Peers.peerConnect)
-      for (let peer of livePeers) {
-        let pubKeyInviteOut = this.Peers.peerConnect[peer].publicKey.toString('hex')
-        let inviteIn = this.Peers.peersRole[pubKeyInviteOut]
-        if (inviteIn !== undefined) {
-          if (pubKeyInviteOut === inviteIn.invite.pubkey) {
-            codeNameInvite = { codename: inviteIn.invite.codename, invitePubkey: peer } 
-          }
+      // match publick key to warmpeers
+      let peerMatch = {}
+      for (let wpeer of this.warmPeers) {
+        if (wpeer.publickey === data) {
+          peerMatch = wpeer
         }
       }
-      let peerRole = this.Peers.peersRole[data]
-      if (peerRole === undefined) {
+      console.log('peer match')
+      console.log(peerMatch)
+      // client of server Role?
+      // let role = this.Peers.getRole(data)
+      if (peerMatch.roletaken === 'client') {
+        console.log('topic set by this peer end  CODE NAME TO CONFIRM ID')
+        let roleStatus = this.Peers.matchCodename(data)
+        console.log('status of role and codename------------')
+        console.log(roleStatus)
+        let codenameInform = {}
+        codenameInform.type = 'codeNameInform'
+        codenameInform.action = 'set'
+        codenameInform.data = { inviteCode: roleStatus.codename , publickey: data }
+        this.Peers.writeTonetworkData(data, codenameInform) 
+        // inform peer of codename
+      } else if (peerMatch.roletaken === 'server') {
+        // also add codename to message
+        let codeNameInform = {}
+        codeNameInform.type = 'peer-codename-inform'
+        codeNameInform.action = 'set'
+        codeNameInform.data = { inviteCode: '' , publickey: data }
+        // let peerInInfo = this.Peers.peersRole[data]
+        // in form beebee 
+        this.emit('invite-live-peer', codeNameInform)
+        // send topic to allow peer to reconnect
+        this.Peers.writeTonetworkTopic(data, codeNameInform)
+      }
+      /*
+      // need to match peer invited with live warm peers??
+      let peerRole = this.Peers.matchCodename(data)
+      console.log('rolem atch funciton backckckckck')
+      console.log(peerRole)
+      if (peerRole.role !== undefined) {
         // also add codename to message
         let codeNameInform = {}
         codeNameInform.type = 'codeNameInform'
         codeNameInform.action = 'set'
-        codeNameInform.data = { inviteCode: codeNameInvite , publickey: data }
+        codeNameInform.data = { inviteCode: peerRole.codename , publickey: data }
         // let peerInInfo = this.Peers.peersRole[data]
-        this.emit('codename-info-invite', codeNameInform)
+        this.emit('invite-live-peer', codeNameInform)
         // send codename along with topic
         this.Peers.writeTonetworkTopic(data, codeNameInform)
       } else {
         console.log('topic set by this peer')
-      }
+        // inform peer of codename
+      } */
     }
+
     // if data within coming then process that
     let peerDataExist = this.Peers.peerHolder[data]
     if (peerDataExist === undefined) {
     } else {
       // what type of data being shared?
       // check for data along with new peer?
+      this.Peers.routeDataPath(data, peerDataExist)
+      /*
       if (peerDataExist.data !== undefined) {
         if (peerDataExist.data.type === 'private-chart') {
           this.Peers.writeTonetworkData(data, peerDataExist.data)
@@ -301,7 +347,7 @@ networkPath = function (message) {
           // simpole text message
           this.Peers.writeTonetwork(data)
         }
-      }
+      } */
     }
   }
 

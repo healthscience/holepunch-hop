@@ -26,7 +26,7 @@ class NetworkPeers extends EventEmitter {
     this.peerConnect = {}
     this.topicHolder = {}
     this.sendTopicHolder = []
-    this.peersRole = {}
+    this.peersRole = []
   }
 
   /**
@@ -68,8 +68,10 @@ class NetworkPeers extends EventEmitter {
    *
   */
   setRole = function (peerData) {
+    console.log('set rolele lllooool')
+    console.log(peerData)
     let setRole = { send: 'prime' , invite: peerData}
-    this.peersRole[peerData.pubkey] = setRole
+    this.peersRole.push(setRole)
   }
 
   /**
@@ -90,12 +92,15 @@ class NetworkPeers extends EventEmitter {
   */
   listenNetwork = function  () {
     this.swarm.on('connection', (conn, info) => {
+      console.log('peerinfo FIRST------------')
+      console.log(info)
       // save peer connection instance for ongoing communication
       // listen for replication  NEED UPTATED LOGIC
       this.store.replicate(conn)
       // assess if token is present to match to exsing peer account ID?
       let publicKeylive = info.publicKey.toString('hex')
       let topicKeylive = info.topics
+      let roleTaken = info.client
       // if now topics info then server, pass by
       let discoveryTopicInfo = {}
       if (topicKeylive.length === 0) {
@@ -182,11 +187,23 @@ class NetworkPeers extends EventEmitter {
         // first time or from topic reset?
         // need to check from client and server side
         if (this.topicHolder[publicKeylive] === undefined) {
+          console.log('first time connection one')
+          // is client or server role
+          let roleType = ''
+          if (roleTaken === false) {
+            roleType = 'server'
+          } else {
+            roleType = 'client'
+          }
+          let roleContext = {}
+          roleContext.publickey = publicKeylive
+          roleContext.roletaken = roleType
           // first time cheeck for data long with it?
           this.peerConnect[publicKeylive] = conn
           this.dataFlowCheck(publicKeylive, 'first')
-          this.emit('connect-warm-first', publicKeylive)
+          this.emit('connect-warm-first', roleContext)
         } else {
+          console.log('first time connection two')
           this.peerConnect[publicKeylive] = conn
           this.dataFlowCheck(publicKeylive, 'server')
         }
@@ -210,6 +227,8 @@ class NetworkPeers extends EventEmitter {
     if (Buffer.isBuffer(data)) {
       try {
         let dataShareIn = JSON.parse(data.toString())
+        console.log('dataShareIn')
+        console.log(dataShareIn)
         if (dataShareIn.type === 'private-chart') {
           this.emit('beebee-data', dataShareIn)
           // need to look at NXP,  modules and within for reference contracts.
@@ -221,6 +240,9 @@ class NetworkPeers extends EventEmitter {
         } else if (dataShareIn.type === 'public-library') {
           this.emit('publiclibrarynotification', dataShareIn)
         } else if (dataShareIn.type === 'peer') {
+        } else if (dataShareIn.type === 'peer-codename-inform') {
+          // all peer to match publicke to codename then update save and infom beebee
+          this.emit('peer-codename-match', dataShareIn)
         } else if (dataShareIn.type === 'topic-reconnect') {
           // peer has share a topic for future reconnect
           // check if publickey is  topic key if yes, already active do nothing
@@ -247,16 +269,21 @@ class NetworkPeers extends EventEmitter {
    * what is the connectivity between two peers
    *  @method checkConnectivityStatus
   */
-  checkConnectivityStatus = function (message, warmPeers) {
+  checkConnectivityStatus = function (message, warmPeers, decodePath) {
+    console.log('checkConnectivityStatus')
+    console.log(message)
     let ptopStatus = {}
     let savedPtoP = false
     let livePtoP = false
     let savedpeerInfo = {}
     let peerMatch = false
     // split invite to parts
-    let parts = this.inviteDecoded(message.data)
-    message.data.publickey = parts[1]
-    message.data.codename = parts[2]
+    if (decodePath === 'invite-gen') {
+      let parts = this.inviteDecoded(message.data)
+      message.data.publickey = parts[1]
+      message.data.codename = parts[2]
+    } else {
+    }
     // check saved i.e. exsting known peer
     for (let exPeer of this.peerNetwork) {
       if (exPeer.key === message.data.publickey) {
@@ -302,8 +329,51 @@ class NetworkPeers extends EventEmitter {
   }
 
   /**
+  *  match codename to peer name
+  *  @method matchCodename
+  * 
+  */
+  matchCodename = function (data) {
+    console.log('codename match==============================')
+    console.log(data)
+    console.log(this.peersRole)
+    let codeNameInvite = {}
+    let livePeers = Object.keys(this.peerConnect)
+    let inviteIn = {}
+    for (let roleP of this.peersRole) {
+      console.log(roleP)
+      if (roleP.invite.pubkey === data) {
+        inviteIn = roleP
+      }
+    }
+    codeNameInvite = { codename: inviteIn.invite.codename, invitePubkey: data , name: inviteIn.invite.name}
+    /*
+    for (let peer of livePeers) {
+      console.log('lloooop')
+      let pubKeyInviteOut = this.peerConnect[peer].publicKey.toString('hex')
+      console.log(pubKeyInviteOut)
+      inviteIn = this.peersRole[pubKeyInviteOut]
+      console.log('invite in')
+      console.log(inviteIn)
+      if (inviteIn !== undefined) {
+        console.log('not undefined')
+        console.log(pubKeyInviteOut)
+        console.log(inviteIn.invite.pubkey)
+        if (pubKeyInviteOut === inviteIn.invite.pubkey) {
+          codeNameInvite = { codename: inviteIn.invite.codename, invitePubkey: peer } 
+        }
+      }
+    } */
+    // match codename to role
+    let roleMatch = { publickey: data, role: inviteIn, codename: codeNameInvite.codename, name: codeNameInvite.name }
+    console.log('matching')
+    console.log(roleMatch)
+    return roleMatch
+  }
+
+  /**
   *  split invte code string
-  *  @method dataFlowCheck
+  *  @method inviteDecoded
   * 
   */
   inviteDecoded = function (invite) {
@@ -312,7 +382,7 @@ class NetworkPeers extends EventEmitter {
       splitInvite = []
       splitInvite.push('hop')
       splitInvite.push(invite.publickey)
-      splitInvite.push('---')
+      splitInvite.push(invite.codename)
     } else {
       // first time split fine
     }
@@ -380,7 +450,7 @@ class NetworkPeers extends EventEmitter {
           }
         }
       }
-    // any data to write to network?
+    // any data to write to network? NOT USED?
     let checkDataShare = Object.keys(peerTopeerState).length
     if (checkDataShare > 0) {
       if (peerTopeerState.type === 'peer-share-invite') {
@@ -440,7 +510,6 @@ class NetworkPeers extends EventEmitter {
       } else if (peerTopeerState.type === 'public-n1-experiment') {
         this.writeToPublicLibrary(livePubkey, peerTopeerState)
       } else if (peerTopeerState.type === 'private-cue-space') {
-        console.log('write to cue space')
         this.writeToCueSpace(livePubkey, peerTopeerState)
       } else if (peerTopeerState.type === 'peer-write') {
         this.Peers.writeTonetwork(peerTopeerState)
