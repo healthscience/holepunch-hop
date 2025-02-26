@@ -68,10 +68,25 @@ class NetworkPeers extends EventEmitter {
    *
   */
   setRole = function (peerData) {
-    console.log('set rolele lllooool')
-    console.log(peerData)
     let setRole = { send: 'prime' , invite: peerData}
     this.peersRole.push(setRole)
+  }
+
+  /**
+   * look at role of each peer save and join or listen to network
+   * @method setupConnectionBegin
+   *
+  */
+  setupConnectionBegin = function (peerNetwork) {
+    for (let sPeer of peerNetwork) {
+      if (sPeer.value.settopic === true) {
+        // client role
+        this.topicConnect(sPeer.value.topic)
+      } else {
+        // server role
+        this.topicListen(sPeer.value.topic, sPeer.key)
+      }
+    }
   }
 
   /**
@@ -92,8 +107,8 @@ class NetworkPeers extends EventEmitter {
   */
   listenNetwork = function  () {
     this.swarm.on('connection', (conn, info) => {
-      console.log('peerinfo FIRST------------')
-      console.log(info)
+      // console.log('peerinfo FIRST------------')
+      // console.log(info)
       // save peer connection instance for ongoing communication
       // listen for replication  NEED UPTATED LOGIC
       this.store.replicate(conn)
@@ -187,7 +202,6 @@ class NetworkPeers extends EventEmitter {
         // first time or from topic reset?
         // need to check from client and server side
         if (this.topicHolder[publicKeylive] === undefined) {
-          console.log('first time connection one')
           // is client or server role
           let roleType = ''
           if (roleTaken === false) {
@@ -203,7 +217,6 @@ class NetworkPeers extends EventEmitter {
           this.dataFlowCheck(publicKeylive, 'first')
           this.emit('connect-warm-first', roleContext)
         } else {
-          console.log('first time connection two')
           this.peerConnect[publicKeylive] = conn
           this.dataFlowCheck(publicKeylive, 'server')
         }
@@ -227,8 +240,6 @@ class NetworkPeers extends EventEmitter {
     if (Buffer.isBuffer(data)) {
       try {
         let dataShareIn = JSON.parse(data.toString())
-        console.log('dataShareIn')
-        console.log(dataShareIn)
         if (dataShareIn.type === 'private-chart') {
           this.emit('beebee-data', dataShareIn)
           // need to look at NXP,  modules and within for reference contracts.
@@ -270,8 +281,6 @@ class NetworkPeers extends EventEmitter {
    *  @method checkConnectivityStatus
   */
   checkConnectivityStatus = function (message, warmPeers, decodePath) {
-    console.log('checkConnectivityStatus')
-    console.log(message)
     let ptopStatus = {}
     let savedPtoP = false
     let livePtoP = false
@@ -334,40 +343,33 @@ class NetworkPeers extends EventEmitter {
   * 
   */
   matchCodename = function (data) {
-    console.log('codename match==============================')
-    console.log(data)
-    console.log(this.peersRole)
     let codeNameInvite = {}
-    let livePeers = Object.keys(this.peerConnect)
     let inviteIn = {}
     for (let roleP of this.peersRole) {
-      console.log(roleP)
       if (roleP.invite.pubkey === data) {
         inviteIn = roleP
       }
     }
     codeNameInvite = { codename: inviteIn.invite.codename, invitePubkey: data , name: inviteIn.invite.name}
-    /*
-    for (let peer of livePeers) {
-      console.log('lloooop')
-      let pubKeyInviteOut = this.peerConnect[peer].publicKey.toString('hex')
-      console.log(pubKeyInviteOut)
-      inviteIn = this.peersRole[pubKeyInviteOut]
-      console.log('invite in')
-      console.log(inviteIn)
-      if (inviteIn !== undefined) {
-        console.log('not undefined')
-        console.log(pubKeyInviteOut)
-        console.log(inviteIn.invite.pubkey)
-        if (pubKeyInviteOut === inviteIn.invite.pubkey) {
-          codeNameInvite = { codename: inviteIn.invite.codename, invitePubkey: peer } 
-        }
-      }
-    } */
     // match codename to role
     let roleMatch = { publickey: data, role: inviteIn, codename: codeNameInvite.codename, name: codeNameInvite.name }
-    console.log('matching')
-    console.log(roleMatch)
+    return roleMatch
+  }
+
+  /**
+  *  match codename to peer codename
+  *  @method matchPeersCodename
+  * 
+  */
+  matchPeersCodename = function (data) {
+    let inviteIn = {}
+    for (let roleP of this.peersRole) {
+      if (roleP.invite.codename === data.data.inviteCode) {
+        inviteIn = roleP
+      }
+    }
+    // match codename to role
+    let roleMatch = { publickey: data, role: inviteIn, codename: inviteIn.invite.codename, name: inviteIn.invite.name }
     return roleMatch
   }
 
@@ -401,7 +403,9 @@ class NetworkPeers extends EventEmitter {
     if (role === 'client') {
       matchPeer = this.topicHolder[topicIn]
       let peerActionData = this.peerHolder[matchPeer.peerKey]
-      peerTopeerState = peerActionData.data
+      if (peerActionData !== undefined) {  
+        peerTopeerState = peerActionData.data
+      }
     } else if (role === 'server') {
       matchPeer.currentPubkey = topicIn
       // loop over topics and see what info available??
@@ -539,17 +543,17 @@ class NetworkPeers extends EventEmitter {
     const randomString = crypto.randomBytes(32).toString('hex')
     // Convert the random string to a buffer
     const buffer = Buffer.from(randomString, 'hex')
-      let topicGeneration =  randomString // 'kprel135811kprel135811kprel13581'
-      // need to save the topic initiator of warm peer save relationship
-      this.emit('peer-topic-save', { peerkey: publickey, topic: topicGeneration, settopic: true })
+      let topicGeneration =  randomString
       // send to other peer topic to allow reconnection in future
       let topicShare = {}
       topicShare.type = 'topic-reconnect'
       topicShare.publickey = this.swarm.keyPair.publicKey.toString('hex')
       topicShare.peerkey = this.swarm.keyPair.publicKey.toString('hex')
+      topicShare.prime = true
       topicShare.topic = topicGeneration
       topicShare.codename = codeName
       topicShare.data = topicGeneration
+      this.emit('topic-formed-save', topicShare)
       // inform peer that topic has been created
       this.peerConnect[publickey].write(JSON.stringify(topicShare))
   }

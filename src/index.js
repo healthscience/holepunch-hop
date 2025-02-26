@@ -35,6 +35,8 @@ class HolepunchWorker extends EventEmitter {
     this.discKeypeer = ''
     this.readcore = null
     this.warmPeers = [] // ikeep track of live incoming sharing
+    this.codenameUpdates = []
+    this.topicExhange = []
     this.startHolepunch()
     this.networkListeners()
   }
@@ -110,21 +112,19 @@ class HolepunchWorker extends EventEmitter {
       this.wsocket.send(JSON.stringify(peerFail))
     })
     // save peer topic
-    this.Peers.on('peer-topic-save', async (data) => {
-      await this.emit('peer-topic-update', data)    
+    this.Peers.on('peer-reconnect-topic', async (data) => {
+      data.prime = false
+      this.emit('peer-topic-update', data)    
     })
     // peer reconnection topic ie. able to reconnect again
-    this.Peers.on('peer-reconnect-topic', (data) => {
-      console.log('reconnect topic')
-      console.log(data)
-      this.emit('peer-reconnect-topic-notify', data)
-      // aslo update saved contract to add topic
-      // this.emit('peer-topic-save', data)
-      this.emit('peer-topic-update', data)
+    this.Peers.on('topic-formed-save', (data) => {
+      // put data into holder await for codename  matching over
+      this.topicExhange.push(data)
     })
     // codename matching
     this.Peers.on('peer-codename-match', (data) => {
-      console.log('codename match start ---------')
+      // put in holding and then complete once save first complete
+      this.codenameUpdates.push(data)
     })
     // data for beebee
     this.Peers.on('beebee-data', (data) => {
@@ -150,17 +150,18 @@ class HolepunchWorker extends EventEmitter {
     })
     // new warm incoming peer
     this.Peers.on('connect-warm-first', (data) => {
-      console.log('connect-warm-first')
       // check re establishing peer to peer of first time connection?
-      let peerInfoName = 'not matched' //this.Peers.peerHolder[data]
+      let peerInfoName = 'not-matched' //this.Peers.peerHolder[data]
       // check role and match codename
-      // let peerRole = this.Peers.matchCodename(data.publickey)
-      // console.log('-match incoming peer to peer invite set name')
-      // console.log(peerRole)
-      /* if (peerRole.name.length > 0) {
-        // receiving peer
-        peerInfoName = peerRole.name
-      } */
+      if (data.roletaken === 'server') {
+        // not unique info to match on yet.
+      } else {
+        let peerRole = this.Peers.matchCodename(data.publickey)
+        if (peerRole.name.length > 0) {
+          // receiving peer
+          peerInfoName = peerRole.name
+        }
+      }
       // setup template for relationship
       let peerId = {}
       peerId.name = peerInfoName
@@ -192,8 +193,6 @@ class HolepunchWorker extends EventEmitter {
   *
   */
   networkPath = function (message) {
-    console.log('network path')
-    console.log(message)
     if (message.action === 'share') {
       // check if joined now?
       let reEstablishShort = this.Peers.checkConnectivityStatus(message, this.warmPeers, 'invite-gen')
@@ -208,7 +207,8 @@ class HolepunchWorker extends EventEmitter {
         // new peer?
         let peerTopeerState = this.Peers.checkConnectivityStatus(message, this.warmPeers, 'share-path')
         if (peerTopeerState.live === false && peerTopeerState.existing === false) {
-          this.Peers.setRole({ pubkey: message.data.publickey, codename: message.data.codename, name: '' })
+          // first time
+          this.Peers.setRole({ pubkey: message.data.publickey, codename: message.data.codename, name: message.data.name })
           // new peer keep track and start join process
           this.warmPeers.push(message.data)
           this.Peers.peerAlreadyJoinSetData(message.data)
@@ -255,8 +255,6 @@ class HolepunchWorker extends EventEmitter {
       } else if (message.task === 'public-n1-experiment') {
         this.Peers.peerAlreadyJoinSetData(message.data)
         let peerActionData = this.Peers.peerHolder[message.data.publickey]
-        conosle.log('n1')
-        console.log(reEstablishShort)
         this.Peers.routeDataPath(reEstablishShort.peer.value.livePeerkey, peerActionData.data)
       }
     }
@@ -267,8 +265,8 @@ class HolepunchWorker extends EventEmitter {
    * @method warmPeerPrepare
    */
   warmPeerPrepare = function (data, existing) {
-    console.log('warm peer prepare')
-    console.log(data)
+    // check if codename holder has any data to process
+    this.processCodenameMatching(data)
     // two checks, if topic send to other peer
     if (existing !== true) {
       // match publick key to warmpeers
@@ -278,52 +276,27 @@ class HolepunchWorker extends EventEmitter {
           peerMatch = wpeer
         }
       }
-      console.log('peer match')
-      console.log(peerMatch)
       // client of server Role?
       // let role = this.Peers.getRole(data)
       if (peerMatch.roletaken === 'client') {
-        console.log('topic set by this peer end  CODE NAME TO CONFIRM ID')
         let roleStatus = this.Peers.matchCodename(data)
-        console.log('status of role and codename------------')
-        console.log(roleStatus)
         let codenameInform = {}
-        codenameInform.type = 'codeNameInform'
+        codenameInform.type = 'peer-codename-inform'
         codenameInform.action = 'set'
-        codenameInform.data = { inviteCode: roleStatus.codename , publickey: data }
+        codenameInform.data = { inviteCode: roleStatus.codename , publickey: data, peerkey: this.swarm.keyPair.publicKey.toString('hex') }
         this.Peers.writeTonetworkData(data, codenameInform) 
         // inform peer of codename
       } else if (peerMatch.roletaken === 'server') {
-        // also add codename to message
+        // notify beebee peer to live
         let codeNameInform = {}
         codeNameInform.type = 'peer-codename-inform'
         codeNameInform.action = 'set'
         codeNameInform.data = { inviteCode: '' , publickey: data }
-        // let peerInInfo = this.Peers.peersRole[data]
         // in form beebee 
         this.emit('invite-live-peer', codeNameInform)
         // send topic to allow peer to reconnect
         this.Peers.writeTonetworkTopic(data, codeNameInform)
       }
-      /*
-      // need to match peer invited with live warm peers??
-      let peerRole = this.Peers.matchCodename(data)
-      console.log('rolem atch funciton backckckckck')
-      console.log(peerRole)
-      if (peerRole.role !== undefined) {
-        // also add codename to message
-        let codeNameInform = {}
-        codeNameInform.type = 'codeNameInform'
-        codeNameInform.action = 'set'
-        codeNameInform.data = { inviteCode: peerRole.codename , publickey: data }
-        // let peerInInfo = this.Peers.peersRole[data]
-        this.emit('invite-live-peer', codeNameInform)
-        // send codename along with topic
-        this.Peers.writeTonetworkTopic(data, codeNameInform)
-      } else {
-        console.log('topic set by this peer')
-        // inform peer of codename
-      } */
     }
 
     // if data within coming then process that
@@ -349,6 +322,52 @@ class HolepunchWorker extends EventEmitter {
         }
       } */
     }
+  }
+
+  /**
+   * process codename  matches after first save has happened.
+   * @method testCorestore
+   *
+  */
+  processCodenameMatching = async function (data) {
+    let updateCodeName = []
+    for (let cname of this.codenameUpdates) {
+      if (cname.data.peerkey === data) {
+        let matchCodename = this.Peers.matchPeersCodename(cname)
+        // need to matchs
+        let warmMatch = {}
+        for (let wpeer of this.warmPeers) {
+          if (wpeer.publickey === cname.data.peerkey) {
+            warmMatch = wpeer
+          }
+        }
+        matchCodename.peerkey = cname.data.peerkey
+        // update save for longterm and inform beebee
+        this.emit('peer-codename-update', matchCodename)
+      } else {
+        updateCodeName.push(cname)
+      }
+    }
+    this.codenameUpdates = updateCodeName
+  }
+
+ /**
+   * inform other peer of token for future connection
+   * @method topicSaveReturn
+   *
+  */
+  topicSaveReturn = function (data) {
+    let updateTopic = []
+    for (let ctopic of this.topicExhange) {
+      if (ctopic.key === data.publickey) {
+        this.emit('peer-reconnect-topic-notify', ctopic)
+        // update saved contract to add topic
+        this.emit('peer-topic-update', ctopic)
+      } else {
+        updateTopic.push(ctopic)
+      }
+    }
+    this.tpiocSaveReturn = updateTopic
   }
 
   /**
