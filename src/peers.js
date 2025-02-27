@@ -78,7 +78,9 @@ class NetworkPeers extends EventEmitter {
    *
   */
   setupConnectionBegin = function (peerNetwork) {
-    for (let sPeer of peerNetwork) {
+    this.peerNetwork = peerNetwork
+    for (let sPeer of this.peerNetwork) {
+      // sPeer.value.key = publicKeylive
       if (sPeer.value.settopic === true) {
         // client role
         this.topicConnect(sPeer.value.topic)
@@ -107,8 +109,6 @@ class NetworkPeers extends EventEmitter {
   */
   listenNetwork = function  () {
     this.swarm.on('connection', (conn, info) => {
-      // console.log('peerinfo FIRST------------')
-      // console.log(info)
       // save peer connection instance for ongoing communication
       // listen for replication  NEED UPTATED LOGIC
       this.store.replicate(conn)
@@ -176,10 +176,11 @@ class NetworkPeers extends EventEmitter {
 
         if (serverStatus === true) {
           // set to live
+          // update livePeerkey to true?? 
           let originalKey = ''
           for (let savePeer of this.peerNetwork) {
             if (savePeer.value.topic === topicServer.topic) {
-              originalKey = savePeer.value.publickey    
+              originalKey = savePeer.value.publickey  
             }
           }
           // need original connection public key

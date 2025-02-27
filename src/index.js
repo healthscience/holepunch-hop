@@ -249,13 +249,26 @@ class HolepunchWorker extends EventEmitter {
         // from peer generating the invite
         this.Peers.setRole({ pubkey: message.data.publickey, codename: message.data.codename, name: message.data.name })
       } else if (message.task === 'cue-space') {
-        this.Peers.peerAlreadyJoinSetData(message.data)
-        let peerActionData = this.Peers.peerHolder[message.data.publickey]
-        this.Peers.routeDataPath(reEstablishShort.peer.value.livePeerkey, peerActionData.data)
+          // first time or turning
+        if (Object.keys(reEstablishShort.peer).length === 0) {
+          this.Peers.peerAlreadyJoinSetData(message.data)
+          let peerActionData = this.Peers.peerHolder[message.data.publickey]
+          this.Peers.routeDataPath(message.data.publickey, peerActionData.data)
+        } else {
+          this.Peers.peerAlreadyJoinSetData(message.data)
+          let peerActionData = this.Peers.peerHolder[message.data.publickey]
+          this.Peers.routeDataPath(reEstablishShort.peer.value.livePeerkey, peerActionData.data)
+        }
       } else if (message.task === 'public-n1-experiment') {
-        this.Peers.peerAlreadyJoinSetData(message.data)
-        let peerActionData = this.Peers.peerHolder[message.data.publickey]
-        this.Peers.routeDataPath(reEstablishShort.peer.value.livePeerkey, peerActionData.data)
+        if (Object.keys(reEstablishShort.peer).length === 0) {
+          this.Peers.peerAlreadyJoinSetData(message.data)
+          let peerActionData = this.Peers.peerHolder[message.data.publickey]
+          this.Peers.routeDataPath(message.data.publickey, peerActionData.data)
+        } else {
+          this.Peers.peerAlreadyJoinSetData(message.data)
+          let peerActionData = this.Peers.peerHolder[message.data.publickey]
+          this.Peers.routeDataPath(reEstablishShort.peer.value.livePeerkey, peerActionData.data)
+        }
       }
     }
   }
