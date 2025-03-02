@@ -380,14 +380,19 @@ class NetworkPeers extends EventEmitter {
   * 
   */
   inviteDecoded = function (invite) {
-    let splitInvite = invite.publickey.split('-')
-    if (splitInvite.length === 1) {
-      splitInvite = []
+    const [prefix, hexString] = invite.publickey.split(':')
+    let splitInvite = []
+    if (prefix === 'hop') {
+      const next32Bytes = hexString.slice(0, 64)
+      const remainder = hexString.slice(64)
+      splitInvite.push('hop')
+      splitInvite.push(next32Bytes)
+      splitInvite.push(remainder)
+    } else {
+      // first time split fine
       splitInvite.push('hop')
       splitInvite.push(invite.publickey)
       splitInvite.push(invite.codename)
-    } else {
-      // first time split fine
     }
     return splitInvite
   }
