@@ -350,7 +350,7 @@ class HyperBee extends EventEmitter {
     let cuesData = []
     for await (const { key, value } of cuesHistory) {
       cuesData.push({ key, value })
-    }    
+    }
     return cuesData
   }
 
@@ -541,7 +541,7 @@ class HyperBee extends EventEmitter {
     let cuesData = []
     for await (const { key, value } of cuesHistory) {
       cuesData.push({ key, value })
-    }    
+    }
     return cuesData
   }
 
