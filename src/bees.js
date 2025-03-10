@@ -105,6 +105,13 @@ class HyperBee extends EventEmitter {
     await this.dbBentocues.ready()
     beePubkeys.push({store:'bentocues', pubkey: b4a.toString(core7.key, 'hex')})
 
+    const core13 = this.store.get({ name: 'bentomodels' })
+    this.dbBentomodels = new Hyperbee(core13, {
+      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      valueEncoding: 'json' // same options as above
+    })
+    await this.dbBentomodels.ready()
+    beePubkeys.push({store:'bentomodels', pubkey: b4a.toString(core7.key, 'hex')})
 
     const core8 = this.store.get({ name: 'bentodecisions' })
     this.dbBentodecisions = new Hyperbee(core8, {
@@ -149,6 +156,12 @@ class HyperBee extends EventEmitter {
     await this.dbBentomedia.ready()
     beePubkeys.push({store:'bentomedia', pubkey: b4a.toString(core12.key, 'hex')})
     
+    // temp delete agents
+    //this.deleteBentoModel({ id: 'ba5b7ba40a1dc5c37722c75d29353437e94f805c'})
+    // this.deleteBentoModel({ id: '8df43201925ccfe8a0a5f57b785762a5eee7a125'})
+    // this.deleteBentoModel({ id: ''})
+
+
     this.emit('hbee-live')
     // return beePubkeys
     let startBeePubkey = {}
@@ -362,6 +375,52 @@ class HyperBee extends EventEmitter {
     const deleteStatus = await this.dbBentocues.del(cue.cueid)
     let deleteInfo = {}
     deleteInfo.spaceid = cue.cueid
+    return deleteInfo
+  }
+
+  /** MODELS */
+  /**
+   * save model
+   * @method saveModel
+  */
+  saveModel = async function (modelInfo) {
+    await this.dbBentomodels.put(modelInfo.id, modelInfo.data)
+    let checkSave = await this.getModel(modelInfo.id)
+    return checkSave
+  }
+
+  /**
+   * get one cue by id
+   * @method getModel
+   *
+  */
+  getModel = async function (key) {
+    const nodeData = await this.dbBentomodels.get(key)
+    return nodeData
+  }
+
+  /**
+   * get all cuees
+   * @method getModelHistory
+   *
+  */
+  getModelHistory = async function (key) {
+    const modelHistory = await this.dbBentomodels.createReadStream()
+    let modelData = []
+    for await (const { key, value } of modelHistory) {
+      modelData.push({ key, value })
+    }
+    return modelData
+  }
+
+  /**
+   * delete nxp ref contract from peer library
+   * @method deleteBentomodel
+  */
+  deleteBentoModel = async function (model) {
+    const deleteStatus = await this.dbBentomodels.del(model.id)
+    let deleteInfo = {}
+    deleteInfo.id = model.id
     return deleteInfo
   }
 
