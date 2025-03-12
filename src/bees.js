@@ -78,6 +78,15 @@ class HyperBee extends EventEmitter {
     await this.dbBentospaces.ready()
     beePubkeys.push({store:'bentospaces', pubkey: b4a.toString(core3.key, 'hex')})
 
+    const core14 = this.store.get({ name: 'bentochat' })
+    this.dbBentochat = new Hyperbee(core14, {
+      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      valueEncoding: 'json' // same options as above
+    })
+    await this.dbBentochat.ready()
+    beePubkeys.push({store:'bentochat', pubkey: b4a.toString(core3.key, 'hex')})
+
+
     const core4 = this.store.get({ name: 'hopresults' })
     this.dbHOPresults = new Hyperbee(core4, {
       keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
@@ -157,9 +166,20 @@ class HyperBee extends EventEmitter {
     beePubkeys.push({store:'bentomedia', pubkey: b4a.toString(core12.key, 'hex')})
     
     // temp delete agents
-    //this.deleteBentoModel({ id: 'ba5b7ba40a1dc5c37722c75d29353437e94f805c'})
-    // this.deleteBentoModel({ id: '8df43201925ccfe8a0a5f57b785762a5eee7a125'})
-    // this.deleteBentoModel({ id: ''})
+    // this.deleteBentoModel({ id: '5e6e36c953b673fe7b2dd06dd773d43feea42a0d'})
+    // this.deleteBentoModel({ id: '8439ec4e6d6b89227145da877fffb697b1209d78'})
+    // this.deleteBentoModel({ id: 'ba5b7ba40a1dc5c37722c75d29353437e94f805c'})
+
+    /*this.deleteBentospace({ cueid: '296ce0efc66045c5842707d4652186e440f2fc21'})
+    this.deleteBentospace({ cueid: '7baf3109a5b2c5b64981b494984d1bb1fe72f3ba'})
+    this.deleteBentospace({ cueid: 'a820ec16b810603b3b1c6458f33d9f36bafdc533'})
+    this.deleteBentospace({ cueid: 'b96fa316c2f7eddf9b842da8c9ac2780f36abdff'})
+    this.deleteBentospace({ cueid: 'ddd7eb037439f97ead2d1e1be880e58d329ca54b'})
+    this.deleteBentospace({ cueid: 's-296ce0efc66045c5842707d4652186e440f2fc21'})
+    this.deleteBentospace({ cueid: 's-7baf3109a5b2c5b64981b494984d1bb1fe72f3ba'})
+    this.deleteBentospace({ cueid: 's-83dc025c2298b4673f62fbc436d2c1f8dc525fe8'})
+    this.deleteBentospace({ cueid: 's-b96fa316c2f7eddf9b842da8c9ac2780f36abdff'}) */
+
 
 
     this.emit('hbee-live')
@@ -224,13 +244,15 @@ class HyperBee extends EventEmitter {
     await this.dbHOPresults.put(refContract.hash, refContract.data)
   }
 
+  /** CHAT */
+
   /**
    * save chat history
    * @method saveBentochat
    *
   */
   saveBentochat = async function (chatHistory) {
-    await this.dbBentospaces.put(chatHistory.chat.chatid, chatHistory)
+    await this.dbBentochat.put(chatHistory.chat.chatid, chatHistory)
     let checkSave = await this.getBentochat(chatHistory.chat.chatid)
     return checkSave
   }
@@ -241,7 +263,7 @@ class HyperBee extends EventEmitter {
    *
   */
   deleteBentochat = async function (chat) {
-    await this.dbBentospaces.del(chat.chatid)
+    await this.dbBentochat.del(chat.chatid)
     let deleteInfo = {}
     deleteInfo.chatid = chat.chatid
     return deleteInfo
@@ -253,8 +275,7 @@ class HyperBee extends EventEmitter {
    *
   */
   getBentochat = async function (key) {
-    // let key = 'startbentospaces'
-    const nodeData = await this.dbBentospaces.get(key)
+    const nodeData = await this.dbBentochat.get(key)
     return nodeData
   }
 
@@ -264,13 +285,15 @@ class HyperBee extends EventEmitter {
    *
   */
   getBentochatHistory = async function (range) {
-    const chathistoryData = this.dbBentospaces.createReadStream() // { gt: 'a', lt: 'z' }) // anything >a and <z
+    const chathistoryData = this.dbBentochat.createReadStream() // { gt: 'a', lt: 'z' }) // anything >a and <z
     let chatData = []
     for await (const { key, value } of chathistoryData) {
       chatData.push({ key, value })
     }
     return chatData
   }
+
+  /** SPACE */
 
   /**
    * save space menu
