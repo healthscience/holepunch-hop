@@ -82,8 +82,8 @@ class NetworkPeers extends EventEmitter {
     for (let sPeer of this.peerNetwork) {
       // sPeer.value.key = publicKeylive
       if (sPeer.value.settopic === true) {
-        // client role
-        this.topicConnect(sPeer.value.topic)
+        // client role  need to pass on peerUniqueID
+        this.topicConnect(sPeer.key, sPeer.value.topic)
       } else {
         // server role
         this.topicListen(sPeer.value.topic, sPeer.key)
@@ -99,8 +99,6 @@ class NetworkPeers extends EventEmitter {
   setRestablished = function (pubKey, established) {
     this.peerEstContext[pubKey] = established
   }
-
-  
 
   /**
    * connection listen
@@ -493,13 +491,29 @@ class NetworkPeers extends EventEmitter {
         let discovery = this.swarm.status(noisePublicKey)
         let discoverTopic = discovery.topic.toString('hex')
         if (discoverTopic === topicH.topic) {
+          // do the peerid match?
           discovery.swarm.connections.forEach((value, key) => {
             checkDiscoveryTopic.server = value.publicKey.toString('hex')
             checkDiscoveryTopic.client = value.remotePublicKey.toString('hex')
             checkDiscoveryTopic.topic = discoverTopic
           })
+          if (checkDiscoveryTopic.client === topicH.peerKey) {
+            return checkDiscoveryTopic
+          } else {
+            if (checkDiscoveryTopic.topic === topicH.topic) {
+              return checkDiscoveryTopic
+            } else {
+              checkDiscoveryTopic.topic = ''
+            }
+        }
+        } else {
+          
         }
       }
+    } else {
+      checkDiscoveryTopic.server = '' 
+      checkDiscoveryTopic.client = ''
+      checkDiscoveryTopic.topic = ''
     }
     return checkDiscoveryTopic
   }
@@ -665,13 +679,13 @@ class NetworkPeers extends EventEmitter {
    * @method topicConnect
    *
   */
-  topicConnect = async function (topic) {
+  topicConnect = async function (peerID, topic) {
     // const noisePublicKey = Buffer.alloc(32).fill(topic) // A topic must be 32 bytes
     const noisePublicKey = Buffer.from(topic, 'hex') //  must be 32 bytes
     if (noisePublicKey.length === 32) {
       let topicKeylive = noisePublicKey.toString('hex')
       this.topicHolder[topic] = { role: 'server', livePubkey: this.swarm.keyPair.publicKey.toString('hex'), topic: topic, key: topicKeylive, timestamp: '' }
-      this.sendTopicHolder.push({ livePubkey: this.swarm.keyPair.publicKey.toString('hex'), topic: topic })
+      this.sendTopicHolder.push({ livePubkey: this.swarm.keyPair.publicKey.toString('hex'), peerKey: peerID, topic: topic })
       const peerConnect = this.swarm.join(noisePublicKey, { server: true, client: false })
       await peerConnect.flushed() // Waits for the topic to be fully announced on the DHT
     }

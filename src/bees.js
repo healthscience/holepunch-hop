@@ -504,7 +504,6 @@ class HyperBee extends EventEmitter {
   savePeer = async function (peerInfo) {
     await this.dbPeers.put(peerInfo.publickey, peerInfo)
     let checkSave = await this.getPeer(peerInfo.publickey)
-    console.log('save peer over---------')
     return checkSave
   }
 

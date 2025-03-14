@@ -319,21 +319,6 @@ class HolepunchWorker extends EventEmitter {
       // what type of data being shared?
       // check for data along with new peer?
       this.Peers.routeDataPath(data, peerDataExist)
-      /*
-      if (peerDataExist.data !== undefined) {
-        if (peerDataExist.data.type === 'private-chart') {
-          this.Peers.writeTonetworkData(data, peerDataExist.data)
-        } else if (peerDataExist.data.type === 'private-cue-space') {
-          this.Peers.writeToCueSpace(this.Peers.peerHolder[peerFirstID].publickey)
-        } else if (peerDataExist.data.type === 'public-n1-experiment') {
-          this.Peers.writeTonetworkData(data, peerDataExist.data)
-        } else if (peerDataExist.data.type === 'public-library') {
-          this.Peers.writeToPublicLibrary(data)
-        } else if (peerDataExist.data.type === 'text-message') {
-          // simpole text message
-          this.Peers.writeTonetwork(data)
-        }
-      } */
     }
   }
 
