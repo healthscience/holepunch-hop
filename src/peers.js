@@ -243,6 +243,7 @@ class NetworkPeers extends EventEmitter {
         let peerMatch = this.peerMatchbase(peer)
         if (dataShareIn.type === 'private-chart') {
           this.emit('beebee-data', { publickey: peerMatch, data: dataShareIn })
+          // two types of chart share above html answer sharing and below from a full bentoboxN1 experiment TODO
           // need to look at NXP,  modules and within for reference contracts.
           // Need to replicate public library for contracts (repliate hyberbee)
           // Need to ask for data source e.g. file (replicate hyberdrive)
@@ -250,7 +251,7 @@ class NetworkPeers extends EventEmitter {
         } else if (dataShareIn.type === 'private-cue-space') {
           this.emit('cuespace-notification', { publickey: peerMatch, data: dataShareIn })
         } else if (dataShareIn.type === 'public-library') {
-          this.emit('publiclibrarynotification', dataShareIn)
+          this.emit('publiclibrarynotification', { publickey: peerMatch, data: dataShareIn })
         } else if (dataShareIn.type === 'peer') {
         } else if (dataShareIn.type === 'peer-codename-inform') {
           // all peer to match publicke to codename then update save and infom beebee

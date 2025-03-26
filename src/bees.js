@@ -875,7 +875,7 @@ class HyperBee extends EventEmitter {
   */
   replicatePubliclibrary = async function (dataIn) {
     // create or get the hypercore using the public key supplied as command-line argument
-    const coreRep = this.store.get({ key: b4a.from(dataIn.data.datastores, 'hex') })
+    const coreRep = this.store.get({ key: b4a.from(dataIn.data.data.datastores, 'hex') })
 
     // create a hyperbee instance using the hypercore instance
     const beePlib = new Hyperbee(coreRep, {
@@ -895,7 +895,7 @@ class HyperBee extends EventEmitter {
     await coreRep.update()
 
     // if provided with specific boarnxp key then just get the contract, extract module contracts and get those contracts and then inform the peer and save to their public library
-    const boardNXPcontract = await beePlib.get(dataIn.data.boardID)
+    const boardNXPcontract = await beePlib.get(dataIn.data.data.boardID)
     let unString = JSON.parse(boardNXPcontract.value)
     let moduleContracts = []
     for (let mod of unString.modules) {
@@ -934,8 +934,8 @@ class HyperBee extends EventEmitter {
       holderConfirm.boardNXP = [boardNXPcontract]
       holderConfirm.modules = moduleContracts
       holderConfirm.refcontracts = referenceContracts
-      this.confirmPubLibList[dataIn.data.datastores] = holderConfirm
-      this.emit('publibbeebee-notification', dataIn.data)
+      this.confirmPubLibList[dataIn.data.data.datastores] = holderConfirm
+      this.emit('publibbeebee-notification', dataIn)
     }
     // or
     // now ask for whole of public library
