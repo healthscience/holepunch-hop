@@ -239,14 +239,16 @@ class NetworkPeers extends EventEmitter {
     if (Buffer.isBuffer(data)) {
       try {
         let dataShareIn = JSON.parse(data.toString())
+        // match current public key to base id of peer
+        let peerMatch = this.peerMatchbase(peer)
         if (dataShareIn.type === 'private-chart') {
-          this.emit('beebee-data', dataShareIn)
+          this.emit('beebee-data', { publickey: peerMatch, data: dataShareIn })
           // need to look at NXP,  modules and within for reference contracts.
           // Need to replicate public library for contracts (repliate hyberbee)
           // Need to ask for data source e.g. file (replicate hyberdrive)
           // Lastly put together SafeFlowECS query to produce chart
         } else if (dataShareIn.type === 'private-cue-space') {
-          this.emit('cuespace-notification', dataShareIn)
+          this.emit('cuespace-notification', { publickey: peerMatch, data: dataShareIn })
         } else if (dataShareIn.type === 'public-library') {
           this.emit('publiclibrarynotification', dataShareIn)
         } else if (dataShareIn.type === 'peer') {
@@ -370,6 +372,22 @@ class NetworkPeers extends EventEmitter {
     // match codename to role
     let roleMatch = { publickey: data, role: inviteIn, codename: inviteIn.invite.codename, name: inviteIn.invite.name }
     return roleMatch
+  }
+
+  /**
+  *  match current publickey to peer id i.e. estbalshed on first connect and maps to 'peername' in UX
+  *  @method peerMatchbase
+  * 
+  */
+  peerMatchbase = function (currPubKey) {
+    // first match live pubkey to topic and then use topic to get original
+    let originalKey = ''
+    for (let savePeer of this.peerNetwork) {
+      if (savePeer.value.livePeerkey === currPubKey) {
+        originalKey = savePeer.key
+      }
+    }
+    return originalKey
   }
 
   /**
