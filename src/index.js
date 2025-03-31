@@ -52,6 +52,16 @@ class HolepunchWorker extends EventEmitter {
     // make replication possible
     this.swarm.on('connection', conn => this.store.replicate(conn))
     goodbye(() => this.swarm.destroy())
+
+    this.swarm.on('update', () => {
+      // this.Peers.updateListen(data)
+      console.log('update-------')
+      console.log(this.swarm.connecting)
+      console.log(this.swarm.connections.size)
+      console.log(this.swarm.peers.size)
+    })
+    
+
     this.BeeData = new BeeWorker(this.store, this.swarm)
     this.DriveFiles = new DriveWorker(this.store, this.swarm)
     this.Peers = new PeerWorker(this.store, this.swarm)
@@ -181,6 +191,9 @@ class HolepunchWorker extends EventEmitter {
       peerLive.publickey = data
       this.emit('peer-live-notify', peerLive)
     })
+    this.Peers.on('peer-disconnect', (data) => {
+      this.emit('peer-disconnect-notify', data)
+    })
     // drive listener
     this.DriveFiles.on('largefile-save', (data) => {
       this.emit('drive-save-large', data)
@@ -192,7 +205,7 @@ class HolepunchWorker extends EventEmitter {
   * @method networkPath
   *
   */
-  networkPath = function (message) {
+  networkPath = async function (message) {
     if (message.action === 'share') {
       // check if joined now?
       let reEstablishShort = this.Peers.checkConnectivityStatus(message, this.warmPeers, 'invite-gen')
@@ -270,6 +283,16 @@ class HolepunchWorker extends EventEmitter {
           this.Peers.routeDataPath(reEstablishShort.peer.value.livePeerkey, peerActionData.data)
         }
       }
+    } else if (message.action === 'retry') {
+      console.log('retry')
+      let peerDefaults = this.Peers.peerMatchTopic(message.data.key)
+      this.Peers.discoveryMatch(message.data.key)
+    } else if (message.action === 'peer-closed') {
+      console.log('distroy swarm connections')
+      console.log(message)
+      this.flushConnections()
+      await this.swarm.destroy()
+      // this.flushConnections()
     }
   }
 
@@ -415,6 +438,21 @@ class HolepunchWorker extends EventEmitter {
     // console.log(`Decoded Block ${seq}`, Node.decode(lastBlock))
     // console.log('end of read core')
     this.readcore = lastBlock
+  }
+
+  /**
+   * refresh connection i.e. which peers are live
+   * @method flushConnections
+   *
+  */
+  flushConnections = async function () {
+    console.log('flush connections')
+    console.log(this.swarm.connections.size)
+    console.log(this.swarm.connecting)
+    console.log(this.swarm.peers.size)
+    await this.swarm.flush()
+    await Promise.all(Array.from(this.swarm.connections).map(e => e.flush()))
+    await new Promise(resolve => setImmediate(resolve))
   }
 
 }

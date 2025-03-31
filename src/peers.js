@@ -27,6 +27,7 @@ class NetworkPeers extends EventEmitter {
     this.topicHolder = {}
     this.sendTopicHolder = []
     this.peersRole = []
+    this.discoveryList = []
   }
 
   /**
@@ -226,11 +227,41 @@ class NetworkPeers extends EventEmitter {
         // assess data
         this.assessData(publicKeylive, data)
       )
-      //conn.end()
+
+      conn.on('error', data => {
+        let connectLivekeys = Object.keys(this.peerConnect)
+        // console.log(this.peerNetwork)
+        for (let peer of this.peerNetwork) {
+          for (let pconn of connectLivekeys) {
+            if (peer.value.livePeerkey === pconn) {
+              // check if connect is close?
+              let keysNoise = Object.keys(this.peerConnect[pconn]['noiseStream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['rawStream']['_closed'])
+              // console.log(this.peerConnect[pconn]['noiseStream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['rawStream']['_closed'])
+              let closeStatus = this.peerConnect[pconn]['noiseStream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['rawStream']['_closed']
+              if (closeStatus === true) {
+                // remove peer & inform beebee
+                this.emit('peer-disconnect', { publickey: peer.key })
+              }
+            }
+          }
+        }
+      })
+
+      // conn.end()
     })
   }
 
-    /**
+  /**
+   * 
+   * @method updateListen
+   *
+  */
+  updateListen = function (data) {
+    console.log('update listen')
+    console.log(data)
+  }
+
+  /**
    * 
    * @method assessData data and act
    *
@@ -373,6 +404,40 @@ class NetworkPeers extends EventEmitter {
     // match codename to role
     let roleMatch = { publickey: data, role: inviteIn, codename: inviteIn.invite.codename, name: inviteIn.invite.name }
     return roleMatch
+  }
+
+  /**
+  *  match peer key to settings
+  *  @method peerMatchTopic
+  * 
+  */
+  peerMatchTopic = function (pubKey) {
+    // first match live pubkey to topic and then use topic to get original
+    let peerSettings = {}
+    for (let savePeer of this.peerNetwork) {
+      if (savePeer.key === pubKey) {
+        peerSettings = savePeer
+      }
+    }
+    return peerSettings
+  }
+
+  /**
+  *  match discovery peer reconnect
+  *  @method discoveryMatch
+  * 
+  */
+  discoveryMatch = function (pubKey) {
+    // first match live pubkey to topic and then use topic to get original
+    let discoverySettings = {}
+    for (let savePeer of this.discoveryList) {
+      if (savePeer.peerKey === pubKey) {
+        discoverySettings = savePeer.discovery
+      }
+    }
+    // now refresh
+    discoverySettings.refresh()
+    return true
   }
 
   /**
@@ -699,6 +764,7 @@ class NetworkPeers extends EventEmitter {
    *
   */
   topicConnect = async function (peerID, topic) {
+    console.log('topic connect')
     // const noisePublicKey = Buffer.alloc(32).fill(topic) // A topic must be 32 bytes
     const noisePublicKey = Buffer.from(topic, 'hex') //  must be 32 bytes
     if (noisePublicKey.length === 32) {
@@ -706,6 +772,7 @@ class NetworkPeers extends EventEmitter {
       this.topicHolder[topic] = { role: 'server', livePubkey: this.swarm.keyPair.publicKey.toString('hex'), topic: topic, key: topicKeylive, timestamp: '' }
       this.sendTopicHolder.push({ livePubkey: this.swarm.keyPair.publicKey.toString('hex'), peerKey: peerID, topic: topic })
       const peerConnect = this.swarm.join(noisePublicKey, { server: true, client: false })
+      this.discoveryList.push({ peerKey: peerID, topic: topic, discovery: peerConnect })
       await peerConnect.flushed() // Waits for the topic to be fully announced on the DHT
     }
    }
@@ -716,6 +783,7 @@ class NetworkPeers extends EventEmitter {
    *
   */
   topicListen = async function (topic, peerKey) {
+    console.log('topic listen')
     // const noisePublicKey = Buffer.alloc(32).fill(topic) // A topic must be 32 bytes
     // let topicKeylive = noisePublicKey.toString('hex')
     const noisePublicKey = Buffer.from(topic, 'hex') //  must be 32 bytes
@@ -723,7 +791,8 @@ class NetworkPeers extends EventEmitter {
       let topicKeylive = noisePublicKey.toString('hex')
       this.topicHolder[topic] = { role: 'client', topic: topic, key: topicKeylive, peerKey: peerKey, timestamp: '' }
       const peerConnect = this.swarm.join(noisePublicKey, { server: false, client: true })
-      await peerConnect.flushed() // Waits for the topic to be fully announced on the DHT
+      this.discoveryList.push({ peerKey: peerKey, topic: topic, discovery: peerConnect })
+      await this.swarm.flush() // Waits for the topic to be fully announced on the DHT
     } else {
       console.log('key lenght issue')
     }
