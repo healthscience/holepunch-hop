@@ -52,6 +52,7 @@ class HyperBee extends EventEmitter {
     const discovery = this.swarm.join(this.dbPublicLibrary.discoveryKey)
     // Only display the key once the Hyperbee has been announced to the DHT
     discovery.flushed().then(() => {
+      console.log('public library open')
     })
 
     const core2 = this.store.get({ name: 'peerlibrary' })

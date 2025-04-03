@@ -55,10 +55,10 @@ class HolepunchWorker extends EventEmitter {
 
     this.swarm.on('update', () => {
       // this.Peers.updateListen(data)
-      console.log('update-------')
-      console.log(this.swarm.connecting)
-      console.log(this.swarm.connections.size)
-      console.log(this.swarm.peers.size)
+      // console.log('update-------')
+      // console.log(this.swarm.connecting)
+      // console.log(this.swarm.connections.size)
+      // console.log(this.swarm.peers.size)
     })
     
 
@@ -284,12 +284,9 @@ class HolepunchWorker extends EventEmitter {
         }
       }
     } else if (message.action === 'retry') {
-      console.log('retry')
       let peerDefaults = this.Peers.peerMatchTopic(message.data.key)
       this.Peers.discoveryMatch(message.data.key)
     } else if (message.action === 'peer-closed') {
-      console.log('distroy swarm connections')
-      console.log(message)
       this.flushConnections()
       await this.swarm.destroy()
       // this.flushConnections()
@@ -446,10 +443,6 @@ class HolepunchWorker extends EventEmitter {
    *
   */
   flushConnections = async function () {
-    console.log('flush connections')
-    console.log(this.swarm.connections.size)
-    console.log(this.swarm.connecting)
-    console.log(this.swarm.peers.size)
     await this.swarm.flush()
     await Promise.all(Array.from(this.swarm.connections).map(e => e.flush()))
     await new Promise(resolve => setImmediate(resolve))

@@ -230,7 +230,6 @@ class NetworkPeers extends EventEmitter {
 
       conn.on('error', data => {
         let connectLivekeys = Object.keys(this.peerConnect)
-        // console.log(this.peerNetwork)
         for (let peer of this.peerNetwork) {
           for (let pconn of connectLivekeys) {
             if (peer.value.livePeerkey === pconn) {
@@ -257,8 +256,8 @@ class NetworkPeers extends EventEmitter {
    *
   */
   updateListen = function (data) {
-    console.log('update listen')
-    console.log(data)
+    // console.log('update listen')
+    // console.log(data)
   }
 
   /**
@@ -453,7 +452,12 @@ class NetworkPeers extends EventEmitter {
         originalKey = savePeer.key
       }
     }
-    return originalKey
+    // check if first time peer connect
+    if (originalKey.length === 0) {
+      return currPubKey
+    } else {
+      return originalKey
+    }
   }
 
   /**
@@ -764,7 +768,6 @@ class NetworkPeers extends EventEmitter {
    *
   */
   topicConnect = async function (peerID, topic) {
-    console.log('topic connect')
     // const noisePublicKey = Buffer.alloc(32).fill(topic) // A topic must be 32 bytes
     const noisePublicKey = Buffer.from(topic, 'hex') //  must be 32 bytes
     if (noisePublicKey.length === 32) {
@@ -783,7 +786,6 @@ class NetworkPeers extends EventEmitter {
    *
   */
   topicListen = async function (topic, peerKey) {
-    console.log('topic listen')
     // const noisePublicKey = Buffer.alloc(32).fill(topic) // A topic must be 32 bytes
     // let topicKeylive = noisePublicKey.toString('hex')
     const noisePublicKey = Buffer.from(topic, 'hex') //  must be 32 bytes
