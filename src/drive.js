@@ -56,9 +56,10 @@ class HypDrive extends EventEmitter {
     await this.drive.ready()
 
     let startDrivePubkey = {}
-    startDrivePubkey.type = 'hyperdrive-pubkey'
+    startDrivePubkey.type = 'account'
+    startDrivePubkey.action = 'drive-pubkey'
     startDrivePubkey.data =  b4a.toString(this.drive.key, 'hex')
-    // this.wsocket.send(JSON.stringify(startDrivePubkey))
+    this.wsocket.send(JSON.stringify(startDrivePubkey))
   }
 
 
@@ -102,7 +103,6 @@ class HypDrive extends EventEmitter {
     // file input management
     // protocol to save original file
     let newPathFile = await this.hyperdriveFilesave(fileData.data[0].type, fileData.data[0].name, fileData.data[0].content)
-
     // extract out the headers name for columns
     let headerSet = this.fileUtility.extractCSVHeaderInfo(fileData)
     //  csv to JSON convertion HOP protocol standard
@@ -164,7 +164,6 @@ class HypDrive extends EventEmitter {
     return fileResponse
   }
 
-
   /**
    * blind sqlite lookup of data (maybe restricture no. of rows of data iniitally)
    * @method blindDataSqlite 
@@ -174,7 +173,6 @@ class HypDrive extends EventEmitter {
      let parseData = await this.SQLiteQuery(dataInfo)
      return parseData
   }
-
 
   /**
    * save to hyperdrive file
@@ -212,7 +210,6 @@ class HypDrive extends EventEmitter {
     }
     return hyperdrivePath
   }
-
 
   /**
    * save a stream of file ie. large file
@@ -370,7 +367,6 @@ class HypDrive extends EventEmitter {
     return summarySQLinfo
   }
 
-
   /**
   *  ask for device tables and info.
   * @method SQLiteDeviceSetup
@@ -424,7 +420,6 @@ class HypDrive extends EventEmitter {
     }
 
   }
-
 
 	/**
 	* try to match to known time formats

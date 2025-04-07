@@ -281,6 +281,8 @@ class NetworkPeers extends EventEmitter {
         } else if (dataShareIn.type === 'private-cue-space') {
           this.emit('cuespace-notification', { publickey: peerMatch, data: dataShareIn })
         } else if (dataShareIn.type === 'public-library') {
+          console.log('public rep reque arrivee')
+          console.log(dataShareIn)
           this.emit('publiclibrarynotification', { publickey: peerMatch, data: dataShareIn })
         } else if (dataShareIn.type === 'peer') {
         } else if (dataShareIn.type === 'peer-codename-inform') {
@@ -626,7 +628,7 @@ class NetworkPeers extends EventEmitter {
       } else if (peerTopeerState.type === 'peer-write') {
         this.Peers.writeTonetwork(peerTopeerState)
       } else if (peerTopeerState.type === 'public-library') {
-        this.Peers.writeToPublicLibrary(data)
+        this.Peers.writeToPublicLibrary(livePubkey, peerTopeerState)
       }
     }
   }

@@ -146,22 +146,26 @@ class HolepunchWorker extends EventEmitter {
       // check if bentoboxN1 included?
       if (data.data.data.content.bbn1.publicN1contracts.length > 0) {
         for (let n1Cont of data.data.data.content.bbn1.publicN1contracts) {
-          this.BeeData.replicatePubliclibrary({ data: n1Cont })
+          this.BeeData.replicateQueryPubliclibrary({ data: n1Cont })
         }
       }
     })
     // public library notification
     this.Peers.on('publiclibrarynotification', (data) => {
-      this.BeeData.replicatePubliclibrary(data)
+      this.BeeData.replicateQueryPubliclibrary(data)
     })
     // beebee notifications public
     this.BeeData.on('publibbeebee-notification', (data) => {
       this.emit('beebee-publib-notification', data)
     })
+    // public library replicate
+    this.BeeData.on('publib-replicate-notification', (data) => {
+      this.emit('replicate-publib-notification', data)
+    })
     // new warm incoming peer
     this.Peers.on('connect-warm-first', (data) => {
       // check re establishing peer to peer of first time connection?
-      let peerInfoName = 'not-matched' //this.Peers.peerHolder[data]
+      let peerInfoName = 'not-matched' //  could be mis match or blind/ cold peer accessing public library
       // check role and match codename
       if (data.roletaken === 'server') {
         // not unique info to match on yet.
@@ -282,14 +286,22 @@ class HolepunchWorker extends EventEmitter {
           let peerActionData = this.Peers.peerHolder[message.data.publickey]
           this.Peers.routeDataPath(reEstablishShort.peer.value.livePeerkey, peerActionData.data)
         }
-      }
+      } 
     } else if (message.action === 'retry') {
       let peerDefaults = this.Peers.peerMatchTopic(message.data.key)
       this.Peers.discoveryMatch(message.data.key)
     } else if (message.action === 'peer-closed') {
       this.flushConnections()
       await this.swarm.destroy()
-      // this.flushConnections()
+    } else if (message.action === 'replicate-library') {
+      // let reEstablishShort = this.Peers.checkConnectivityStatus(message, this.warmPeers, 'invite-replicate')
+      if (message.task === 'public-library-replicate') {
+        // write message to peer with open public library
+        this.BeeData.replicatePubliclibrary(message.data)
+      }
+    } else if (message.action === 'save-replicate-library') {
+      // look up holder and save to public library please
+      this.BeeData.saveRepliatePubLibary(message.data)
     }
   }
 

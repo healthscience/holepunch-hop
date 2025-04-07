@@ -21,6 +21,7 @@ class HyperBee extends EventEmitter {
     this.swarm = swarm
     this.liveBees = {}
     this.confirmPubLibList = {}
+    this.repPublicHolder = {}
   }
 
   /**
@@ -46,7 +47,7 @@ class HyperBee extends EventEmitter {
       valueEncoding: 'json' // same options as above
     })
     await this.dbPublicLibrary.ready()
-    beePubkeys.push({ store: 'publiclibrary', pubkey: b4a.toString(this.dbPublicLibrary.key, 'hex')})
+    beePubkeys.push({ store: 'publiclibrary', privacy: 'public', pubkey: b4a.toString(this.dbPublicLibrary.key, 'hex')})
     // allow other peer access to public library  (need to check for DDOS ie over asked)
     // join a topic for network 
     const discovery = this.swarm.join(this.dbPublicLibrary.discoveryKey)
@@ -61,7 +62,7 @@ class HyperBee extends EventEmitter {
       valueEncoding: 'json' // same options as above
     })
     await this.dbPeerLibrary.ready()
-    beePubkeys.push({store:'peerlibrary', pubkey: b4a.toString(core2.key, 'hex')})
+    beePubkeys.push({store:'peerlibrary', privacy: 'private', pubkey: b4a.toString(core2.key, 'hex')})
 
     const core6 = this.store.get({ name: 'peers' })
     this.dbPeers = new Hyperbee(core6, {
@@ -69,7 +70,7 @@ class HyperBee extends EventEmitter {
       valueEncoding: 'json' // same options as above
     })
     await this.dbPeers.ready()
-    beePubkeys.push({store:'peers', pubkey: b4a.toString(core6.key, 'hex')})
+    beePubkeys.push({store:'peers', privacy: 'private', pubkey: b4a.toString(core6.key, 'hex')})
 
     const core3 = this.store.get({ name: 'bentospaces' })
     this.dbBentospaces = new Hyperbee(core3, {
@@ -85,7 +86,7 @@ class HyperBee extends EventEmitter {
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentochat.ready()
-    beePubkeys.push({store:'bentochat', pubkey: b4a.toString(core3.key, 'hex')})
+    beePubkeys.push({store:'bentochat', privacy: 'private', pubkey: b4a.toString(core3.key, 'hex')})
 
 
     const core4 = this.store.get({ name: 'hopresults' })
@@ -95,7 +96,7 @@ class HyperBee extends EventEmitter {
     })
     await this.dbHOPresults.ready()
     // this.client.replicate(this.dbHOPresults.feed)
-    beePubkeys.push({store:'hopresults', pubkey: b4a.toString(core4.key, 'hex')})
+    beePubkeys.push({store:'hopresults', privacy: 'private', pubkey: b4a.toString(core4.key, 'hex')})
 
     const core5 = this.store.get({ name: 'kbledger' })
     this.dbKBledger = new Hyperbee(core5, {
@@ -113,7 +114,7 @@ class HyperBee extends EventEmitter {
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentocues.ready()
-    beePubkeys.push({store:'bentocues', pubkey: b4a.toString(core7.key, 'hex')})
+    beePubkeys.push({store:'bentocues', privacy: 'public', pubkey: b4a.toString(core7.key, 'hex')})
 
     const core13 = this.store.get({ name: 'bentomodels' })
     this.dbBentomodels = new Hyperbee(core13, {
@@ -121,7 +122,7 @@ class HyperBee extends EventEmitter {
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentomodels.ready()
-    beePubkeys.push({store:'bentomodels', pubkey: b4a.toString(core7.key, 'hex')})
+    beePubkeys.push({store:'bentomodels', privacy: 'public', pubkey: b4a.toString(core7.key, 'hex')})
 
     const core8 = this.store.get({ name: 'bentodecisions' })
     this.dbBentodecisions = new Hyperbee(core8, {
@@ -138,7 +139,7 @@ class HyperBee extends EventEmitter {
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentomarkers.ready()
-    beePubkeys.push({store:'bentomarkers', pubkey: b4a.toString(core9.key, 'hex')})
+    beePubkeys.push({store:'bentomarkers', privacy: 'private', pubkey: b4a.toString(core9.key, 'hex')})
 
 
     const core10 = this.store.get({ name: 'research' })
@@ -147,7 +148,7 @@ class HyperBee extends EventEmitter {
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentoresearch.ready()
-    beePubkeys.push({store:'research', pubkey: b4a.toString(core10.key, 'hex')})
+    beePubkeys.push({store:'research', privacy: 'public', pubkey: b4a.toString(core10.key, 'hex')})
 
 
     const core11 = this.store.get({ name: 'bentoproducts' })
@@ -156,7 +157,7 @@ class HyperBee extends EventEmitter {
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentoproducts.ready()
-    beePubkeys.push({store:'bentoproducts', pubkey: b4a.toString(core11.key, 'hex')})
+    beePubkeys.push({store:'bentoproducts', privacy: 'private', pubkey: b4a.toString(core11.key, 'hex')})
 
     const core12 = this.store.get({ name: 'bentomedia' })
     this.dbBentomedia = new Hyperbee(core12, {
@@ -164,25 +165,8 @@ class HyperBee extends EventEmitter {
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentomedia.ready()
-    beePubkeys.push({store:'bentomedia', pubkey: b4a.toString(core12.key, 'hex')})
+    beePubkeys.push({store:'bentomedia', privacy: 'private', pubkey: b4a.toString(core12.key, 'hex')})
     
-    // temp delete agents
-    // this.deleteBentoModel({ id: '5e6e36c953b673fe7b2dd06dd773d43feea42a0d'})
-    // this.deleteBentoModel({ id: '8439ec4e6d6b89227145da877fffb697b1209d78'})
-    // this.deleteBentoModel({ id: 'ba5b7ba40a1dc5c37722c75d29353437e94f805c'})
-
-    /*this.deleteBentospace({ cueid: '296ce0efc66045c5842707d4652186e440f2fc21'})
-    this.deleteBentospace({ cueid: '7baf3109a5b2c5b64981b494984d1bb1fe72f3ba'})
-    this.deleteBentospace({ cueid: 'a820ec16b810603b3b1c6458f33d9f36bafdc533'})
-    this.deleteBentospace({ cueid: 'b96fa316c2f7eddf9b842da8c9ac2780f36abdff'})
-    this.deleteBentospace({ cueid: 'ddd7eb037439f97ead2d1e1be880e58d329ca54b'})
-    this.deleteBentospace({ cueid: 's-296ce0efc66045c5842707d4652186e440f2fc21'})
-    this.deleteBentospace({ cueid: 's-7baf3109a5b2c5b64981b494984d1bb1fe72f3ba'})
-    this.deleteBentospace({ cueid: 's-83dc025c2298b4673f62fbc436d2c1f8dc525fe8'})
-    this.deleteBentospace({ cueid: 's-b96fa316c2f7eddf9b842da8c9ac2780f36abdff'}) */
-
-
-
     this.emit('hbee-live')
     // return beePubkeys
     let startBeePubkey = {}
@@ -876,6 +860,42 @@ class HyperBee extends EventEmitter {
   */
   replicatePubliclibrary = async function (dataIn) {
     // create or get the hypercore using the public key supplied as command-line argument
+    const coreRep = this.store.get({ key: b4a.from(dataIn.discoverykey, 'hex') })
+
+    // create a hyperbee instance using the hypercore instance
+    const beePlib = new Hyperbee(coreRep, {
+      keyEncoding: 'utf-8',
+      valueEncoding: 'utf-8'
+    })
+
+    // wait till the hypercore properties to be intialized
+    await coreRep.ready()
+
+    // logging the public key of the hypercore instance
+    // console.log('core key here is:', coreRep.key.toString('hex'))
+
+    // Attempt to connect to peers
+    this.swarm.join(coreRep.discoveryKey, { server: false, client: true })
+
+    await coreRep.update()
+
+    const nodeData = beePlib.createReadStream()
+    let resData = []
+    for await (const { key, value } of nodeData) {
+      resData.push({ key, value })
+    }
+    this.repPublicHolder[dataIn.discoverykey] = resData
+    // notify peer repliate complete, ask if want save
+    this.emit('publib-replicate-notification', { data: { text: 'public library replication complete', publib: dataIn.discoverykey }})
+  }
+
+  /**
+   * repicate the publiclibrary peer to peer
+   * @method replicateQueryPubliclibrary
+   *
+  */
+  replicateQueryPubliclibrary = async function (dataIn) {
+    // create or get the hypercore using the public key supplied as command-line argument
     const coreRep = this.store.get({ key: b4a.from(dataIn.data.data.datastores, 'hex') })
 
     // create a hyperbee instance using the hypercore instance
@@ -959,6 +979,18 @@ class HyperBee extends EventEmitter {
     return repMessage */
   }
 
+  
+  /**
+   * look up holder and save data to public library datastore
+   * @method saveRepliatePubLibary
+   *
+  */
+  saveRepliatePubLibary = async function (data) {
+    // add board nxp
+    let updatePubLib = this.repPublicHolder[data.discoverykey]
+    await this.updatePublicLibrary(updatePubLib)
+    this.repPublicHolder[data.discoverykey] = []
+  }
 
   /**
    * peer confirmed add to public library
