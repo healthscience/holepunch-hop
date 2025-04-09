@@ -988,7 +988,11 @@ class HyperBee extends EventEmitter {
   saveRepliatePubLibary = async function (data) {
     // add board nxp
     let updatePubLib = this.repPublicHolder[data.discoverykey]
-    await this.updatePublicLibrary(updatePubLib)
+    if (data.library === 'publiclibrary') {
+      await this.updatePublicLibrary(updatePubLib)
+    } else if (data.library === 'cues') {
+      await this.updateCuesLibrary(updatePubLib)
+    }
     this.repPublicHolder[data.discoverykey] = []
   }
 
@@ -1021,6 +1025,28 @@ class HyperBee extends EventEmitter {
 
     // check
     const libUpdatecheck = this.dbPublicLibrary.createReadStream()
+    let libConracts = []
+    for await (const { key, value } of libUpdatecheck) {
+      libConracts.push({ key, value })
+    }
+    return true
+  }
+
+  /**
+   * update cues library from replication
+   * @method updateCuesLibrary
+   *
+  */
+  updateCuesLibrary = async function (libContracts) {
+    // save entries required
+    const batch = this.dbPublicLibrary.batch()
+    for (const { key, value } of libContracts) {
+      await batch.put(key, JSON.parse(value))
+    }
+    await batch.flush()
+
+    // check
+    const libUpdatecheck = this.dbBentocues.createReadStream()
     let libConracts = []
     for await (const { key, value } of libUpdatecheck) {
       libConracts.push({ key, value })
