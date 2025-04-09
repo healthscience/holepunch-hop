@@ -115,6 +115,12 @@ class HyperBee extends EventEmitter {
     })
     await this.dbBentocues.ready()
     beePubkeys.push({store:'bentocues', privacy: 'public', pubkey: b4a.toString(core7.key, 'hex')})
+    // open the cues library
+    const discoveryCues = this.swarm.join(this.dbBentocues.discoveryKey)
+    // Only display the key once the Hyperbee has been announced to the DHT
+    discoveryCues.flushed().then(() => {
+      console.log('cues library open')
+    })
 
     const core13 = this.store.get({ name: 'bentomodels' })
     this.dbBentomodels = new Hyperbee(core13, {
@@ -988,7 +994,7 @@ class HyperBee extends EventEmitter {
   saveRepliatePubLibary = async function (data) {
     // add board nxp
     let updatePubLib = this.repPublicHolder[data.discoverykey]
-    if (data.library === 'publiclibrary') {
+    if (data.library === 'public') {
       await this.updatePublicLibrary(updatePubLib)
     } else if (data.library === 'cues') {
       await this.updateCuesLibrary(updatePubLib)
@@ -1039,7 +1045,7 @@ class HyperBee extends EventEmitter {
   */
   updateCuesLibrary = async function (libContracts) {
     // save entries required
-    const batch = this.dbPublicLibrary.batch()
+    const batch = this.dbBentocues.batch()
     for (const { key, value } of libContracts) {
       await batch.put(key, JSON.parse(value))
     }
