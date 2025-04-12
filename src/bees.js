@@ -890,9 +890,14 @@ class HyperBee extends EventEmitter {
     for await (const { key, value } of nodeData) {
       resData.push({ key, value })
     }
-    this.repPublicHolder[dataIn.discoverykey] = resData
-    // notify peer repliate complete, ask if want save
-    this.emit('publib-replicate-notification', { data: { text: 'public library replication complete', publib: dataIn.discoverykey }})
+    // data received?
+    if (resData.length > 0) {
+      this.repPublicHolder[dataIn.discoverykey] = resData
+      // notify peer repliate complete, ask if want save
+      this.emit('publib-replicate-notification', { data: { text: 'public library replication complete', publib: dataIn.discoverykey }})
+    } else {
+      this.emit('publib-replicate-notification', { data: { text: 'no data received', publib: dataIn.discoverykey }})
+    }
   }
 
   /**
