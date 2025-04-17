@@ -180,41 +180,7 @@ class HyperBee extends EventEmitter {
     startBeePubkey.action = 'hyperbee-pubkeys'
     startBeePubkey.data = beePubkeys
     this.liveBees = startBeePubkey
-    this.wsocket.send(JSON.stringify(startBeePubkey))
-  }
-
-  /**
-   * save pair in keystore public network library
-   * @method savePubliclibrary
-   *
-  */
-  savePubliclibrary = async function (refContract) {
-    let beeSave = await this.dbPublicLibrary.put(refContract.data.hash, refContract.data.contract)
-    // go query the key are return the info. to ensure data save asplanned.
-    let saveCheck = await this.getPublicLibrary(refContract.data.hash)
-    let returnMessage = {}
-    returnMessage.stored = true
-    returnMessage.type = refContract.reftype
-    returnMessage.key = saveCheck.key
-    returnMessage.contract = saveCheck.value
-    return returnMessage
-  }
-  
-
-  /**
-   * save pair in keystore db
-   * @method savePeerLibrary
-   *
-  */
-  savePeerLibrary = async function (refContract) {
-    await this.dbPeerLibrary.put(refContract.data.hash, refContract.data.contract)
-    let saveCheck = await this.getPeerLibrary(refContract.data.hash)
-    let returnMessage = {}
-    returnMessage.stored = true
-    returnMessage.type = refContract.reftype
-    returnMessage.key = saveCheck.key
-    returnMessage.contract = saveCheck.value
-    return returnMessage
+    // this.wsocket.send(JSON.stringify(startBeePubkey))
   }
 
   /**
@@ -696,6 +662,42 @@ class HyperBee extends EventEmitter {
     let key = 'startsolospaces'
     const nodeData = await this.dbBentospaces.get(key)
     return nodeData
+  }
+
+ //** */ public library **//
+
+  /**
+   * save pair in keystore public network library
+   * @method savePubliclibrary
+   *
+  */
+  savePubliclibrary = async function (refContract) {
+    await this.dbPublicLibrary.put(refContract.data.hash, refContract.data.contract)
+    // go query the key are return the info. to ensure data save asplanned.
+    let saveCheck = await this.getPublicLibrary(refContract.data.hash)
+    let returnMessage = {}
+    returnMessage.stored = true
+    returnMessage.type = refContract.reftype
+    returnMessage.key = saveCheck.key
+    returnMessage.contract = saveCheck.value
+    return returnMessage
+  }
+  
+
+  /**
+   * save pair in keystore db
+   * @method savePeerLibrary
+   *
+  */
+  savePeerLibrary = async function (refContract) {
+    await this.dbPeerLibrary.put(refContract.data.hash, refContract.data.contract)
+    let saveCheck = await this.getPeerLibrary(refContract.data.hash)
+    let returnMessage = {}
+    returnMessage.stored = true
+    returnMessage.type = refContract.reftype
+    returnMessage.key = saveCheck.key
+    returnMessage.contract = saveCheck.value
+    return returnMessage
   }
 
   /**
