@@ -47,7 +47,7 @@ class HolepunchWorker extends EventEmitter {
    *
   */
   startHolepunch = async function () {
-    this.store = new Corestore(os.homedir() + '/.hop-storage-test')
+    this.store = new Corestore(os.homedir() + '/.hop-storage')
     this.swarm = new Hyperswarm()
     // make replication possible
     this.swarm.on('connection', conn => this.store.replicate(conn))

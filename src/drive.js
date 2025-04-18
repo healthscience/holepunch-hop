@@ -54,7 +54,6 @@ class HypDrive extends EventEmitter {
     // One for a file metadata Hyperbee, and one for a content Hypercore
     this.drive = new Hyperdrive(this.core)
     await this.drive.ready()
-    console.log('hyper drive active and lalvie')
     let startDrivePubkey = {}
     startDrivePubkey.type = 'account'
     startDrivePubkey.action = 'drive-pubkey'
