@@ -1,16 +1,17 @@
-import assert from 'assert'
-import HolepunchData from '../src/index.js'
+import { describe, it, expect } from 'vitest'
+import HolepunchWorker from '../src/index.js'
 
-describe('holepunch hypercore bee drive peers setup', function () {
-  it('hello from holepunch', async function () {
-    let dataAPI = new HolepunchData()
-    assert.equal(dataAPI.hello, 'holepunch')
-    await dataAPI.testCoreStore()
-    await dataAPI.readHypercoreTest()
-    assert.equal(dataAPI.readcore.toString('utf8'), 'data data in hypercore')
-    // console.log('back from bees')
-    // console.log(dataAPI.BeeData)
-    // console.log('back from drive')
-    // console.log(dataAPI.DriveFiles)
+describe('holepunch initialization', () => {
+  it('should initialize without store name', () => {
+    const holepunch = new HolepunchWorker()
+    expect(holepunch).toBeDefined()
+    expect(holepunch.peerStore).toBe('.hop-storage')
+  })
+
+  it('should initialize with store name', () => {
+    const storeName = 'hop-storage-test'
+    const holepunch = new HolepunchWorker(storeName)
+    expect(holepunch).toBeDefined()
+    expect(holepunch.peerStore).toBe('.' +storeName)
   })
 })

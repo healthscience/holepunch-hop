@@ -25,7 +25,7 @@ class HolepunchWorker extends EventEmitter {
   constructor(storeName) {
     super()
     this.hello = 'holepunch'
-    this.peerStore = storeName
+    this.peerStore = ''
     this.store = {}
     this.swarm = {}
     this.BeeData = {}
@@ -38,8 +38,22 @@ class HolepunchWorker extends EventEmitter {
     this.warmPeers = [] // ikeep track of live incoming sharing
     this.codenameUpdates = []
     this.topicExhange = []
+    this.setStorename(storeName)
     this.startHolepunch()
     this.networkListeners()
+  }
+
+  /**
+   * set store name
+   * @method setStorename
+   *
+  */
+  setStorename = function (storeName) {
+    if (storeName === undefined || storeName?.length === 0) {
+      this.peerStore = '.hop-storage'
+    } else {
+      this.peerStore = '.' + storeName
+    }
   }
 
   /**
@@ -48,11 +62,7 @@ class HolepunchWorker extends EventEmitter {
    *
   */
   startHolepunch = async function () {
-    if (this.peerStore.length === 0) {
-      this.store = new Corestore(os.homedir() + '/.hop-storage')
-    } else {
-      this.store = new Corestore(os.homedir() + '/' + this.peerStore)
-    }
+    this.store = new Corestore(os.homedir() + '/' + this.peerStore)
     this.swarm = new Hyperswarm()
     // make replication possible
     this.swarm.on('connection', conn => this.store.replicate(conn))
