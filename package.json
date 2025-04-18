@@ -1,6 +1,6 @@
 {
   "name": "holepunch-hop",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "description": "data interface to HOP",
   "main": "src/index.js",
   "type": "module",
@@ -28,6 +28,7 @@
     "atob": "^2.1.2",
     "axios": "^1.2.2",
     "b4a": "^1.6.1",
+    "chrono-node": "^2.7.5",
     "corestore": "^6.4.0",
     "csv-parser": "^3.0.0",
     "debounceify": "^1.0.0",
@@ -38,11 +39,9 @@
     "hyperswarm": "^4.3.5",
     "localdrive": "github:holepunchto/localdrive",
     "luxon": "^3.4.4",
-    "chrono-node": "^2.7.5",
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
-    "assert": "^2.0.0",
-    "mocha": "^10.0.0"
+    "vitest": "^3.1.1"
   }
 }
