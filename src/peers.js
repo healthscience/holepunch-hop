@@ -113,13 +113,15 @@ class NetworkPeers extends EventEmitter {
       this.store.replicate(conn)
       // assess if token is present to match to exsing peer account ID?
       let publicKeylive = info.publicKey.toString('hex')
+      console.log('publicKeylive')
+      console.log(publicKeylive)
       let topicKeylive = info.topics
       let roleTaken = info.client
       // if now topics info then server, pass by
       let discoveryTopicInfo = {}
       if (topicKeylive.length === 0) {
         // check if joined now?
-        discoveryTopicInfo = this.checkDisoveryStatus('server')
+        discoveryTopicInfo = this.checkDisoveryStatus('server', publicKeylive)
       } else {
         discoveryTopicInfo = {topic: ''}
       }
@@ -130,7 +132,7 @@ class NetworkPeers extends EventEmitter {
           serverStatus = true
         }
       }
-      // check if toppic via matching or being client receiving
+      // check if topic via matching or being client receiving
       if (topicKeylive.length > 0 || serverStatus === true) {
         // keep track of connection
         this.peerConnect[publicKeylive] = conn
@@ -434,8 +436,6 @@ class NetworkPeers extends EventEmitter {
         discoverySettings = savePeer.discovery
       }
     }
-    // now refresh
-    discoverySettings.refresh()
     return true
   }
 
@@ -565,14 +565,59 @@ class NetworkPeers extends EventEmitter {
    * @method checkDisoveryStatus
    *
   */
-  checkDisoveryStatus = function (nodeRole) {
+  checkDisoveryStatus = function (nodeRole, publicKey) {
     let topicList = []
     if (nodeRole === 'server') {
       topicList = this.sendTopicHolder
     } else if (nodeRole === 'client') {
       topicList = this.topicHolder
     }
+    // previous info at hand 
+    let firstTime = false
+    let emptyHolder = false
+    if (this.peerNetwork.length > 0) {
+      emptyHolder = true
+      // match pubkey to peer to get set topic
+      let matchTopic = ''
+      for (let peer of this.peerNetwork) {
+        if (peer.key === publicKey) {
+          matchTopic = peer.value.topic
+        } else {
+        }
+      }
+      // now use match topic to see if topic set as server or client roles?
+      let sendLogic = []
+      let holderLogic = []
+      for (let sendPeerT of this.sendTopicHolder) {
+        if (sendPeerT.topic === matchTopic) {
+          sendLogic.push(sendPeerT)
+        } else {
+        }
+      }
+      let matchHolderKeys = Object.keys(this.topicHolder)
+      for (let topicH of matchHolderKeys) {
+        if (this.topicHolder[topicH].topic === matchTopic) {
+          holderLogic.push(this.topicHolder[topicH])
+        } else {
+        }
+      }
+      firstTime = false
+      if (matchTopic.length > 0 && sendLogic.length === 0 && holderLogic.length === 0) {
+        firstTime = true
+      }
+    } else {
+      firstTime = true
+    }
+    
+    // has a topic already been sent to this peer, if not must be first time
+    let beforeSendTopic = false
+    for (let topicS of this.sendTopicHolder) {
+      if (topicS.livePubkey === publicKey) {
+        beforeSendTopic = true
+      }
+    }
     let checkDiscoveryTopic = {}
+    checkDiscoveryTopic.firstTime = firstTime
     if (topicList.length > 0) {
       for (let topicH of topicList) {
         const noisePublicKey = Buffer.from(topicH.topic, 'hex')
@@ -589,6 +634,21 @@ class NetworkPeers extends EventEmitter {
             return checkDiscoveryTopic
           } else {
             if (checkDiscoveryTopic.topic === topicH.topic) {
+              // now check if returning
+              if (firstTime === false && emptyHolder === true) {
+                // match current public key to original key uses a permanent key
+                let permKeyID = ''
+                let topicSet = ''
+                if (checkDiscoveryTopic.client === publicKey) {
+                  permKeyID = checkDiscoveryTopic.client
+                  topicSet = checkDiscoveryTopic.topic
+                }
+                // now use this id to check if peer has been invited
+                let beforeTopicCheck = this.checkTopicModes(topicSet)
+                checkDiscoveryTopic.firstTime = beforeTopicCheck.firstTime
+              } else {
+                checkDiscoveryTopic.firstTime = true
+              }
               return checkDiscoveryTopic
             } else {
               checkDiscoveryTopic.topic = ''
@@ -603,9 +663,38 @@ class NetworkPeers extends EventEmitter {
       checkDiscoveryTopic.client = ''
       checkDiscoveryTopic.topic = ''
     }
-    return checkDiscoveryTopic
+
   }
 
+  /**
+   * match topics already set send and holder modes
+   * @method checkTopicModes
+   *
+  */
+  checkTopicModes = function (matchTopic) {
+    // now use match topic to see if topic set as server or client roles?
+    let sendLogic = []
+    let holderLogic = []
+    for (let sendPeerT of this.sendTopicHolder) {
+      if (sendPeerT.topic === matchTopic) {
+        sendLogic.push(sendPeerT)
+      } else {
+      }
+    }
+    let matchHolderKeys = Object.keys(this.topicHolder)
+    for (let topicH of matchHolderKeys) {
+      if (this.topicHolder[topicH].topic === matchTopic) {
+        holderLogic.push(this.topicHolder[topicH])
+      } else {
+      }
+    }
+    let firstTime = false
+    if (sendLogic.length === 0 && holderLogic.length === 0) {
+      firstTime = true
+    }
+
+    return { firstTime: firstTime }
+  }
 
   /**
    * where to route data share
