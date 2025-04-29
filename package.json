@@ -29,10 +29,10 @@
     "axios": "^1.2.2",
     "b4a": "^1.6.1",
     "chrono-node": "^2.7.5",
+    "corestore": "^6.4.0",
     "csv-parser": "^3.0.0",
     "debounceify": "^1.0.0",
     "graceful-goodbye": "^1.2.0",
-    "corestore": "^6.4.0",
     "hyperbee": "^2.2.0",
     "hypercore": "^10.5.3",
     "hyperdrive": "^11.0.0-alpha.10",
@@ -42,6 +42,7 @@
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
+    "object-hash": "^3.0.0",
     "vitest": "^3.1.1"
   }
 }

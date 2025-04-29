@@ -113,8 +113,6 @@ class NetworkPeers extends EventEmitter {
       this.store.replicate(conn)
       // assess if token is present to match to exsing peer account ID?
       let publicKeylive = info.publicKey.toString('hex')
-      console.log('publicKeylive')
-      console.log(publicKeylive)
       let topicKeylive = info.topics
       let roleTaken = info.client
       // if now topics info then server, pass by

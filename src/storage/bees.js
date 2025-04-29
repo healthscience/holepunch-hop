@@ -22,7 +22,6 @@ class HyperBee extends EventEmitter {
     this.liveBees = {}
     this.confirmPubLibList = {}
     this.repPublicHolder = {}
-    this.dbPublicLibrary = null
   }
 
   /**
@@ -115,6 +114,7 @@ class HyperBee extends EventEmitter {
       keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
+
     await this.dbBentocues.ready()
     beePubkeys.push({store:'bentocues', privacy: 'public', pubkey: b4a.toString(core7.key, 'hex')})
     // open the cues library
@@ -182,7 +182,7 @@ class HyperBee extends EventEmitter {
     startBeePubkey.action = 'hyperbee-pubkeys'
     startBeePubkey.data = beePubkeys
     this.liveBees = startBeePubkey
-    // this.wsocket.send(JSON.stringify(startBeePubkey))
+    this.wsocket.send(JSON.stringify(startBeePubkey))
   }
 
   /**

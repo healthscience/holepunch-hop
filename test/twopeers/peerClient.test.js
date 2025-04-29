@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import Hyperswarm from 'hyperswarm'
-import NetworkPeers from '../../src/peers.js'
+import NetworkPeers from '../../src/network/peers.js'
 import crypto from 'crypto'
 
 describe('Direct Peer Connection Tests', () => {

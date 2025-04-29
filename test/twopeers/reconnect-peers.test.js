@@ -3,7 +3,7 @@ import { spawn } from 'child_process'
 import path from 'path'
 import crypto from 'crypto'
 import Hyperswarm from 'hyperswarm'
-import NetworkPeers from '../../src/peers.js'
+import NetworkPeers from '../../src/network/peers.js'
 
 // Set global test timeout to 10 seconds
 const testTimeout = 10000;

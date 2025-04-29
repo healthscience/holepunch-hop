@@ -6,7 +6,7 @@ import os from 'os'
 import Hyperswarm from 'hyperswarm'
 import goodbye from 'graceful-goodbye'
 import b4a from 'b4a'
-import DriveWorker from '../../../src/drive.js'
+import DriveWorker from '../../../src/storage/drive.js'
 
 // Get the path to the test data directory
 const testDataPath = path.join(__dirname, 'data')
@@ -19,7 +19,7 @@ describe('CSV File Operations Tests', () => {
 
   beforeEach(async () => {
 
-    store = new Corestore(os.homedir() + '/test-client-store')
+    store = new Corestore(os.homedir() + '/.test-file-store')
     swarm = new Hyperswarm()
     // make replication possible
     swarm.on('connection', conn => store.replicate(conn))

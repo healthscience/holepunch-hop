@@ -18,7 +18,7 @@ import events from 'events'
 import axios from 'axios'
 import csv from 'csv-parser'
 import crypto from 'crypto'
-import TimeConvert from './adapters/timeConvertor.js'
+import TimeConvert from '../adapters/timeConvertor.js'
 import { DateTime, Interval } from 'luxon'
 import * as chrono from 'chrono-node'
 

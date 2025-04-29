@@ -16,9 +16,9 @@ import goodbye from 'graceful-goodbye'
 import b4a from 'b4a'
 
 // import { Node } from 'hyperbee/lib/messages.js'
-import BeeWorker from './bees.js'
-import DriveWorker from './drive.js'
-import PeerWorker from './peers.js'
+import BeeWorker from './storage/bees.js'
+import DriveWorker from './storage/drive.js'
+import PeerWorker from './network/peers.js'
 
 class HolepunchWorker extends EventEmitter {
 

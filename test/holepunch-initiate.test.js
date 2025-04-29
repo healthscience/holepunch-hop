@@ -19,7 +19,7 @@ describe('holepunch initialization', () => {
     await new Promise((resolve) => setTimeout(resolve, 3000))
 
     // Initialize HolepunchWorker
-    holepunch = new HolepunchWorker('test-instance')
+    holepunch = new HolepunchWorker('.test-instance')
     await holepunch.startHolepunch()
     // Additional wait for full initialization
     await new Promise((resolve) => setTimeout(resolve, 2000))
