@@ -22,6 +22,7 @@ class HyperBee extends EventEmitter {
     this.liveBees = {}
     this.confirmPubLibList = {}
     this.repPublicHolder = {}
+    this.dbPublicLibrary = null
   }
 
   /**
@@ -39,6 +40,7 @@ class HyperBee extends EventEmitter {
    *
   */
   setupHyperbee = async function () {
+    console.log('setting up hyperbee')
     let beePubkeys = []
 
     const core = this.store.get({ name: 'publiclibrary' })

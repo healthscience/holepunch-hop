@@ -48,33 +48,10 @@ describe('Direct Peer Connection Tests', () => {
 it('should establish direct peer connection and handle first connections', async () => {
   // Listen for connection events on both peers
   let connectionPromise = new Promise((resolve) => {
+    let connectionCount = 0
     clientPeer.swarm.on('connection', (conn, info) => {
+      connectionCount++
       /* console.log('Client connection details:')
-      console.log('Public Key:', info.publicKey.toString('hex'))
-      console.log('Is Client:', info.client)
-      console.log('Topics:', info.topics.map(t => t.toString('hex'))) */
-      
-      // Verify info object properties
-      expect(info.publicKey).toBeDefined()
-      expect(info.publicKey.toString('hex')).toBeDefined()
-      expect(info.client).toBeDefined()
-      expect(info.topics).toBeDefined()
-      expect(info.client).toBe(true)
-      
-      // First client connection should have no topics
-      expect(info.topics.length).toBe(0)
-      // Server status should be false
-      expect(clientPeer.topicHolder['']).toBeUndefined()
-      // Connection should be added to peerConnect
-      const publicKeyHex = info.publicKey.toString('hex')
-      expect(clientPeer.peerConnect[publicKeyHex]).toBeDefined()
-      
-      // Resolve when client connection is established
-      resolve()
-    })
-
-    serverPeer.swarm.on('connection', (conn, info) => {
-      /* console.log('Server connection details:')
       console.log('Public Key:', info.publicKey.toString('hex'))
       console.log('Is Client:', info.client)
       console.log('Topics:', info.topics.map(t => t.toString('hex'))) */
@@ -86,13 +63,46 @@ it('should establish direct peer connection and handle first connections', async
       expect(info.topics).toBeDefined()
       expect(info.client).toBe(false)
       
+      // First client connection should have no topics
+      expect(info.topics.length).toBe(0)
+      // Server status should be false
+      expect(clientPeer.topicHolder['']).toBeUndefined()
+      // Connection should be added to peerConnect
+      const publicKeyHex = info.publicKey.toString('hex')
+      clientPeer.peerConnect[publicKeyHex] = conn
+      expect(clientPeer.peerConnect[publicKeyHex]).toBeDefined()
+      
+      // Resolve when client connection is established
+      if (connectionCount === 2) {
+        resolve()
+      }
+    })
+
+    serverPeer.swarm.on('connection', (conn, info) => {
+      connectionCount++
+      /* console.log('Server connection details:')
+      console.log('Public Key:', info.publicKey.toString('hex'))
+      console.log('Is Client:', info.client)
+      console.log('Topics:', info.topics.map(t => t.toString('hex'))) */
+      
+      // Verify info object properties
+      expect(info.publicKey).toBeDefined()
+      expect(info.publicKey.toString('hex')).toBeDefined()
+      expect(info.client).toBeDefined()
+      expect(info.topics).toBeDefined()
+      expect(info.client).toBe(true)
+      
       // First server connection should have no topics
       expect(info.topics.length).toBe(0)
       // Server status should be false
       expect(serverPeer.topicHolder['']).toBeUndefined()
       // Connection should be added to peerConnect
       const publicKeyHex = info.publicKey.toString('hex')
+      serverPeer.peerConnect[publicKeyHex] = conn
       expect(serverPeer.peerConnect[publicKeyHex]).toBeDefined()
+      if (connectionCount === 2) {
+        resolve()
+      }
     })
   })
 
@@ -106,7 +116,7 @@ it('should establish direct peer connection and handle first connections', async
 
   // Clear timeout if connection was successful
   clearTimeout(timeout)
-}, 50000) // 50 second timeout
+}, 20000) // 50 second timeout
 
   /*
   it('should establish direct peer connection and handle first connections', async () => {
