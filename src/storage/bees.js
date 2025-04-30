@@ -22,6 +22,7 @@ class HyperBee extends EventEmitter {
     this.liveBees = {}
     this.confirmPubLibList = {}
     this.repPublicHolder = {}
+    this.activeBees = []
   }
 
   /**
@@ -183,6 +184,7 @@ class HyperBee extends EventEmitter {
     startBeePubkey.data = beePubkeys
     this.liveBees = startBeePubkey
     this.wsocket.send(JSON.stringify(startBeePubkey))
+    this.activeBees = beePubkeys
   }
 
   /**

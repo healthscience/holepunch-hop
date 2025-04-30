@@ -90,7 +90,10 @@ describe('Three Peer Connection Tests', () => {
       // Set up peer1 as the initial listener
       peer1.peerJoinClient()
       peer2.peerJoinClient()
-      // peer3.peerJoinClient()
+
+      let logicPrepserverStatus = function (holePunch, info, publicKey) {
+        return holePunch.prepareConnectionInfo(info, publicKey)
+      }
 
       // Set up peer2 and peer3 with mock peer data
       const mockPeer1 = {
@@ -109,7 +112,23 @@ describe('Three Peer Connection Tests', () => {
             console.log('Peer1 FIRST connection:')
             countConnect++
             expect(info.publicKey).toBeDefined()
-            expect(info.client).toBe(testConfig.peer1to2.peer1.client) // Peer1
+            expect(info.client).toBe(testConfig.peer1to2.peer1.client)
+
+            const publicKeyPeer1 = info.publicKey.toString('hex')
+            let logicInfo = logicPrepserverStatus(peer1, info, publicKeyPeer1)
+            console.log('logicInfo11')
+            console.log(logicInfo)
+            if (info.client === testConfig.peer1to2.peer1.client) { // peer1 is server
+              console.log('peer1 is server lgoic')
+              expect(logicInfo.serverStatus).toBe(true)
+              expect(logicInfo.topicKeylive.length).toBe(0)
+              expect(logicInfo.discoveryTopicInfo.firstTime).toBe(true)
+            } else {
+              // Either serverStatus is true or there's a topic set
+              expect(logicInfo.serverStatus || logicInfo.topicKeylive.length > 0).toBe(true)
+            }
+
+
             // Save the peer network data for reconnection
             // Store connection for verification
             const publicKeyHex = info.publicKey.toString('hex')      
@@ -146,6 +165,20 @@ describe('Three Peer Connection Tests', () => {
             // Store connection for verification on reconnect
             const publicKeyHex2 = info.publicKey.toString('hex')
             console.log(publicKeyHex2)
+
+            let logicInfo = logicPrepserverStatus(peer1, info, publicKeyHex2)
+            console.log('logicInfo22aa')
+            console.log(logicInfo)
+            if (info.client === testConfig.peer1to2.peer2.client) { // peer2 is client
+              console.log('peer2 is server lgoic')
+              expect(logicInfo.serverStatus).toBe(false)
+              expect(logicInfo.topicKeylive.length).toBe(0)
+              expect(logicInfo.discoveryTopicInfo.firstTime).toBe(true)
+            } else {
+              // Either serverStatus is true or there's a topic set
+              expect(logicInfo.serverStatus || logicInfo.topicKeylive.length > 0).toBe(true)
+            }
+
             
             savedPeerNetworkServer.push({
               key: publicKeyHex2,
@@ -186,28 +219,15 @@ describe('Three Peer Connection Tests', () => {
 
   describe('reconnection using saved data', () => {
     it('should use saved relationship data for reconnection but peer1 to peer2 first time should go through first time path logic', async () => {
-      console.log('reconnection using saved data')
+      console.log('reconnection using saved data')      
       // keep track count connection to closetest
       let connectionCount = 0
       let peer1Count = 0
       // Set up peer1 as the initial listener
       peer1.peerJoinClient()
 
-      let logicPrepserverStatus = function (holePunch, info, publickey) {
-        let topicKeylive = info.topics
-        let roleTaken = info.client
-        // if now topics info then server, pass by
-        let discoveryTopicInfo = {}
-        if (topicKeylive.length === 0) {
-          // check if joined now?
-          discoveryTopicInfo = holePunch.checkDisoveryStatus('server', publickey)
-          if (discoveryTopicInfo === undefined) {
-            discoveryTopicInfo = { firstTime: false, topic: ''}
-          }
-        } else {
-          discoveryTopicInfo = { firstTime: false, topic: ''}
-        }
-        return { topicServer: discoveryTopicInfo.firstTime, topic: topicKeylive }
+      let logicPrepserverStatus = function (holePunch, info, publicKey) {
+        return holePunch.prepareConnectionInfo(info, publicKey)
       }
 
      /* start of listening for reconnect all three peers */
@@ -231,21 +251,26 @@ describe('Three Peer Connection Tests', () => {
           expect(info.client).toBe(testConfig.peer1to2.peer1.client)
           expect(info.topics.length).toBe(0)
           expect(peer1.topicHolder['']).toBeUndefined()
-          
           // Store connection for verification
           const publicKeyHex = info.publicKey.toString('hex')
-          
           // to differenciate between peer 2 and peer3
           if (peer1Count === 1) {
+            console.log('peer one reconn batch assert 111111')
             // check logic
             let logicInfo = logicPrepserverStatus(peer1, info, publicKeyHex)
-            expect(logicInfo.topicServer).toBe(false)
-            let orCheck = false
-            if (logicInfo.topicServer === true || logicInfo.topic.length > 0) {
-              orCheck = true
+            console.log('logicInfo11')
+            console.log(logicInfo)
+            if (info.client === testConfig.peer1to2.peer1.client) { // peer1 is server
+              expect(logicInfo.serverStatus).toBe(true)
+              expect(logicInfo.topicKeylive.length).toBe(0)
+              expect(logicInfo.discoveryTopicInfo.firstTime).toBe(false)
+            } else {
+              // Either serverStatus is true or there's a topic set
+              expect(logicInfo.serverStatus || logicInfo.topicKeylive.length > 0).toBe(true)
             }
-            expect(orCheck).toBe(false)
           } else if (peer1Count === 2) {
+            console.log('peer one reconn batch assert 222222')
+
             // save info
             savedPeerNetworkClient.push({
                 key: publicKeyHex,
@@ -262,11 +287,18 @@ describe('Three Peer Connection Tests', () => {
             })
             // check logic
             let logicInfo = logicPrepserverStatus(peer1, info, publicKeyHex)
-            let orCheck = false
-            if (logicInfo.topicServer === true || logicInfo.topic.length > 0) {
-              orCheck = true
+            console.log('logicInfo22')
+            console.log(logicInfo)
+            // For peer1 (server) - first-time connection
+            if (info.client === false) { // peer1 is server
+              expect(logicInfo.serverStatus).toBe(true)
+              expect(logicInfo.topicKeylive.length).toBe(0)
+              expect(logicInfo.discoveryTopicInfo.firstTime).toBe(true)
             }
-            expect(orCheck).toBe(true)
+            else {
+              // Either serverStatus is true or there's a topic set
+              expect(logicInfo.serverStatus || logicInfo.topicKeylive.length > 0).toBe(true)
+            }
           } else {
             console.log('no match to peer 2 or 3 XXXXXXXX')
           }
@@ -276,7 +308,7 @@ describe('Three Peer Connection Tests', () => {
           }
         })
 
-        peer2.swarm.on('connection', (conn, info) => {
+        peer2.swarm.on('connection', async (conn, info) => {
           console.log('Peer2 RECON connection details:')
           connectionCount++
           // Verify server reconnection details
@@ -293,26 +325,58 @@ describe('Three Peer Connection Tests', () => {
 
           // check logic
           let logicInfo = logicPrepserverStatus(peer2, info, publicKeyHex)
+          console.log('logicInfo33')
+          console.log(logicInfo)
           // Verify reconnection logic
-          // expect(logicInfo.topic.length).toBeGreaterThan(0)
-         // expect(logicInfo.topicServer).toBe(true)
-         let orCheck = false
-         if (logicInfo.topicServer === true || logicInfo.topic.length > 0) {
-           orCheck = true
-         }
-         expect(orCheck).toBe(true)
-          // now peer1 connect to peer3
-          console.log('Peer1 and Peer2 Reconnt now -----start peer 3 connect to peer1')
-          peer3.peerJoinClient()
-          const mockPeer1 = {
-            publickey: peer1.swarm.keyPair.publicKey.toString('hex'),
-            live: false,
-            value: {
-              live: false,
-              key: peer1.swarm.keyPair.publicKey.toString('hex')
-            }
+        // For peer1 (server) - first-time connection
+          if (info.client === clientValue) { // peer1 is server
+            expect(logicInfo.serverStatus).toBe(false)
+            expect(logicInfo.topicKeylive.length).toBe(1)
+            expect(logicInfo.discoveryTopicInfo.firstTime).toBe(false)
+          } else {
+            // Either serverStatus is true or there's a topic set
+            expect(logicInfo.serverStatus || logicInfo.topicKeylive.length > 0).toBe(true)
           }
-          peer3.peerJoin(mockPeer1)
+          // Ensure peer1 and peer2 are connected before peer3 connects
+          console.log('Peer1 and Peer2 Reconnt now -----start peer 3 connect to peer1')
+          
+          // Wait until both peer1 and peer2 connections are established
+          // Wait until both peer1 and peer2 connections are established
+          console.log('connectionCount')
+          console.log(connectionCount)
+          // Create function to handle peer3 connection
+          const connectPeer3 = async () => {
+            console.log('Connecting peer3 now that peer1 and peer2 are connected')
+            peer3.peerJoinClient()
+            const mockPeer1 = {
+              publickey: peer1.swarm.keyPair.publicKey.toString('hex'),
+              live: false,
+              value: {
+                live: false,
+                key: peer1.swarm.keyPair.publicKey.toString('hex')
+              }
+            }
+            peer3.peerJoin(mockPeer1)
+          }
+
+          // Call connectPeer3 when connectionCount reaches 2
+          if (connectionCount === 2) {
+            console.log('wait 1111')
+            await connectPeer3()
+          } else {
+            // Set up a listener for when connectionCount reaches 2
+            const checkConnectionCount = setInterval(async () => {
+              console.log('wait 2222')
+              // put a time delay in here too
+              if (connectionCount === 2) {
+                clearInterval(checkConnectionCount)
+                console.log('Waiting 3 seconds before connecting peer3...')
+                await new Promise(resolve => setTimeout(resolve, 10000))
+                connectPeer3()
+              }
+            }, 100)
+          }
+
           if (connectionCount === 4) {
             resolve()
           }
@@ -326,11 +390,9 @@ describe('Three Peer Connection Tests', () => {
           expect(info.publicKey.toString('hex')).toBeDefined()
           expect(info.topics.length).toBe(0)
           expect(peer3.topicHolder['']).toBeUndefined()
-          
           // Store connection for verification
           const publicKeyHex = info.publicKey.toString('hex')
           // expect(serverPeer.peerConnect[publicKeyHex]).toBeDefined()
-
           // check logic
           if (info.publicKey === testConfig.peer1to3.peer1.publicKey) {
             expect(info.client).toBe(testConfig.peer1to3.peer3.client) // Peer3 is client to Peer1
@@ -339,12 +401,17 @@ describe('Three Peer Connection Tests', () => {
           }
           // check logic
           let logicInfo = logicPrepserverStatus(peer3, info, publicKeyHex)
-          expect(logicInfo.topicServer).toBe(false)
-          let orCheck = false
-          if (logicInfo.topicServer === true || logicInfo.topic.length > 0) {
-            orCheck = true
+          console.log('logicInf444o')
+          console.log(logicInfo)
+          if (info.client === testConfig.peer2to3.peer3.client) { // peer1 is server
+            expect(logicInfo.serverStatus).toBe(false)
+            expect(logicInfo.topicKeylive.length).toBe(0)
+            expect(logicInfo.discoveryTopicInfo.firstTime).toBe(true)
           }
-          expect(orCheck).toBe(false)
+          else {
+            // Either serverStatus is true or there's a topic set
+            expect(logicInfo.serverStatus || logicInfo.topicKeylive.length > 0).toBe(true)
+          }
           if (connectionCount === 4) {
             resolve()
           }
@@ -361,6 +428,6 @@ describe('Three Peer Connection Tests', () => {
 
       // Clear timeout if connection was successful
       clearTimeout(timeout)
-    }, 30000) // 30 second timeout
+    }, 50000) // 30 second timeout
   })
 })

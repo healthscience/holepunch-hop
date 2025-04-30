@@ -88,6 +88,7 @@ class HolepunchWorker extends EventEmitter {
    *
   */
   activateHypercores = async function () {
+    console.log('start hypercores')
     await this.DriveFiles.setupHyperdrive()
     await this.BeeData.setupHyperbee()
     this.Peers.networkKeys()
@@ -111,8 +112,8 @@ class HolepunchWorker extends EventEmitter {
    * @method startStores
    *
   */
-  startStores = function (ws) {
-    this.activateHypercores()
+  startStores = async function () {
+    await this.activateHypercores()
   }
 
   /**
