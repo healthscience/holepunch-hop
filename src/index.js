@@ -127,7 +127,7 @@ class HolepunchWorker extends EventEmitter {
     })
     // peer connection active for first time 
     this.Peers.on('peer-connect', (data) => {
-     //this.warmPeerPrepare(data)
+     // this.warmPeerPrepare(data)
     })
     // share connection failed
     this.Peers.on('peer-share-fail', (data) => {
@@ -180,6 +180,8 @@ class HolepunchWorker extends EventEmitter {
     })
     // new warm incoming peer
     this.Peers.on('connect-warm-first', (data) => {
+      console.log('connect-warm-first')
+      console.log(data)
       // check re establishing peer to peer of first time connection?
       let peerInfoName = 'not-matched' //  could be mis match or blind/ cold peer accessing public library
       // check role and match codename
@@ -203,6 +205,8 @@ class HolepunchWorker extends EventEmitter {
       peerId.live = false
       peerId.livePeerkey = ''
       this.warmPeers.push(peerId)
+      console.log('peer-incoming-save---next')
+      console.log(peerId)
       this.emit('peer-incoming-save', peerId)
     })
     // peer live on network?
@@ -326,6 +330,9 @@ class HolepunchWorker extends EventEmitter {
    * @method warmPeerPrepare
    */
   warmPeerPrepare = function (data, existing) {
+    console.log('warmPeerPrepare')
+    console.log(data)
+    console.log(existing)
     // check if codename holder has any data to process
     this.processCodenameMatching(data)
     // two checks, if topic send to other peer
@@ -339,8 +346,13 @@ class HolepunchWorker extends EventEmitter {
       }
       // client of server Role?
       // let role = this.Peers.getRole(data)
+      console.log('peerMatch')
+      console.log(peerMatch)
       if (peerMatch.roletaken === 'client') {
+        console.log('client')
         let roleStatus = this.Peers.matchCodename(data)
+        console.log('roleStatus')
+        console.log(roleStatus)
         let codenameInform = {}
         codenameInform.type = 'peer-codename-inform'
         codenameInform.action = 'set'
@@ -348,6 +360,7 @@ class HolepunchWorker extends EventEmitter {
         this.Peers.writeTonetworkData(data, codenameInform) 
         // inform peer of codename
       } else if (peerMatch.roletaken === 'server') {
+        console.log('server')
         // notify beebee peer to live
         let codeNameInform = {}
         codeNameInform.type = 'peer-codename-inform'

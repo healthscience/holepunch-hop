@@ -140,49 +140,78 @@ class NetworkPeers extends EventEmitter {
     };
   }
 
-  // First-time connection handler
   handleFirstTimeConnection = function(conn, info, connectionInfo) {
+    console.log('firsttimer path-------------------------------------')
     const { publicKey } = info;
-    const { topicKeylive, serverStatus } = connectionInfo;
+    const { topicKeylive } = connectionInfo;
     
-    // First time connection logic
-    this.peerConnect[publicKey] = conn;
-    
-    if (topicKeylive.length === 0 && !serverStatus) {
-      // Direct first-time connection
-      this.dataFlowCheck(publicKey, 'first');
-      this.emit('connect-warm-first', {
-        publickey: publicKey,
-        roletaken: info.client ? 'client' : 'server'
-      });
-    } else {
-      // Topic-based first-time connection
-      this.dataFlowCheck(publicKey, 'server');
+    let publicKeylive = publicKey.toString('hex')
+    // First establish the connection
+    this.peerConnect[publicKey.toString('hex')] = conn;
+    let roleTaken = info.client
+    // check status of topic  first time no topic
+    if (this.topicHolder[publicKeylive] === undefined) {
+      console.log('first time connection with no topic  swithc based on role')
+      // is client or server role
+      let roleType = ''
+      if (roleTaken === false) {
+        roleType = 'server'
+      } else {
+        roleType = 'client'
+      }
+      console.log('role type')
+      console.log(roleType)
+      let roleContext = {}
+      roleContext.publickey = publicKeylive
+      roleContext.roletaken = roleType
+      // first time cheeck for data long with it?
+      this.peerConnect[publicKeylive] = conn
+      this.dataFlowCheck(publicKeylive, 'first')
+      this.emit('connect-warm-first', roleContext)
     }
-  }
+    /*let topicServer = null;
+    if (connectionInfo.serverStatus === false) {
+        // Direct first-time connection
+        this.dataFlowCheck(publicKeylive, 'first');
+        this.emit('connect-warm-first', {
+            publickey: publicKeylive,
+            roletaken: 'client'
+        });
+    } else {
+        // Topic-based connection
+        // topicServer = this.topicHolder[topicKeylive[0].toString('hex')];
+        // if (topicServer) {
+        // this.dataFlowCheck(topicKeylive[0].toString('hex'), 'client');
+       // } else {
+        this.dataFlowCheck(publicKeylive, 'server');
+       // }
+    }*/
+}
 
   // Reconnection handler
   handleReconnection = function(conn, info, connectionInfo) {
+    console.log('reconnection path-------------------------------------')
     const { publicKey } = info;
     const { topicKeylive, discoveryTopicInfo, serverStatus } = connectionInfo;
-    
+    console.log('ppeperpepe infofofo')
+    console.log(connectionInfo)
     // Reconnection logic
-    this.peerConnect[publicKey] = conn;
+    this.peerConnect[publicKey.toString('hex')] = conn;
     
-    if (topicKeylive.length > 0 || serverStatus) {
+    if (topicKeylive.length > 0) {
       // Handle topic-based reconnection
-      const topic = topicKeylive[0].toString('hex');
+      const topic = topicKeylive;
       const topicMatch = this.topicHolder[topic];
       
       if (topicMatch && Object.keys(topicMatch).length > 0) {
-        topicMatch.currentPubkey = publicKey;
+        topicMatch.currentPubkey = publicKey.toString('hex');
         this.topicHolder[topic] = topicMatch;
         this.dataFlowCheck(topic, 'client');
-        this.updatePeerStatus(topic, publicKey);
+        this.updatePeerStatus(topic, publicKey.toString('hex'));
       }
     } else {
       // Handle non-topic reconnection
-      this.dataFlowCheck(publicKey, 'server');
+      this.dataFlowCheck(publicKey.toString('hex'), 'server');
     }
   }
 
@@ -276,6 +305,8 @@ class NetworkPeers extends EventEmitter {
     if (Buffer.isBuffer(data)) {
       try {
         let dataShareIn = JSON.parse(data.toString())
+        console.log('dataShareIn')
+        console.log(dataShareIn)
         // match current public key to base id of peer
         let peerMatch = this.peerMatchbase(peer)
         if (dataShareIn.type === 'private-chart') {
@@ -382,6 +413,9 @@ class NetworkPeers extends EventEmitter {
   * 
   */
   matchCodename = function (data) {
+    console.log('matchCodename')
+    console.log(data)
+    console.log(this.peersRole)
     let codeNameInvite = {}
     let inviteIn = {}
     for (let roleP of this.peersRole) {
@@ -389,6 +423,8 @@ class NetworkPeers extends EventEmitter {
         inviteIn = roleP
       }
     }
+    console.log('inviteIn')
+    console.log(inviteIn)
     codeNameInvite = { codename: inviteIn.invite.codename, invitePubkey: data , name: inviteIn.invite.name}
     // match codename to role
     let roleMatch = { publickey: data, role: inviteIn, codename: codeNameInvite.codename, name: codeNameInvite.name }
@@ -494,6 +530,81 @@ class NetworkPeers extends EventEmitter {
   * 
   */
   dataFlowCheck = function (topicIn, role) {
+    console.log('dataFlowCheck')
+    console.log(topicIn)
+    console.log(role)
+    // check if any data connection flow?
+    let peerTopeerState = {}
+    let matchPeer = {}
+    if (role === 'client') {
+      matchPeer = this.topicHolder[topicIn]
+      let peerActionData = this.peerHolder[matchPeer.peerKey]
+      if (peerActionData !== undefined) {  
+        peerTopeerState = peerActionData.data
+      }
+    } else if (role === 'server') {
+      matchPeer.currentPubkey = topicIn
+      // loop over topics and see what info available??
+      let checkDiscoveryTopic = {}
+      for (let topicH of this.sendTopicHolder) {
+        const noisePublicKey = Buffer.from(topicH.topic, 'hex')
+        let discovery = this.swarm.status(noisePublicKey)
+        let discoverTopic = discovery.topic.toString('hex')
+        if (discoverTopic === topicH.topic) {
+          discovery.swarm.connections.forEach((value, key) => {
+            checkDiscoveryTopic.server = value.publicKey.toString('hex')
+            checkDiscoveryTopic.client = value.remotePublicKey.toString('hex')
+            checkDiscoveryTopic.topic = discoverTopic
+          })
+        }
+      }
+      // find out peer publickey first
+      let peerMTopic = {}
+      for (let peerh of this.peerNetwork) {
+       if (peerh.value.topic === checkDiscoveryTopic.topic) {
+          peerMTopic = peerh
+        }
+      }
+      // server from topic or first time direct?
+      if (Object.keys(peerMTopic).length === 0) {
+        //  first time direct connection
+        peerMTopic.key = topicIn  // note this is public key  poor naming  
+      } else {
+      }
+      // check for data
+      let peerActionData = this.peerHolder[peerMTopic.key]
+      if (peerActionData !== undefined) {
+        peerTopeerState = peerActionData.data
+      } else {
+        peerTopeerState = {}
+      }
+      } else if (role === 'first') {
+        let peerActionData = this.peerHolder[topicIn]
+        if (peerActionData === undefined) {
+          peerTopeerState = {}
+        } else {
+          if(peerActionData.data !== undefined) {
+            peerTopeerState = peerActionData.data          
+          } else {
+            peerTopeerState = {}
+          }
+        }
+      }
+    // any data to write to network? NOT USED?
+    let checkDataShare = Object.keys(peerTopeerState).length
+    if (checkDataShare > 0) {
+      if (peerTopeerState.type === 'peer-share-invite') {
+      } else if (peerTopeerState.type === 'private-chart') {  
+        this.writeTonetworkData(matchPeer.currentPubkey, peerTopeerState)
+      } else if (peerTopeerState.type === 'peer-share-topic') {
+      } else if (peerTopeerState.type === 'public-n1-experiment') {
+      } else if (peerTopeerState.type === 'cue-space') {
+      } else if (peerTopeerState.type === 'peer-write') {
+      }
+    } 
+  }
+
+  /* dataFlowCheck = function (topicIn, role) {
     // check if any data connection flow?
     let peerTopeerState = {}
     let matchPeer = {}
@@ -563,7 +674,7 @@ class NetworkPeers extends EventEmitter {
       } else if (peerTopeerState.type === 'peer-write') {
       }
     } 
-  }
+  }*/
   
   /**
    * check discovery status on network
@@ -572,12 +683,19 @@ class NetworkPeers extends EventEmitter {
   */
   checkDisoveryStatus = function (nodeRole, publicKey) {
     console.log('start check diecovereyey--------------')
+    console.log(publicKey)
+    console.log(this.peerNetwork)
     let topicList = []
     if (nodeRole === 'server') {
+      console.log('server')
       topicList = this.sendTopicHolder
     } else if (nodeRole === 'client') {
+      console.log('client')
       topicList = this.topicHolder
     }
+    console.log('topic list type select')
+    console.log(topicList)
+    
     // previous info at hand 
     let firstTime = false
     let emptyHolder = false
@@ -613,7 +731,7 @@ class NetworkPeers extends EventEmitter {
       console.log(sendLogic)
       console.log('holder logic')
       console.log(holderLogic)
-      if (matchTopic.length > 0 && sendLogic.length === 0 && holderLogic.length === 0) {
+      if (matchTopic.length === 0 && sendLogic.length === 0 && holderLogic.length === 0) {
         firstTime = true
       }
     } else {
@@ -773,6 +891,9 @@ class NetworkPeers extends EventEmitter {
    *
   */
   writeTonetworkData = function (publickey, dataShare) {
+    console.log('writeTonetworkData')
+    console.log(publickey)
+    console.log(dataShare)
     this.peerConnect[publickey].write(JSON.stringify(dataShare))
   }
 

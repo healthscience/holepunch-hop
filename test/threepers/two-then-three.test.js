@@ -105,8 +105,10 @@ describe('Three Peer Connection Tests', () => {
         }
       }
       peer2.peerJoin(mockPeer1)
+
       // Create connection promises for each peer
       const connectionPromises = [
+        /* PEER 1 FIRST */
         new Promise((resolve) => {
           peer1.swarm.on('connection', (conn, info) => {
             console.log('Peer1 FIRST connection:')
@@ -118,6 +120,19 @@ describe('Three Peer Connection Tests', () => {
             let logicInfo = logicPrepserverStatus(peer1, info, publicKeyPeer1)
             console.log('logicInfo11')
             console.log(logicInfo)
+
+            // Determine which path to take
+            /*if (connectionInfo.discoveryTopicInfo.firstTime === false) {
+              this.handleReconnection(conn, info, connectionInfo);
+            } else {
+              this.handleFirstTimeConnection(conn, info, connectionInfo);
+            }*/
+
+
+
+
+
+
             if (info.client === testConfig.peer1to2.peer1.client) { // peer1 is server
               console.log('peer1 is server lgoic')
               expect(logicInfo.serverStatus).toBe(true)
@@ -152,7 +167,7 @@ describe('Three Peer Connection Tests', () => {
             }
           })
         }),
-
+        /* PEER 2 FIRST */
         new Promise((resolve) => {
           peer2.swarm.on('connection', (conn, info) => {
             console.log('Peer2 FIRST connection:')
@@ -272,7 +287,7 @@ describe('Three Peer Connection Tests', () => {
             console.log('peer one reconn batch assert 222222')
 
             // save info
-            savedPeerNetworkClient.push({
+            /*savedPeerNetworkClient.push({
                 key: publicKeyHex,
                 value: {
                   name: 'peer2',
@@ -284,13 +299,14 @@ describe('Three Peer Connection Tests', () => {
                   live: false,
                   livePeerkey: ''
               }
-            })
+            })*/
             // check logic
             let logicInfo = logicPrepserverStatus(peer1, info, publicKeyHex)
             console.log('logicInfo22')
             console.log(logicInfo)
             // For peer1 (server) - first-time connection
             if (info.client === false) { // peer1 is server
+              console.log('server asserts peer1 to peer3   first time but with peer2 already connected')
               expect(logicInfo.serverStatus).toBe(true)
               expect(logicInfo.topicKeylive.length).toBe(0)
               expect(logicInfo.discoveryTopicInfo.firstTime).toBe(true)
@@ -428,6 +444,6 @@ describe('Three Peer Connection Tests', () => {
 
       // Clear timeout if connection was successful
       clearTimeout(timeout)
-    }, 50000) // 30 second timeout
+    }, 20000) // 30 second timeout
   })
 })
