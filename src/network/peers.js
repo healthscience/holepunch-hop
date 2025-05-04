@@ -102,41 +102,28 @@ class NetworkPeers extends EventEmitter {
   }
 
   // Connection preparation methods
-  prepareConnectionInfo = function(info, publicKey) {
+  prepareConnectionInfo = async function(info, publicKey) {
+    console.log('PREPRATION INFO--status of topic and peers acordin to swarm')
     const topicKeylive = info.topics;
     const roleTaken = info.client;
     let discoveryTopicInfo = {};
-    console.log('topic key live')
-    console.log(topicKeylive)
-    console.log('role taken')
-    console.log(roleTaken)
     if (topicKeylive.length === 0) {
-      discoveryTopicInfo = this.checkDisoveryStatus('server', publicKey);
-      console.log('discoveryTopicInfo')
-      console.log(discoveryTopicInfo)
+      if (roleTaken === false) {
+        discoveryTopicInfo = this.checkDisoveryStatus('server', publicKey, topicKeylive);
+      } else if (roleTaken === true) {
+        discoveryTopicInfo = this.checkDisoveryStatus('client', publicKey, topicKeylive);
+      }
       if (discoveryTopicInfo === undefined) {
         discoveryTopicInfo = { firstTime: false, topic: ''}
       }
     } else {
       discoveryTopicInfo = { firstTime: false, topic: ''}
     }
-    
-    let topicServer = this.topicHolder[discoveryTopicInfo.topic]
-    let serverStatus = false
-    if (roleTaken === false) {
-      serverStatus = true
-    }
-    /* if (topicServer !== undefined) {
-      if (Object.keys(topicServer).length > 0) {
-        serverStatus = true
-      }
-    }*/
-    
+       
     return {
       topicKeylive,
       roleTaken,
-      discoveryTopicInfo,
-      serverStatus
+      discoveryTopicInfo
     };
   }
 
@@ -159,8 +146,6 @@ class NetworkPeers extends EventEmitter {
       } else {
         roleType = 'client'
       }
-      console.log('role type')
-      console.log(roleType)
       let roleContext = {}
       roleContext.publickey = publicKeylive
       roleContext.roletaken = roleType
@@ -191,19 +176,26 @@ class NetworkPeers extends EventEmitter {
   // Reconnection handler
   handleReconnection = function(conn, info, connectionInfo) {
     console.log('reconnection path-------------------------------------')
+    console.log(info)
     const { publicKey } = info;
     const { topicKeylive, discoveryTopicInfo, serverStatus } = connectionInfo;
     console.log('ppeperpepe infofofo')
     console.log(connectionInfo)
+    console.log(this.discoveryList)
     // Reconnection logic
     this.peerConnect[publicKey.toString('hex')] = conn;
-    
+    /*
     if (topicKeylive.length > 0) {
+      console.log('topic based reconnection222')
       // Handle topic-based reconnection
-      const topic = topicKeylive;
+      const topic = topicKeylive[0].toString('hex');
       const topicMatch = this.topicHolder[topic];
-      
+      console.log('topic ')
+      console.log(topic)
+      console.log('topic match')
+      console.log(topicMatch)
       if (topicMatch && Object.keys(topicMatch).length > 0) {
+        console.log('topic based reconnection33')
         topicMatch.currentPubkey = publicKey.toString('hex');
         this.topicHolder[topic] = topicMatch;
         this.dataFlowCheck(topic, 'client');
@@ -211,8 +203,10 @@ class NetworkPeers extends EventEmitter {
       }
     } else {
       // Handle non-topic reconnection
+      console.log('topic based reconnection44')
       this.dataFlowCheck(publicKey.toString('hex'), 'server');
     }
+    */
   }
 
   // Main connection handler
@@ -220,7 +214,8 @@ class NetworkPeers extends EventEmitter {
     this.swarm.on('connection', (conn, info) => {
       const publicKey = info.publicKey.toString('hex');
       const connectionInfo = this.prepareConnectionInfo(info, publicKey);
-      
+      console.log('connection info decision first or second ..third etc')
+      console.log(connectionInfo.discoveryTopicInfo.firstTime)
       // Determine which path to take
       if (connectionInfo.discoveryTopicInfo.firstTime === false) {
         this.handleReconnection(conn, info, connectionInfo);
@@ -413,9 +408,6 @@ class NetworkPeers extends EventEmitter {
   * 
   */
   matchCodename = function (data) {
-    console.log('matchCodename')
-    console.log(data)
-    console.log(this.peersRole)
     let codeNameInvite = {}
     let inviteIn = {}
     for (let roleP of this.peersRole) {
@@ -423,8 +415,6 @@ class NetworkPeers extends EventEmitter {
         inviteIn = roleP
       }
     }
-    console.log('inviteIn')
-    console.log(inviteIn)
     codeNameInvite = { codename: inviteIn.invite.codename, invitePubkey: data , name: inviteIn.invite.name}
     // match codename to role
     let roleMatch = { publickey: data, role: inviteIn, codename: codeNameInvite.codename, name: codeNameInvite.name }
@@ -530,9 +520,6 @@ class NetworkPeers extends EventEmitter {
   * 
   */
   dataFlowCheck = function (topicIn, role) {
-    console.log('dataFlowCheck')
-    console.log(topicIn)
-    console.log(role)
     // check if any data connection flow?
     let peerTopeerState = {}
     let matchPeer = {}
@@ -681,24 +668,87 @@ class NetworkPeers extends EventEmitter {
    * @method checkDisoveryStatus
    *
   */
-  checkDisoveryStatus = function (nodeRole, publicKey) {
+  checkDisoveryStatus = function (nodeRole, publicKey, topic) {
     console.log('start check diecovereyey--------------')
-    console.log(publicKey)
-    console.log(this.peerNetwork)
+    // console.log(publicKey)
+    // console.log(this.peerNetwork)
+    // console.log(this.sendTopicHolder)
+    // console.log(this.topicHolder)
     let topicList = []
     if (nodeRole === 'server') {
-      console.log('server')
       topicList = this.sendTopicHolder
     } else if (nodeRole === 'client') {
-      console.log('client')
       topicList = this.topicHolder
     }
-    console.log('topic list type select')
-    console.log(topicList)
     
     // previous info at hand 
     let firstTime = false
     let emptyHolder = false
+
+    // we get public key --  discovery process to match to topic, has that topic been set before, then match live key to peerKey ie. the pubkey used an id from first time connection??
+    // scenerios
+    // 1. first time connection both client and server -- no save peers
+    // 2. first time connection client -- with saved peers
+    // 3. first time connection server -- with saved peers
+    // 4. reconnect with only one options
+    // 5. reconnect client with saved peers
+    // 6. reconnect server with saved peers
+    // 7  mix of peers acting as clients and server
+    let checkDiscoveryInfo = {}
+    // any existing peers
+    if (this.peerNetwork.length === 0) {
+      firstTime = true
+    } else {
+      // check in client or Server roles
+      // client will have topic if returning peer
+      if (nodeRole === 'client') {
+        // check if topic in peerInfo on connect
+        if (topic.length === 0) {
+          firstTime = true
+        }
+      } else if (nodeRole === 'server') {
+        if (topicList.length === 0) {
+          firstTime = true
+        } else {
+          // could be first time connect
+          console.log(' decicde first time connection on what baissis????????')
+          console.log(this.swarm.connections)
+          // check if public keey in network
+          let existingPeerCheck = false
+          for (let peer of this.peerNetwork) {
+            console.log(peer.key)
+            console.log(publicKey)
+            if (peer.key === publicKey) {
+              existingPeerCheck = true
+            } else {
+              existingPeerCheck = false
+            }
+          }
+          // check invites generated
+          console.log('generate invitelist')
+          console.log(this.peersRole)
+          console.log('existingPeerCheck') 
+          console.log(existingPeerCheck)
+          // can rule out reconnection?  not enough info at this time, peer if reconnect topic will send id to match direct
+          if (existingPeerCheck === false) {
+            firstTime = 'wait-topic-confirm'
+          }
+        }
+      }
+    }
+
+
+    checkDiscoveryInfo.firstTime = firstTime
+    checkDiscoveryInfo.emptyHolder = emptyHolder
+    checkDiscoveryInfo.role = nodeRole
+    checkDiscoveryInfo.server = ''
+    checkDiscoveryInfo.client = ''
+    checkDiscoveryInfo.topic = ''
+    console.log(checkDiscoveryInfo)
+    return checkDiscoveryInfo
+
+
+    /*
     if (this.peerNetwork.length > 0) {
       emptyHolder = true
       // match pubkey to peer to get set topic
@@ -731,9 +781,25 @@ class NetworkPeers extends EventEmitter {
       console.log(sendLogic)
       console.log('holder logic')
       console.log(holderLogic)
-      if (matchTopic.length === 0 && sendLogic.length === 0 && holderLogic.length === 0) {
-        firstTime = true
+      if (nodeRole === 'client') {
+        console.log('extra workk for client')
+        if (matchTopic.length > 0 && sendLogic.length === 0 && holderLogic.length === 0) {
+          firstTime = true
+        } else {
+          firstTime = true
+        }
+      } else if (nodeRole === 'server') {
+        console.log('extra workk for server')
+        // check if public key match any exsting keyids?
+        /* for (let peer of this.peerNetwork) {
+          if (peer.key === publicKey) {
+            firstTime = false
+          } else {
+            firstTime = true
+          }
+        } 
       }
+ 
     } else {
       firstTime = true
     }
@@ -746,20 +812,26 @@ class NetworkPeers extends EventEmitter {
       }
     }
     let checkDiscoveryTopic = {}
-    checkDiscoveryTopic.firstTime = firstTime
+    checkDiscoveryTopic.firstTime = firstTime  // should this be set???
     if (topicList.length > 0) {
       for (let topicH of topicList) {
         const noisePublicKey = Buffer.from(topicH.topic, 'hex')
         let discovery = this.swarm.status(noisePublicKey)
+        console.log('discovery000000000000000000000000')
+        console.log(discovery.topic.toString('hex'))
         let discoverTopic = discovery.topic.toString('hex')
         if (discoverTopic === topicH.topic) {
           // do the peerid match?
           discovery.swarm.connections.forEach((value, key) => {
+            console.log('value looooop')
             checkDiscoveryTopic.server = value.publicKey.toString('hex')
             checkDiscoveryTopic.client = value.remotePublicKey.toString('hex')
             checkDiscoveryTopic.topic = discoverTopic
           })
           if (checkDiscoveryTopic.client === topicH.peerKey) {
+            console.log('retrun rrrr1111')
+            checkDiscoveryTopic.firstTime = false
+            console.log(checkDiscoveryTopic)
             return checkDiscoveryTopic
           } else {
             if (checkDiscoveryTopic.topic === topicH.topic) {
@@ -774,10 +846,14 @@ class NetworkPeers extends EventEmitter {
                 }
                 // now use this id to check if peer has been invited
                 let beforeTopicCheck = this.checkTopicModes(topicSet)
+                console.log('beftopicchchc-------------------')
+                console.log(beforeTopicCheck)
                 checkDiscoveryTopic.firstTime = beforeTopicCheck.firstTime
               } else {
                 checkDiscoveryTopic.firstTime = true
               }
+              console.log('return rrrr2222')
+              console.log(checkDiscoveryTopic)
               return checkDiscoveryTopic
             } else {
               checkDiscoveryTopic.topic = ''
@@ -791,9 +867,10 @@ class NetworkPeers extends EventEmitter {
       checkDiscoveryTopic.server = '' 
       checkDiscoveryTopic.client = ''
       checkDiscoveryTopic.topic = ''
+      console.log('return rrrr3333')
       return checkDiscoveryTopic
     }
-
+*/   
   }
 
   /**
@@ -891,9 +968,6 @@ class NetworkPeers extends EventEmitter {
    *
   */
   writeTonetworkData = function (publickey, dataShare) {
-    console.log('writeTonetworkData')
-    console.log(publickey)
-    console.log(dataShare)
     this.peerConnect[publickey].write(JSON.stringify(dataShare))
   }
 
@@ -990,6 +1064,8 @@ class NetworkPeers extends EventEmitter {
    *
   */
   topicConnect = async function (peerID, topic) {
+    console.log('topic connect')
+    console.log(topic)
     // const noisePublicKey = Buffer.alloc(32).fill(topic) // A topic must be 32 bytes
     const noisePublicKey = Buffer.from(topic, 'hex') //  must be 32 bytes
     if (noisePublicKey.length === 32) {
@@ -1008,6 +1084,8 @@ class NetworkPeers extends EventEmitter {
    *
   */
   topicListen = async function (topic, peerKey) {
+    console.log('topic listen')
+    console.log(topic)
     // const noisePublicKey = Buffer.alloc(32).fill(topic) // A topic must be 32 bytes
     // let topicKeylive = noisePublicKey.toString('hex')
     const noisePublicKey = Buffer.from(topic, 'hex') //  must be 32 bytes

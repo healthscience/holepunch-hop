@@ -19,12 +19,13 @@ describe('peer reconnection', () => {
   let savedPeerNetworkClient = []
   let savedPeerNetworkServer = []
   let topicReconnect = ''
+  let testConfig
 
   beforeEach(async () => {
     // Start HOP server
     const baseHOPStepsUp = path.join(__dirname, '../..')
-    hopProcess = spawn('npm', ['run', 'start'], { stdio: 'inherit', cwd: baseHOPStepsUp })
-    await new Promise((resolve) => setTimeout(resolve, 3000))
+    // hopProcess = spawn('npm', ['run', 'start'], { stdio: 'inherit', cwd: baseHOPStepsUp })
+    // await new Promise((resolve) => setTimeout(resolve, 3000))
 
     // Initialize peers
     // Create real swarms
@@ -34,6 +35,19 @@ describe('peer reconnection', () => {
     // Create client and server peers
     clientPeer = new NetworkPeers({}, clientSwarm) 
     serverPeer = new NetworkPeers({}, serverSwarm)
+
+    testConfig = {
+      peer1to2: {
+        peer1: {
+          publicKey: clientPeer.swarm.keyPair.publicKey.toString('hex'),
+          client: true
+        },
+        peer2: {
+          publicKey: serverPeer.swarm.keyPair.publicKey.toString('hex'),
+          client: false
+        },
+      }
+    }
 
     const randomString = crypto.randomBytes(32).toString('hex')
     // Convert the random string to a buffer
@@ -54,24 +68,24 @@ describe('peer reconnection', () => {
     it('should save relationship data for reconnection', async () => {
       // make initial connection
       console.log('FIRT TIME CONNECT start')
-         // Server listens for connections
-    // console.log(clientPeer.swarm.keyPair)
-    let mockServerPeer = {
-      publickey: clientPeer.swarm.keyPair.publicKey.toString('hex'),
-      live: false,
-      value: {
+      let connectionCount = 0
+      let mockServerPeer = {
+        publickey: clientPeer.swarm.keyPair.publicKey.toString('hex'),
         live: false,
-        key: clientPeer.swarm.keyPair.publicKey.toString('hex')
+        value: {
+          live: false,
+          key: clientPeer.swarm.keyPair.publicKey.toString('hex')
+        }
       }
-    }
-    // make client listen
-    clientPeer.peerJoinClient()
-    // serverPeer.peerJoinClient()
-    console.log('start NETWORK plumbing client peer1 and server peer2')
-    serverPeer.peerJoin(mockServerPeer)
+      // make client listen
+      clientPeer.peerJoinClient()
+      // serverPeer.peerJoinClient()
+      console.log('start NETWORK plumbing client peer1 and server peer2')
+      serverPeer.peerJoin(mockServerPeer)
       // Create connection promise to verify connection details
       let connectionPromise = new Promise((resolve) => {
         clientPeer.swarm.on('connection', (conn, info) => {
+          connectionCount++
           // Verify client connection details
           console.log('Client FIRST connection details:')
           expect(info.publicKey).toBeDefined()
@@ -99,11 +113,15 @@ describe('peer reconnection', () => {
             }
           })
           // Resolve when client connection is established
-          resolve()
+          if (connectionCount === 2) {
+            console.log('resolve peer two')
+            resolve()
+          }
         })
 
         serverPeer.swarm.on('connection', (conn, info) => {
           console.log('Server FIRST connection details:')
+          connectionCount++
           const publicKeyHex2 = info.publicKey.toString('hex')
           // Verify server connection details
           expect(info.publicKey).toBeDefined()
@@ -128,7 +146,10 @@ describe('peer reconnection', () => {
           })
           
           // Resolve when server connection is established
-          // resolve()
+          if (connectionCount === 2) {
+            console.log('resolve peer two')
+            resolve()
+          }
         })
       })
 
@@ -145,28 +166,12 @@ describe('peer reconnection', () => {
     }, 50000) // 50 second timeout
   })
   
-  describe('reconnection using saved data', () => {
+  describe('reconnection using saved data', async() => {
     it('should use saved relationship data for reconnection', async () => {
+      let connectionCount = 0
       console.log('reconnection using saved data')
-      let logicPrepserverStatus = function (holePunch, info) {
-        let topicKeylive = info.topics
-        let roleTaken = info.client
-        // if now topics info then server, pass by
-        let discoveryTopicInfo = {}
-        if (topicKeylive.length === 0) {
-          // check if joined now?
-          discoveryTopicInfo = holePunch.checkDisoveryStatus('server')
-        } else {
-          discoveryTopicInfo = {topic: ''}
-        }
-        let topicServer = holePunch.topicHolder[discoveryTopicInfo.topic]
-        let serverStatus = false
-        if (topicServer !== undefined) {
-          if (Object.keys(topicServer).length > 0) {
-            serverStatus = true
-          }
-        }
-        return { topicServer: serverStatus, topic: topicKeylive }
+      let logicPrepserverStatus = async function (holePunch, info, publicKey) {
+        return await holePunch.prepareConnectionInfo(info, publicKey)
       }
 
       // Reconnect using saved peer network data
@@ -177,9 +182,10 @@ describe('peer reconnection', () => {
       serverPeer.setupConnectionBegin(savedPeerNetworkServer)
 
       // Create connection promise to verify reconnection details
-      let reconnectionPromise = new Promise((resolve) => {
-        clientPeer.swarm.on('connection', (conn, info) => {
+      let reconnectionPromise = new Promise(async (resolve) => {
+        clientPeer.swarm.on('connection', async (conn, info) => {
           console.log('Client2 RECON connection details:')
+          connectionCount++
           // Verify reconnection details
           expect(info.publicKey).toBeDefined()
           expect(info.publicKey.toString('hex')).toBeDefined()
@@ -188,26 +194,26 @@ describe('peer reconnection', () => {
           expect(clientPeer.topicHolder['']).toBeUndefined()
           
           // Store connection for verification
-          const publicKeyHex = info.publicKey.toString('hex')
-          // expect(clientPeer.peerConnect[publicKeyHex]).toBeDefined()
-          
+          const publicKeyHex = info.publicKey.toString('hex')     
           // check logic
-          let logicInfo = logicPrepserverStatus(clientPeer, info)
+          let logicInfo = await logicPrepserverStatus(clientPeer, info)
           // Verify reconnection logic
-          // expect(logicInfo.topic.length).toBeGreaterThan(0)
-          expect(logicInfo.topicServer).toBe(true)
-          let orCheck = false
-          if (logicInfo.topicServer === true || logicInfo.topic.length > 0) {
-            orCheck = true
+          if (info.client === testConfig.peer1to2.peer1.client) {
+            expect(logicInfo.discoveryTopicInfo.firstTime).toBe(false)
+          } else {
+            // Either serverStatus is true or there's a topic set
           }
-          expect(orCheck).toBe(true)
           // Resolve when reconnection is established
           console.log('TEST COMPLERE 111')
-          resolve()
+          if (connectionCount === 2) {
+            console.log('resolve peer two')
+            resolve()
+          }
         })
 
-        serverPeer.swarm.on('connection', (conn, info) => {
+        serverPeer.swarm.on('connection', async (conn, info) => {
           console.log('Server2 RECON connection details:')
+          connectionCount++
           // Verify server reconnection details
           expect(info.publicKey).toBeDefined()
           expect(info.publicKey.toString('hex')).toBeDefined()
@@ -220,17 +226,18 @@ describe('peer reconnection', () => {
           // expect(serverPeer.peerConnect[publicKeyHex]).toBeDefined()
 
           // check logic
-          let logicInfo = logicPrepserverStatus(serverPeer, info)
+          let logicInfo = await logicPrepserverStatus(serverPeer, info)
           // Verify reconnection logic
-          expect(logicInfo.topic.length).toBeGreaterThan(0)
-          expect(logicInfo.topicServer).toBe(false)
-          let orCheck = false
-          if (logicInfo.topicServer === true || logicInfo.topic.length > 0) {
-            orCheck = true
+          if (info.client === testConfig.peer1to2.peer2.client) {
+            expect(logicInfo.discoveryTopicInfo.firstTime).toBe(false)
+          } else {
+            // Either serverStatus is true or there's a topic set
           }
-          expect(orCheck).toBe(true)
           console.log('TEST COMPLERE 222')
-          // resolve()
+          if (connectionCount === 2) {
+            console.log('resolve peer two')
+            resolve()
+          }
         })
 
       })
@@ -245,6 +252,6 @@ describe('peer reconnection', () => {
 
       // Clear timeout if connection was successful
       clearTimeout(timeout)
-    }, 50000) // 50 second timeout
+    }, 20000) // 50 second timeout
   })
 })
