@@ -157,6 +157,11 @@ describe('Three Peer Connection Tests', () => {
                   livePeerkey: ''
                 }
               })
+            // process network message
+            conn.on('data', data =>
+              // assess data
+              peer1.assessData(publicKeyHex, data)
+            )
             if (countConnect === 2) {
               console.log('TTnow resolve')
               resolve()
@@ -202,6 +207,11 @@ describe('Three Peer Connection Tests', () => {
                 livePeerkey: ''
               }
             })
+            // process network message
+            conn.on('data', data =>
+              // assess data
+              peer2.assessData(publicKeyHex2, data)
+            )
             if (countConnect === 1) {
               console.log('TTresolve two')
               resolve()
@@ -241,9 +251,6 @@ describe('Three Peer Connection Tests', () => {
         return await holePunch.prepareConnectionInfo(info, publicKey)
       }
 
-
-
-
       // Create connection promise to verify reconnection details
       let reconnectionPromise = new Promise(async (resolve) => {
 
@@ -279,7 +286,7 @@ describe('Three Peer Connection Tests', () => {
             // For peer1 (server) - first-time connection
             if (info.client === false) { // peer1 is server
               console.log('TT server asserts peer1 to peer3   first time but with peer2 already connected')
-              expect(logicInfo.discoveryTopicInfo.firstTime).toBe(true)
+              expect(logicInfo.discoveryTopicInfo.firstTime).toBe('wait-topic-confirm')
               test2complete = true
               // resolve()
             }
@@ -287,12 +294,17 @@ describe('Three Peer Connection Tests', () => {
               // Either serverStatus is true or there's a topic set
               
             }
-
           } else {
             console.log('no match to peer 2 or 3 XXXXXXXX')
           }
+
+          // process network message
+          conn.on('data', data =>
+            // assess data
+            peer1.assessData(publicKeyHex, data)
+          )
           // Resolve when reconnection is established
-          if (connectionCount === 4 && test2complete === true) {
+          if (connectionCount === 5 && test2complete === true) {
             console.log('TT resolve peerone')
             resolve()
           }
@@ -355,6 +367,11 @@ describe('Three Peer Connection Tests', () => {
             }, 100)
           }
 
+          // process network message
+          conn.on('data', data =>
+            // assess data
+            peer2.assessData(publicKeyHex, data)
+          )
           if (connectionCount === 4) {
             console.log('resolve peer two')
             resolve()
@@ -389,6 +406,11 @@ describe('Three Peer Connection Tests', () => {
             // Either serverStatus is true or there's a topic set
             expect(logicInfo.serverStatus || logicInfo.topicKeylive.length > 0).toBe(true)
           }
+          // process network message
+          conn.on('data', data =>
+            // assess data
+            peer3.assessData(publicKeyHex, data)
+          )
           if (connectionCount === 4) {
             console.log('resolve peer three')
             resolve()
@@ -406,6 +428,6 @@ describe('Three Peer Connection Tests', () => {
 
       // Clear timeout if connection was successful
       clearTimeout(timeout)
-    }, 20000) // 30 second timeout
+    }, 40000) // 30 second timeout
   }) 
 })

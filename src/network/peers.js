@@ -102,7 +102,7 @@ class NetworkPeers extends EventEmitter {
   }
 
   // Connection preparation methods
-  prepareConnectionInfo = async function(info, publicKey) {
+  prepareConnectionInfo =  function(info, publicKey) {
     console.log('PREPRATION INFO--status of topic and peers acordin to swarm')
     const topicKeylive = info.topics;
     const roleTaken = info.client;
@@ -154,23 +154,6 @@ class NetworkPeers extends EventEmitter {
       this.dataFlowCheck(publicKeylive, 'first')
       this.emit('connect-warm-first', roleContext)
     }
-    /*let topicServer = null;
-    if (connectionInfo.serverStatus === false) {
-        // Direct first-time connection
-        this.dataFlowCheck(publicKeylive, 'first');
-        this.emit('connect-warm-first', {
-            publickey: publicKeylive,
-            roletaken: 'client'
-        });
-    } else {
-        // Topic-based connection
-        // topicServer = this.topicHolder[topicKeylive[0].toString('hex')];
-        // if (topicServer) {
-        // this.dataFlowCheck(topicKeylive[0].toString('hex'), 'client');
-       // } else {
-        this.dataFlowCheck(publicKeylive, 'server');
-       // }
-    }*/
 }
 
   // Reconnection handler
@@ -184,11 +167,19 @@ class NetworkPeers extends EventEmitter {
     console.log(this.discoveryList)
     // Reconnection logic
     this.peerConnect[publicKey.toString('hex')] = conn;
-    /*
-    if (topicKeylive.length > 0) {
+    let topic = topicKeylive[0].toString('hex')
+    // match topic to topic holder list to get original pub key ID
+    let originalKey = ''
+    for (let savePeer of this.peerNetwork) {
+      if (savePeer.value.topic === topic) {
+        console.log(savePeer)
+        originalKey = savePeer.value.publickey;
+        break;
+      }
+    }
+    if (topic.length > 0) {
       console.log('topic based reconnection222')
       // Handle topic-based reconnection
-      const topic = topicKeylive[0].toString('hex');
       const topicMatch = this.topicHolder[topic];
       console.log('topic ')
       console.log(topic)
@@ -199,27 +190,60 @@ class NetworkPeers extends EventEmitter {
         topicMatch.currentPubkey = publicKey.toString('hex');
         this.topicHolder[topic] = topicMatch;
         this.dataFlowCheck(topic, 'client');
-        this.updatePeerStatus(topic, publicKey.toString('hex'));
+        this.updatePeerStatus(topic, originalKey);
       }
     } else {
       // Handle non-topic reconnection
       console.log('topic based reconnection44')
       this.dataFlowCheck(publicKey.toString('hex'), 'server');
     }
-    */
   }
 
-  // Main connection handler
+  /*
+   * Update peer status
+  *
+  **/
+  updatePeerStatus = function(topic, publicKey) {
+    let originalKey = '';
+    for (let savePeer of this.peerNetwork) {
+      if (savePeer.value.topic === topic) {
+        originalKey = savePeer.value.publickey;
+        break;
+      }
+    }
+
+    const updatePeerStatus = this.peerNetwork.map(savePeer => {
+      if (savePeer.key === originalKey) {
+        return {
+          ...savePeer,
+          value: {
+            ...savePeer.value,
+            live: true,
+            livePeerkey: publicKey
+          }
+        };
+      }
+      return savePeer;
+    });
+
+    this.peerNetwork = updatePeerStatus;
+    this.emit('peer-live-network', originalKey);
+  }
+
+  /*
+   * Listen for network connections
+  *
+  **/
   listenNetwork = function () {
     this.swarm.on('connection', (conn, info) => {
       const publicKey = info.publicKey.toString('hex');
       const connectionInfo = this.prepareConnectionInfo(info, publicKey);
       console.log('connection info decision first or second ..third etc')
-      console.log(connectionInfo.discoveryTopicInfo.firstTime)
+      console.log(connectionInfo)
       // Determine which path to take
       if (connectionInfo.discoveryTopicInfo.firstTime === false) {
         this.handleReconnection(conn, info, connectionInfo);
-      } else {
+      } else if (connectionInfo.discoveryTopicInfo.firstTime === true) {
         this.handleFirstTimeConnection(conn, info, connectionInfo);
       }
       
@@ -253,35 +277,7 @@ class NetworkPeers extends EventEmitter {
     });
   }
 
-  // Peer status update method (moved to class level)
-  updatePeerStatus = function(topic, publicKey) {
-    let originalKey = '';
-    for (let savePeer of this.peerNetwork) {
-      if (savePeer.value.topic === topic) {
-        originalKey = savePeer.value.publickey;
-        break;
-      }
-    }
-
-    const updatePeerStatus = this.peerNetwork.map(savePeer => {
-      if (savePeer.key === originalKey) {
-        return {
-          ...savePeer,
-          value: {
-            ...savePeer.value,
-            live: true,
-            livePeerkey: publicKey
-          }
-        };
-      }
-      return savePeer;
-    });
-
-    this.peerNetwork = updatePeerStatus;
-    this.emit('peer-live-network', originalKey);
-  }
-
-    /**
+  /**
    * 
    * @method updateListen
    *
@@ -712,7 +708,7 @@ class NetworkPeers extends EventEmitter {
         } else {
           // could be first time connect
           console.log(' decicde first time connection on what baissis????????')
-          console.log(this.swarm.connections)
+          // console.log(this.swarm.connections)
           // check if public keey in network
           let existingPeerCheck = false
           for (let peer of this.peerNetwork) {
