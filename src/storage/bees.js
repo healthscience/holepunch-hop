@@ -40,7 +40,6 @@ class HyperBee extends EventEmitter {
    *
   */
   setupHyperbee = async function () {
-    console.log('setting up hyperbee')
     let beePubkeys = []
 
     const core = this.store.get({ name: 'publiclibrary' })

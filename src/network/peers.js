@@ -103,7 +103,6 @@ class NetworkPeers extends EventEmitter {
 
   // Connection preparation methods
   prepareConnectionInfo =  function(info, publicKey) {
-    console.log('PREPRATION INFO--status of topic and peers acordin to swarm')
     const topicKeylive = info.topics;
     const roleTaken = info.client;
     let discoveryTopicInfo = {};
@@ -128,17 +127,15 @@ class NetworkPeers extends EventEmitter {
   }
 
   handleFirstTimeConnection = function(conn, info, connectionInfo) {
-    console.log('firsttimer path-------------------------------------')
     const { publicKey } = info;
     const { topicKeylive } = connectionInfo;
     
     let publicKeylive = publicKey.toString('hex')
     // First establish the connection
-    this.peerConnect[publicKey.toString('hex')] = conn;
+    this.peerConnect[publicKeylive] = conn;
     let roleTaken = info.client
     // check status of topic  first time no topic
     if (this.topicHolder[publicKeylive] === undefined) {
-      console.log('first time connection with no topic  swithc based on role')
       // is client or server role
       let roleType = ''
       if (roleTaken === false) {
@@ -156,15 +153,13 @@ class NetworkPeers extends EventEmitter {
     }
 }
 
-  // Reconnection handler
+  /**
+   *  Reconnection handler
+   * 
+   */
   handleReconnection = function(conn, info, connectionInfo) {
-    console.log('reconnection path-------------------------------------')
-    console.log(info)
     const { publicKey } = info;
     const { topicKeylive, discoveryTopicInfo, serverStatus } = connectionInfo;
-    console.log('ppeperpepe infofofo')
-    console.log(connectionInfo)
-    console.log(this.discoveryList)
     // Reconnection logic
     this.peerConnect[publicKey.toString('hex')] = conn;
     let topic = topicKeylive[0].toString('hex')
@@ -172,29 +167,23 @@ class NetworkPeers extends EventEmitter {
     let originalKey = ''
     for (let savePeer of this.peerNetwork) {
       if (savePeer.value.topic === topic) {
-        console.log(savePeer)
-        originalKey = savePeer.value.publickey;
+         originalKey = savePeer.value.publickey;
         break;
       }
     }
     if (topic.length > 0) {
-      console.log('topic based reconnection222')
       // Handle topic-based reconnection
       const topicMatch = this.topicHolder[topic];
-      console.log('topic ')
-      console.log(topic)
-      console.log('topic match')
-      console.log(topicMatch)
       if (topicMatch && Object.keys(topicMatch).length > 0) {
-        console.log('topic based reconnection33')
         topicMatch.currentPubkey = publicKey.toString('hex');
         this.topicHolder[topic] = topicMatch;
         this.dataFlowCheck(topic, 'client');
         this.updatePeerStatus(topic, originalKey);
+        // inform other peer of peerkey id
+        this.writeTopicReconnect(originalKey, topicMatch)
       }
     } else {
       // Handle non-topic reconnection
-      console.log('topic based reconnection44')
       this.dataFlowCheck(publicKey.toString('hex'), 'server');
     }
   }
@@ -238,8 +227,6 @@ class NetworkPeers extends EventEmitter {
     this.swarm.on('connection', (conn, info) => {
       const publicKey = info.publicKey.toString('hex');
       const connectionInfo = this.prepareConnectionInfo(info, publicKey);
-      console.log('connection info decision first or second ..third etc')
-      console.log(connectionInfo)
       // Determine which path to take
       if (connectionInfo.discoveryTopicInfo.firstTime === false) {
         this.handleReconnection(conn, info, connectionInfo);
@@ -296,8 +283,6 @@ class NetworkPeers extends EventEmitter {
     if (Buffer.isBuffer(data)) {
       try {
         let dataShareIn = JSON.parse(data.toString())
-        console.log('dataShareIn')
-        console.log(dataShareIn)
         // match current public key to base id of peer
         let peerMatch = this.peerMatchbase(peer)
         if (dataShareIn.type === 'private-chart') {
@@ -330,6 +315,8 @@ class NetworkPeers extends EventEmitter {
             dataShareIn.settopic = false
             this.emit('peer-reconnect-topic', dataShareIn)
           }
+        } else if (dataShareIn.type === 'topic-reconnect-id') {
+          this.emit('peer-reconnect-topic-id', dataShareIn.data)
         }
       } catch (e) {
           return console.error('ignore err')
@@ -485,6 +472,22 @@ class NetworkPeers extends EventEmitter {
     } else {
       return originalKey
     }
+  }
+
+  /**
+  *  match peer to topic live
+  *  @method matchPeerTopic
+  * 
+  */
+  matchPeerTopic = function (topic) {
+    // first match live pubkey to topic and then use topic to get original
+    let peerSettings = {}
+    for (let savePeer of this.peerNetwork) {
+      if (savePeer.value.topic === topic) {
+        peerSettings = savePeer
+      }
+    }
+    return peerSettings
   }
 
   /**
@@ -665,11 +668,6 @@ class NetworkPeers extends EventEmitter {
    *
   */
   checkDisoveryStatus = function (nodeRole, publicKey, topic) {
-    console.log('start check diecovereyey--------------')
-    // console.log(publicKey)
-    // console.log(this.peerNetwork)
-    // console.log(this.sendTopicHolder)
-    // console.log(this.topicHolder)
     let topicList = []
     if (nodeRole === 'server') {
       topicList = this.sendTopicHolder
@@ -707,24 +705,15 @@ class NetworkPeers extends EventEmitter {
           firstTime = true
         } else {
           // could be first time connect
-          console.log(' decicde first time connection on what baissis????????')
-          // console.log(this.swarm.connections)
           // check if public keey in network
           let existingPeerCheck = false
           for (let peer of this.peerNetwork) {
-            console.log(peer.key)
-            console.log(publicKey)
             if (peer.key === publicKey) {
               existingPeerCheck = true
             } else {
               existingPeerCheck = false
             }
           }
-          // check invites generated
-          console.log('generate invitelist')
-          console.log(this.peersRole)
-          console.log('existingPeerCheck') 
-          console.log(existingPeerCheck)
           // can rule out reconnection?  not enough info at this time, peer if reconnect topic will send id to match direct
           if (existingPeerCheck === false) {
             firstTime = 'wait-topic-confirm'
@@ -740,7 +729,6 @@ class NetworkPeers extends EventEmitter {
     checkDiscoveryInfo.server = ''
     checkDiscoveryInfo.client = ''
     checkDiscoveryInfo.topic = ''
-    console.log(checkDiscoveryInfo)
     return checkDiscoveryInfo
 
 
@@ -959,6 +947,19 @@ class NetworkPeers extends EventEmitter {
   }
 
   /**
+   * write message to topic reconnect peer to inform of id
+   * @method writeTopicReconnect
+   *
+  */
+  writeTopicReconnect = function (publickey, topicInfo) {
+    let topicReconnectMessage = {}
+    topicReconnectMessage.type = 'topic-reconnect-id'
+    topicReconnectMessage.data = { topic: topicInfo.topic, peerKey: topicInfo.peerKey }
+    this.peerConnect[topicInfo.currentPubkey].write(JSON.stringify(topicReconnectMessage))
+  }
+
+
+  /**
    * write message to network
    * @method writeTonetworkData
    *
@@ -1060,8 +1061,6 @@ class NetworkPeers extends EventEmitter {
    *
   */
   topicConnect = async function (peerID, topic) {
-    console.log('topic connect')
-    console.log(topic)
     // const noisePublicKey = Buffer.alloc(32).fill(topic) // A topic must be 32 bytes
     const noisePublicKey = Buffer.from(topic, 'hex') //  must be 32 bytes
     if (noisePublicKey.length === 32) {
@@ -1080,9 +1079,7 @@ class NetworkPeers extends EventEmitter {
    *
   */
   topicListen = async function (topic, peerKey) {
-    console.log('topic listen')
-    console.log(topic)
-    // const noisePublicKey = Buffer.alloc(32).fill(topic) // A topic must be 32 bytes
+     // const noisePublicKey = Buffer.alloc(32).fill(topic) // A topic must be 32 bytes
     // let topicKeylive = noisePublicKey.toString('hex')
     const noisePublicKey = Buffer.from(topic, 'hex') //  must be 32 bytes
     if (noisePublicKey.length === 32) {

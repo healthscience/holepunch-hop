@@ -288,6 +288,7 @@ describe('Three Peer Connection Tests', () => {
               console.log('TT server asserts peer1 to peer3   first time but with peer2 already connected')
               expect(logicInfo.discoveryTopicInfo.firstTime).toBe('wait-topic-confirm')
               test2complete = true
+              console.log('test2222 over')
               // resolve()
             }
             else {
@@ -304,7 +305,7 @@ describe('Three Peer Connection Tests', () => {
             peer1.assessData(publicKeyHex, data)
           )
           // Resolve when reconnection is established
-          if (connectionCount === 5 && test2complete === true) {
+          if (connectionCount === 4 && test2complete === true) {
             console.log('TT resolve peerone')
             resolve()
           }

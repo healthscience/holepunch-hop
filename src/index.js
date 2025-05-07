@@ -141,6 +141,16 @@ class HolepunchWorker extends EventEmitter {
       data.prime = false
       this.emit('peer-topic-update', data)    
     })
+    // reconnect topic peer id
+    this.Peers.on('peer-reconnect-topic-id', async (data) => {
+      // match current key to peerid
+      let peerMatch = this.Peers.matchPeerTopic(data.topic)
+      let codeNameInform = {}
+      codeNameInform.type = 'peer-codename-inform'
+      codeNameInform.action = 'set'
+      codeNameInform.data = { inviteCode: '' , publickey: peerMatch.key }
+      this.emit('invite-live-peer', codeNameInform)
+    })
     // peer reconnection topic ie. able to reconnect again
     this.Peers.on('topic-formed-save', (data) => {
       // put data into holder await for codename  matching over
