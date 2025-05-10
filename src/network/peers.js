@@ -94,6 +94,17 @@ class NetworkPeers extends EventEmitter {
   }
 
   /**
+   * when new update or refresh peer network to get latest peers
+   * @method latestPeerNetwork
+   *
+  */
+  latestPeerNetwork = function (peerNetwork) {
+    // Use concat to merge arrays while preserving existing elements
+    this.peerNetwork = [...this.peerNetwork, ...peerNetwork]
+  }
+
+
+  /**
    * incoming establsihed information
    * @method setRestablished
    *
@@ -176,7 +187,7 @@ class NetworkPeers extends EventEmitter {
         topicMatch.currentPubkey = publicKey.toString('hex')
         this.topicHolder[topic] = topicMatch
         this.dataFlowCheck(topic, 'client')
-        this.updatePeerStatus(topic, originalKey)
+        this.updatePeerStatus(topic, publicKey.toString('hex'))
         // inform other peer of peerkey id
         this.writeTopicReconnect(originalKey, topicMatch)
       }
@@ -254,14 +265,26 @@ class NetworkPeers extends EventEmitter {
         if (connectLivekeys.length > 0) {
           for (let peer of this.peerNetwork) {
             for (let pconn of connectLivekeys) {
-              if (peer.value.livePeerkey === pconn) {
-                // check if connect is close?
-                let keysNoise = Object.keys(this.peerConnect[pconn]['noiseStream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['rawStream']['_closed'])
-                // console.log(this.peerConnect[pconn]['noiseStream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['rawStream']['_closed'])
-                let closeStatus = this.peerConnect[pconn]['noiseStream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['rawStream']['_closed']
-                if (closeStatus === true) {
-                  // remove peer & inform beebee
-                  this.emit('peer-disconnect', { publickey: peer.key })
+              if (peer.value.livePeerkey.length > 0) {
+                if (peer.value.livePeerkey === pconn) {
+                  // check if connect is close?
+                  // let keysNoise = Object.keys(this.peerConnect[pconn]['noiseStream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['rawStream']['_closed'])
+                  // console.log(this.peerConnect[pconn]['noiseStream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['rawStream']['_closed'])
+                  let closeStatus = this.peerConnect[pconn]['noiseStream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['rawStream']['_closed']
+                  if (closeStatus === true) {
+                    // remove peer & inform beebee
+                    this.emit('peer-disconnect', { publickey: peer.key })
+                  }
+                }
+               } else {
+                // assume first time and use key
+                if (peer.key === pconn) {
+                  // check if connect is close?
+                  let closeStatus = this.peerConnect[pconn]['noiseStream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['rawStream']['_closed']
+                  if (closeStatus === true) {
+                    // remove peer & inform beebee
+                    this.emit('peer-disconnect', { publickey: peer.key })
+                  }
                 }
               }
             }
