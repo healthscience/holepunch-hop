@@ -283,10 +283,12 @@ describe('Three Peer Connection Tests', () => {
             console.log('TT peer one RECON batch assert 222222')
             // check logic
             let logicInfo = await logicPrepserverStatus(peer1, info, publicKeyHex)
+            console.log('logic info-----')
+            console.log(logicInfo)
             // For peer1 (server) - first-time connection
             if (info.client === false) { // peer1 is server
               console.log('TT server asserts peer1 to peer3   first time but with peer2 already connected')
-              expect(logicInfo.discoveryTopicInfo.firstTime).toBe('wait-topic-confirm')
+              expect(logicInfo.discoveryTopicInfo.firstTime).toBe(true)
               test2complete = true
               console.log('test2222 over')
               // resolve()

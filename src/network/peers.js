@@ -201,8 +201,6 @@ class NetworkPeers extends EventEmitter {
   *
   **/
   updatePeerStatus = function(topic, publicKey) {
-    console.log('update peer status')
-    console.log(publicKey)
     let originalKey = '';
     for (let savePeer of this.peerNetwork) {
       if (savePeer.value.topic === topic) {
@@ -224,8 +222,6 @@ class NetworkPeers extends EventEmitter {
       }
       return savePeer;
     });
-    console.log('update to live peer key reconnect')
-    console.log(updatePeerStatus)
     this.peerNetwork = updatePeerStatus;
     this.emit('peer-live-network', originalKey);
   }
@@ -239,12 +235,17 @@ class NetworkPeers extends EventEmitter {
       const publicKey = info.publicKey.toString('hex')
       this.peerConnect[publicKey] = conn
       const connectionInfo = this.prepareConnectionInfo(info, publicKey)
+      console.log('connetion info START------------------')
+      console.log(connectionInfo)
       // Determine which path to take
       if (connectionInfo.discoveryTopicInfo.firstTime === false) {
+        console.log('path1')
         this.handleReconnection(conn, info, connectionInfo)
       } else if (connectionInfo.discoveryTopicInfo.firstTime === true) {
+        console.log('path2')
         this.handleFirstTimeConnection(conn, info, connectionInfo)
       } else {
+        console.log('path3')
         this.peerSwitchLiveID.push({ publicKey: publicKey, discoveryTopicInfo: connectionInfo })
       }
       
@@ -258,9 +259,6 @@ class NetworkPeers extends EventEmitter {
       )
 
       conn.on('error', data => {
-        console.log('peer error')
-        console.log(data)
-        console.log(this.peerNetwork)
         let connectLivekeys = Object.keys(this.peerConnect)
         if (connectLivekeys.length > 0) {
           for (let peer of this.peerNetwork) {
@@ -347,6 +345,8 @@ class NetworkPeers extends EventEmitter {
           }
         } else if (dataShareIn.type === 'topic-reconnect-id') {
           // update status of livepeer public key
+          console.log('topic id message')
+          console.log(dataShareIn)
           this.emit('peer-reconnect-topic-id', peer, dataShareIn.data)
         }
       } catch (e) {
@@ -715,6 +715,12 @@ class NetworkPeers extends EventEmitter {
    *
   */
   checkDisoveryStatus = function (nodeRole, publicKey, topic) {
+    console.log('nodeRole')
+    console.log(nodeRole)
+    console.log('publicKey')
+    console.log(publicKey)
+    console.log('topic')
+    console.log(topic)
     let topicList = []
     if (nodeRole === 'server') {
       topicList = this.sendTopicHolder
@@ -740,30 +746,48 @@ class NetworkPeers extends EventEmitter {
     if (this.peerNetwork.length === 0) {
       firstTime = true
     } else {
-      // check in client or Server roles
-      // client will have topic if returning peer
-      if (nodeRole === 'client') {
-        // check if topic in peerInfo on connect
-        if (topic.length === 0) {
-          firstTime = true
+      // check if current publickey matches
+      let keyMatchTopic = false
+      for (let topicE of topicList) {
+        if (topicE.livePubkey === publicKey) {
+          keyMatchTopic = true
         }
-      } else if (nodeRole === 'server') {
-        if (topicList.length === 0) {
-          firstTime = true
-        } else {
-          // could be first time connect
-          // check if public keey in network
-          let existingPeerCheck = false
-          for (let peer of this.peerNetwork) {
-            if (peer.key === publicKey) {
-              existingPeerCheck = true
-            } else {
-              existingPeerCheck = false
-            }
+      }
+      if (keyMatchTopic === false) {
+        firstTime = true
+      } else {
+        // check in client or Server roles
+        // client will have topic if returning peer
+        if (nodeRole === 'client') {
+          // check if topic in peerInfo on connect
+          if (topic.length === 0) {
+            firstTime = true
           }
-          // can rule out reconnection?  not enough info at this time, peer if reconnect topic will send id to match direct
-          if (existingPeerCheck === false) {
-            firstTime = 'wait-topic-confirm'
+        } else if (nodeRole === 'server') {
+          console.log('topicList')
+          console.log(topicList)
+          if (topicList.length === 0) {
+            firstTime = true
+          } else {
+            // could be first time connect
+            // check if public keey in network
+            let existingPeerCheck = false
+            for (let peer of this.peerNetwork) {
+              console.log('machchehe')
+              console.log(peer.key)
+              console.log(publicKey)
+              if (peer.key === publicKey) {
+                existingPeerCheck = true
+              } else {
+                existingPeerCheck = false
+              }
+            }
+            console.log('existingPeerCheck')
+            console.log(existingPeerCheck)
+            // can rule out reconnection?  not enough info at this time, peer if reconnect topic will send id to match direct
+            if (existingPeerCheck === false) {
+              firstTime = 'wait-topic-confirm'
+            }
           }
         }
       }
