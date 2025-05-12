@@ -160,6 +160,8 @@ class HolepunchWorker extends EventEmitter {
     })
     // codename matching
     this.Peers.on('peer-codename-match', (data) => {
+      // check if first time?
+      this.Peers.matchInviteFirst(data)
       // put in holding and then complete once save first complete
       this.codenameUpdates.push(data)
     })
@@ -197,6 +199,7 @@ class HolepunchWorker extends EventEmitter {
       if (data.roletaken === 'server') {
         // not unique info to match on yet.
       } else {
+        // client path --->
         let peerRole = this.Peers.matchCodename(data.publickey)
         if (peerRole.name.length > 0) {
           // receiving peer
