@@ -319,7 +319,12 @@ class HolepunchWorker extends EventEmitter {
       } 
     } else if (message.action === 'retry') {
       let peerDefaults = this.Peers.peerMatchTopic(message.data.key)
-      this.Peers.discoveryMatch(message.data.key)
+      // this.Peers.discoveryMatch(message.data.key)
+      if (message.data.value.settopic === true) {
+        this.Peers.topicConnect(message.data.key, message.data.value.topic)
+      } else {
+        this.Peers.topicListen(message.data.value.topic, message.data.key)
+      }
     } else if (message.action === 'peer-closed') {
       this.flushConnections()
       await this.swarm.destroy()

@@ -119,21 +119,15 @@ class NetworkPeers extends EventEmitter {
   **/
   listenNetwork = function () {
     this.swarm.on('connection', (conn, info) => {
-      console.log('connection')
       const publicKey = info.publicKey.toString('hex')
       this.peerConnect[publicKey] = conn
       const connectionInfo = this.prepareConnectionInfo(info, publicKey)
-      console.log('connetion info START------------------')
-      console.log(connectionInfo)
       // Determine which path to take
       if (connectionInfo.discoveryTopicInfo.firstTime === false) {
-        console.log('path1')
         this.handleReconnection(conn, info, connectionInfo)
       } else if (connectionInfo.discoveryTopicInfo.firstTime === true) {
-        console.log('path2')
         this.handleFirstTimeConnection(conn, info, connectionInfo)
       } else {
-        console.log('path3')
         // need to differenciate between first time and reconnect
         this.peerSwitchLiveID.push({ publicKey: publicKey, discoveryTopicInfo: connectionInfo })
       }
