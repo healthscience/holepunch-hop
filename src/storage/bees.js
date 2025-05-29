@@ -87,7 +87,7 @@ class HyperBee extends EventEmitter {
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentochat.ready()
-    beePubkeys.push({store:'bentochat', privacy: 'private', pubkey: b4a.toString(core3.key, 'hex')})
+    beePubkeys.push({store:'bentochat', privacy: 'private', pubkey: b4a.toString(core14.key, 'hex')})
 
 
     const core4 = this.store.get({ name: 'hopresults' })
@@ -130,7 +130,15 @@ class HyperBee extends EventEmitter {
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentomodels.ready()
-    beePubkeys.push({store:'bentomodels', privacy: 'public', pubkey: b4a.toString(core7.key, 'hex')})
+    beePubkeys.push({store:'bentomodels', privacy: 'public', pubkey: b4a.toString(core13.key, 'hex')})
+
+    const core15 = this.store.get({ name: 'bentoboxes' })
+    this.dbBentoBoxes = new Hyperbee(core15, {
+      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      valueEncoding: 'json' // same options as above
+    })
+    await this.dbBentonmodels.ready()
+    beePubkeys.push({store:'bentoboxes', privacy: 'public', pubkey: b4a.toString(core15.key, 'hex')})
 
     const core8 = this.store.get({ name: 'bentodecisions' })
     this.dbBentodecisions = new Hyperbee(core8, {
@@ -360,6 +368,53 @@ class HyperBee extends EventEmitter {
     deleteInfo.spaceid = cue.cueid
     return deleteInfo
   }
+
+  /** BENTOBOXES */
+  /**
+   * save model
+   * @method saveModel
+  */
+  saveBentoBox = async function (boxInfo) {
+    await this.dbBentoBoxes.put(boxInfo.id, boxInfo.data)
+    let checkSave = await this.getBentoBox(boxInfo.id)
+    return checkSave
+  }
+
+  /**
+   * get one cue by id
+   * @method getModel
+   *
+  */
+  getBentoBox = async function (key) {
+    const nodeData = await this.dbBentoBoxes.get(key)
+    return nodeData
+  }
+
+  /**
+   * get all cuees
+   * @method getModelHistory
+   *
+  */
+  getBentoBoxHistory = async function (key) {
+    const boxHistory = await this.dbBentoBoxes.createReadStream()
+    let boxData = []
+    for await (const { key, value } of boxHistory) {
+      boxData.push({ key, value })
+    }
+    return boxData
+  }
+
+  /**
+   * delete nxp ref contract from peer library
+   * @method deleteBentoBox
+  */
+  deleteBentoBox = async function (box) {
+    const deleteStatus = await this.dbBentoBoxes.del(box.id)
+    let deleteInfo = {}
+    deleteInfo.id = box.id
+    return deleteInfo
+  }
+
 
   /** MODELS */
   /**
