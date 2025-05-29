@@ -138,7 +138,7 @@ class HyperBee extends EventEmitter {
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentoBoxes.ready()
-    beePubkeys.push({store:'bentoboxes', privacy: 'public', pubkey: b4a.toString(core15.key, 'hex')})
+    beePubkeys.push({store:'bentoboxes', privacy: 'private', pubkey: b4a.toString(core15.key, 'hex')})
 
     const core8 = this.store.get({ name: 'bentodecisions' })
     this.dbBentodecisions = new Hyperbee(core8, {
