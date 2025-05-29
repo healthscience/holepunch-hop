@@ -137,7 +137,7 @@ class HyperBee extends EventEmitter {
       keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
-    await this.dbBentonmodels.ready()
+    await this.dbBentoBoxes.ready()
     beePubkeys.push({store:'bentoboxes', privacy: 'public', pubkey: b4a.toString(core15.key, 'hex')})
 
     const core8 = this.store.get({ name: 'bentodecisions' })
