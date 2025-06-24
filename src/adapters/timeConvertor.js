@@ -25,6 +25,8 @@ class TimeConvertor extends EventEmitter {
   *
   */
   testDataExtact = function (sampleDate) {
+    console.log('time adopter')
+    console.log(sampleDate)
     let parseDate0 = DateTime.fromISO(sampleDate)
     let parseDate1 = DateTime.fromHTTP(sampleDate)
     let parseDate2 = DateTime.fromJSDate(sampleDate)
@@ -35,6 +37,7 @@ class TimeConvertor extends EventEmitter {
     // .fromJSDate(sampleDate) // .fromHTTP(sampleDate) //  fromFormat(sampleDate, "YYY-MM-DD ")  //.fromISO(sampleDate) // or DateTime. fromFormat("23-06-2019", "dd-MM-yyyy") .(splitRow[0])//  new Date(splitRow[0])
     // console.log(parseDate) */
     let millDate = parseDate2.toMillis()
+    console.log(millDate)
     return millDate
   }
 

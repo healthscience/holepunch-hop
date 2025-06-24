@@ -148,7 +148,6 @@ class HyperBee extends EventEmitter {
     await this.dbBentodecisions.ready()
     beePubkeys.push({store:'bentodecisions', pubkey: b4a.toString(core8.key, 'hex')})
 
-
     const core9 = this.store.get({ name: 'bentomarkers' })
     this.dbBentomarkers = new Hyperbee(core9, {
       keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
@@ -157,7 +156,6 @@ class HyperBee extends EventEmitter {
     await this.dbBentomarkers.ready()
     beePubkeys.push({store:'bentomarkers', privacy: 'private', pubkey: b4a.toString(core9.key, 'hex')})
 
-
     const core10 = this.store.get({ name: 'research' })
     this.dbBentoresearch = new Hyperbee(core10, {
       keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
@@ -165,7 +163,6 @@ class HyperBee extends EventEmitter {
     })
     await this.dbBentoresearch.ready()
     beePubkeys.push({store:'research', privacy: 'public', pubkey: b4a.toString(core10.key, 'hex')})
-
 
     const core11 = this.store.get({ name: 'bentoproducts' })
     this.dbBentoproducts = new Hyperbee(core11, {
@@ -192,16 +189,16 @@ class HyperBee extends EventEmitter {
     this.liveBees = startBeePubkey
     this.wsocket.send(JSON.stringify(startBeePubkey))
     this.activeBees = beePubkeys
+
+    // test list of results
+    /* let listResults = await this.peerResults()
+    console.log(listResults)
+    for (let res of listResults) {
+      await this.deleteResultsItem(res.key)
+    } */
   }
 
-  /**
-   * save kbledger entry
-   * @method saveKBLentry
-   *
-  */
-  saveKBLentry = async function (ledgerEntry) {
-    await this.dbKBledger.put(ledgerEntry.hash, ledgerEntry.data)
-  }
+  /* HOP query results */
 
   /**
    * save HOPresults
@@ -211,6 +208,36 @@ class HyperBee extends EventEmitter {
   saveHOPresults = async function (refContract) {
     await this.dbHOPresults.put(refContract.hash, refContract.data)
   }
+
+  peerResults = async function () {
+    const nodeData = this.dbHOPresults.createReadStream()
+    let resData = []
+    for await (const { key, value } of nodeData) {
+      resData.push({ key, value })
+    }
+    return resData
+  }
+
+  /**
+   * lookup results per dataprint hash
+   * @method peerResultsItem
+   *
+  */
+  peerResultsItem = async function (key) {
+    const resultData = await this.dbHOPresults.get(key)
+    return resultData
+  }
+
+  /**
+   * delete results
+   * @method deleteResultsItem
+   *
+  */
+  deleteResultsItem = async function (key) {
+    const resultData = await this.dbHOPresults.del(key)
+    return resultData
+  }
+
 
   /** CHAT */
 
@@ -836,6 +863,16 @@ class HyperBee extends EventEmitter {
     return moduleData
   }
 
+  /*  COHERENCE LEDGER  Knowledge Bundle Ledger */
+
+  /**
+   * save kbledger entry
+   * @method saveKBLentry
+   *
+  */
+  saveKBLentry = async function (ledgerEntry) {
+    await this.dbKBledger.put(ledgerEntry.data, ledgerEntry.hash)
+  }
 
   /**
    * get all kbl entries
@@ -852,29 +889,14 @@ class HyperBee extends EventEmitter {
   }
 
   /**
-   * lookup specific result UUID
-   * @method peerResultsItem
+   * lookup coherence ledger per results id
+   * @method peerLedgerProof
    *
   */
-  peerResultsItem = async function (dataPrint) {
-    const resultsData = this.dbKBledger.get(dataPrint.resultuuid)
-    return resultsData
+  peerLedgerProof = async function (dataPrint) {
+    const ledgerData = await this.dbKBledger.get(dataPrint.resultuuid)
+    return ledgerData
   }
-
-  /**
-   * lookup specific result UUID
-   * @method peerResults
-   *
-  */
-  peerResults = async function () {
-    const nodeData = this.dbKBledger.createReadStream()
-    let resData = []
-    for await (const { key, value } of nodeData) {
-      resData.push({ key, value })
-    }
-    return resData
-  }
-
 
   /**
    * get stream data for keystore db
