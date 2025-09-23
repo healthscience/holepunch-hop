@@ -342,6 +342,22 @@ class HypDrive extends EventEmitter {
   }
 
   /**
+   * CSV rebuidl file and give directory location
+   * @method CSVhyperdriveLocalfile
+   *
+  */
+  CSVhyperdriveLocalfile = async function (path) {
+    // File reads to buffer and recreate file
+    // const bufFromGet2 = await this.drive.get(path)
+    const { value: entry } = await this.drive.entry(path)
+    const blobs = await this.drive.getBlobs()
+    const bufFromEntry = await blobs.get(entry.blob)
+    let localFile = 'localcsv'
+    fs.writeFileSync(localFile, bufFromEntry)
+    return localFile
+  }
+
+  /**
   *  set file path, read and make sqlite3 connect db
   * @method SQLiteSetup
   *
