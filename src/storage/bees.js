@@ -191,11 +191,11 @@ class HyperBee extends EventEmitter {
     this.activeBees = beePubkeys
 
     // test list of results
-    /* let listResults = await this.peerResults()
+    let listResults = await this.peerResults()
     console.log(listResults)
     for (let res of listResults) {
       await this.deleteResultsItem(res.key)
-    } */
+    }
   }
 
   /* HOP query results */

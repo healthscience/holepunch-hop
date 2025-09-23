@@ -162,6 +162,8 @@ FileParser.prototype.TEMPwebJSONparse = function (fjData) {
 *
 */
 FileParser.prototype.TEMPwebCSVparse = function (fData) {
+  console.log('tem csv file data')
+  console.log(fData[0])
   // match name row number
   let lcounter = 0
   let match = ''
@@ -178,10 +180,14 @@ FileParser.prototype.TEMPwebCSVparse = function (fData) {
       // pairData.timestamp = splitRow[2]
       // pairData.price = splitRow[5]
       // console.log(pairData)
+      console.log('looop')
+      console.log(splitRow)
       if (splitRow[1] !== undefined) {
         extractCol.push(splitRow[fData.context.id])
         // assume data column for now and parse to mills seconds
         let testCH1 = chrono.parseDate(splitRow[fData.context.timestamp])
+        console.log('pare chonon date')
+        console.log(testCH1)
         let parseDate = this.convertTime.testDataExtact(testCH1)
         // let parseDate = DateTime.fromISO(splitRow[0])
         // let millDate = parseDate.toMillis()

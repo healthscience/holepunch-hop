@@ -135,7 +135,7 @@ class HypDrive extends EventEmitter {
   saveCSVfilecontent = async function (fData) {
     // extract header info first
     let headerInfo = this.fileUtility.webCSVparse(fData)
-    let hyperdrivePath = 'csv/' + fData.data[0].name
+    let hyperdrivePath = 'csv/' + fData.data[0].file
     let confirmSave = await this.drive.put(hyperdrivePath, fData.data[0].content)
     let saveStatus = {}
     saveStatus.save = confirmSave
@@ -449,7 +449,14 @@ class HypDrive extends EventEmitter {
 	  let parseDate4 = DateTime.local(sampleDate)
 	  // .fromJSDate(sampleDate) // .fromHTTP(sampleDate) //  fromFormat(sampleDate, "YYY-MM-DD ")  //.fromISO(sampleDate) // or DateTime. fromFormat("23-06-2019", "dd-MM-yyyy") .(splitRow[0])//  new Date(splitRow[0])
 	   */
-	  let millDate = parseDate2.toMillis()
+    let millDate = ''
+    if (parseDate0.reason !== 'unparsable' || parseDate0.reason !== 'invalid input') {
+  	  millDate = parseDate0.toMillis()
+    } else if (parseDate1.reason !== 'unparsable' || parseDate1.reason !== 'invalid input') {
+  	  millDate = parseDate1.toMillis()
+    } else if (parseDate2.reason !== 'unparsable' || parseDate2.reason !== 'invalid input') {
+	    millDate = parseDate2.toMillis()
+    }
 	  return millDate
 	}
 
