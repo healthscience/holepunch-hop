@@ -100,12 +100,12 @@ class HyperBee extends EventEmitter {
     beePubkeys.push({store:'hopresults', privacy: 'private', pubkey: b4a.toString(core4.key, 'hex')})
 
     const core5 = this.store.get({ name: 'kbledger' })
-    this.dbKBledger = new Hyperbee(core5, {
+    this.dbCohereceLedger = new Hyperbee(core5, {
       keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
-    await this.dbKBledger.ready()
-    // this.client.replicate(this.dbKBledger.feed)
+    await this.dbCohereceLedger.ready()
+    // this.client.replicate(this.dbCohereceLedger.feed)
     beePubkeys.push({store:'kbledger', pubkey: b4a.toString(core5.key, 'hex')})
     // stores of cues, media, research, markers, products/treatments
 
@@ -179,7 +179,24 @@ class HyperBee extends EventEmitter {
     })
     await this.dbBentomedia.ready()
     beePubkeys.push({store:'bentomedia', privacy: 'private', pubkey: b4a.toString(core12.key, 'hex')})
-    
+
+    const core16 = this.store.get({ name: 'besearch' })
+    this.dbBesearch = new Hyperbee(core16, {
+      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      valueEncoding: 'json' // same options as above
+    })
+    await this.dbBesearch.ready()
+    beePubkeys.push({store:'besearch', privacy: 'private', pubkey: b4a.toString(core16.key, 'hex')})
+
+    const core17 = this.store.get({ name: 'beebeelearn' })
+    this.dbBeeBeeLearn = new Hyperbee(core17, {
+      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      valueEncoding: 'json' // same options as above
+    })
+    await this.dbBeeBeeLearn.ready()
+    beePubkeys.push({store:'beebeelearn', privacy: 'public', pubkey: b4a.toString(core17.key, 'hex')})
+
+    // testing help remove for production
     this.emit('hbee-live')
     // return beePubkeys
     let startBeePubkey = {}
@@ -726,6 +743,103 @@ class HyperBee extends EventEmitter {
     return deleteInfo
   }
 
+  /** Besearch */
+  /**
+   * save besearch
+   * @method saveBesearch
+   *
+  */
+  saveBesearch = async function (cuesInfo) {
+    await this.dbBesearch.put(cuesInfo.cueid, cuesInfo.data)
+    let checkSave = await this.getBesearch(cuesInfo.cueid)
+    return checkSave
+  }
+
+  /**
+   * get one cue by id
+   * @method getBesearch
+   *
+  */
+  getBesearch = async function (key) {
+    const nodeData = await this.dbBesearch.get(key)
+    return nodeData
+  }
+
+  /**
+   * get all Besearch
+   * @method getBesearchHistory
+   *
+  */
+  getBesearchHistory = async function (key) {
+    const cuesHistory = await this.dbBesearch.createReadStream()
+    let cuesData = []
+    for await (const { key, value } of cuesHistory) {
+      cuesData.push({ key, value })
+    }    
+    return cuesData
+  }
+
+  /**
+   * delete contract
+   * @method deleteBentoBesearch
+  */
+  deleteBentoBesearch = async function (cue) {
+    const deleteStatus = await this.dbBesearch.del(cue.id)
+    let deleteInfo = {}
+    deleteInfo.spaceid = cue.id
+    return deleteInfo
+  }
+
+
+  /** beebeeLearn */
+  /**
+   * save beebeeLearn training data
+   * @method saveBeeBeeLearn
+   *
+  */
+  saveBeeBeeLearn = async function (cuesInfo) {
+    await this.dbBeeBeeLearn.put(cuesInfo.cueid, cuesInfo.data)
+    let checkSave = await this.getBeeBeeLearn(cuesInfo.cueid)
+    return checkSave
+  }
+
+  /**
+   * get one cue by id
+   * @method getBeeBeeLearn
+   *
+  */
+  getBeeBeeLearn = async function (key) {
+    const nodeData = await this.dbBeeBeeLearn.get(key)
+    return nodeData
+  }
+
+  /**
+   * get all BeeBeeLearn
+   * @method getBeeBeeLearnHistory
+   *
+  */
+  getBeeBeeLearnHistory = async function (key) {
+    const cuesHistory = await this.dbBeeBeeLearn.createReadStream()
+    let cuesData = []
+    for await (const { key, value } of cuesHistory) {
+      cuesData.push({ key, value })
+    }    
+    return cuesData
+  }
+
+  /**
+   * delete contract
+   * @method deleteBeeBeeLearn
+  */
+  deleteBeeBeeLearn = async function (cue) {
+    const deleteStatus = await this.dbBeeBeeLearn.del(cue.id)
+    let deleteInfo = {}
+    deleteInfo.spaceid = cue.id
+    return deleteInfo
+  }
+
+
+  // old solo spaces
   /**
    * save space layout of bentobox
    * @method saveSolospace
@@ -871,7 +985,7 @@ class HyperBee extends EventEmitter {
    *
   */
   saveKBLentry = async function (ledgerEntry) {
-    await this.dbKBledger.put(ledgerEntry.data, ledgerEntry.hash)
+    await this.dbCohereceLedger.put(ledgerEntry.data, ledgerEntry.hash)
   }
 
   /**
@@ -880,7 +994,7 @@ class HyperBee extends EventEmitter {
    *
   */
   KBLentries = async function (dataPrint) {
-    const nodeData = this.dbKBledger.createReadStream()
+    const nodeData = this.dbCohereceLedger.createReadStream()
     let ledgerData = []
     for await (const { key, value } of nodeData) {
       ledgerData.push({ key, value })
@@ -894,7 +1008,7 @@ class HyperBee extends EventEmitter {
    *
   */
   peerLedgerProof = async function (dataPrint) {
-    const ledgerData = await this.dbKBledger.get(dataPrint.resultuuid)
+    const ledgerData = await this.dbCohereceLedger.get(dataPrint.resultuuid)
     return ledgerData
   }
 
