@@ -89,7 +89,6 @@ class HyperBee extends EventEmitter {
     await this.dbBentochat.ready()
     beePubkeys.push({store:'bentochat', privacy: 'private', pubkey: b4a.toString(core14.key, 'hex')})
 
-
     const core4 = this.store.get({ name: 'hopresults' })
     this.dbHOPresults = new Hyperbee(core4, {
       keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
@@ -750,8 +749,8 @@ class HyperBee extends EventEmitter {
    *
   */
   saveBesearch = async function (cuesInfo) {
-    await this.dbBesearch.put(cuesInfo.cueid, cuesInfo.data)
-    let checkSave = await this.getBesearch(cuesInfo.cueid)
+    await this.dbBesearch.put(cuesInfo.id, cuesInfo.data)
+    let checkSave = await this.getBesearch(cuesInfo.id)
     return checkSave
   }
 
@@ -791,20 +790,32 @@ class HyperBee extends EventEmitter {
   }
 
 
-  /** beebeeLearn */
+  /** BEEBEE LEARN via @teach */
   /**
-   * save beebeeLearn training data
+   * save chat history
    * @method saveBeeBeeLearn
    *
   */
-  saveBeeBeeLearn = async function (cuesInfo) {
-    await this.dbBeeBeeLearn.put(cuesInfo.cueid, cuesInfo.data)
-    let checkSave = await this.getBeeBeeLearn(cuesInfo.cueid)
+  saveBeeBeeLearn = async function (teachSession) {
+    await this.dbBeeBeeLearn.put(teachSession.id, teachSession.session)
+    let checkSave = await this.getBeeBeeLearn(teachSession.id)
     return checkSave
   }
 
   /**
-   * get one cue by id
+   * delete chat item
+   * @method deleteBeeBeeLearn
+   *
+  */
+  deleteBeeBeeLearn = async function (key) {
+    await this.dbBeeBeeLearn.del(key)
+    let deleteInfo = {}
+    deleteInfo.id = key
+    return deleteInfo
+  }
+
+  /**
+   * lookup peer teach session layout default
    * @method getBeeBeeLearn
    *
   */
@@ -814,30 +825,18 @@ class HyperBee extends EventEmitter {
   }
 
   /**
-   * get all BeeBeeLearn
+   * lookup range save learn @teach history
    * @method getBeeBeeLearnHistory
    *
   */
-  getBeeBeeLearnHistory = async function (key) {
-    const cuesHistory = await this.dbBeeBeeLearn.createReadStream()
-    let cuesData = []
-    for await (const { key, value } of cuesHistory) {
-      cuesData.push({ key, value })
-    }    
-    return cuesData
+  getBeeBeeLearnHistory = async function (range) {
+    const teachHistoryData = this.dbBeeBeeLearn.createReadStream() // { gt: 'a', lt: 'z' }) // anything >a and <z
+    let teachData = []
+    for await (const { key, value } of teachHistoryData) {
+      teachData.push({ key, value })
+    }
+    return teachData
   }
-
-  /**
-   * delete contract
-   * @method deleteBeeBeeLearn
-  */
-  deleteBeeBeeLearn = async function (cue) {
-    const deleteStatus = await this.dbBeeBeeLearn.del(cue.id)
-    let deleteInfo = {}
-    deleteInfo.spaceid = cue.id
-    return deleteInfo
-  }
-
 
   // old solo spaces
   /**
