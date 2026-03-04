@@ -195,7 +195,15 @@ class HyperBee extends EventEmitter {
     await this.dbBeeBeeLearn.ready()
     beePubkeys.push({store:'beebeelearn', privacy: 'public', pubkey: b4a.toString(core17.key, 'hex')})
 
-    // testing help remove for production
+    const core18 = this.store.get({ name: 'heliclock' })
+    this.dbHeliClock = new Hyperbee(core18, {
+      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      valueEncoding: 'json' // same options as above
+    })
+    await this.dbHeliClock.ready()
+    beePubkeys.push({store:'heliclock', privacy: 'private', pubkey: b4a.toString(core18.key, 'hex')})
+
+    // notify hyberbee's active.
     this.emit('hbee-live')
     // return beePubkeys
     let startBeePubkey = {}
@@ -256,7 +264,6 @@ class HyperBee extends EventEmitter {
 
 
   /** CHAT */
-
   /**
    * save chat history
    * @method saveBentochat
@@ -304,8 +311,55 @@ class HyperBee extends EventEmitter {
     return chatData
   }
 
-  /** SPACE */
+  /** HELI CLOCK */
+  /**
+   * save clock entry
+   * @method saveHeliClock
+   *
+  */
+  saveHeliClock = async function (clockEntry) {
+    await this.dbHeliClock.put(chatHistory.chat.chatid, chatHistory)
+    let checkSave = await this.getBentochat(chatHistory.chat.chatid)
+    return checkSave
+  }
 
+  /**
+   * delete chat item
+   * @method deleteHeliClock
+   *
+  */
+  deleteHeliClock = async function (entry) {
+    await this.dbHeliClock.del(entry.id)
+    let deleteInfo = {}
+    deleteInfo.id = entry.id
+    return deleteInfo
+  }
+
+  /**
+   * lookup clock entry
+   * @method getHeliClock
+   *
+  */
+  getHeliClock = async function (key) {
+    const nodeData = await this.dbHeliClock.get(key)
+    return nodeData
+  }
+
+  /**
+   * lookup range of heli clock history
+   * @method getHeliClockHistory
+   *
+  */
+  getHeliClockHistory = async function (range) {
+    const clockhistoryData = this.dbHeliClock.createReadStream() // { gt: 'a', lt: 'z' }) // anything >a and <z
+    let clockData = []
+    for await (const { key, value } of clockhistoryData) {
+      clockData.push({ key, value })
+    }
+    return clockData
+  }
+
+  /** SPACE */
   /**
    * save space menu
    * @method saveSpaceHistory
