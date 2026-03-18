@@ -42,32 +42,55 @@ class HyperBee extends EventEmitter {
   setupHyperbee = async function () {
     let beePubkeys = []
 
-    const core = this.store.get({ name: 'publiclibrary' })
-    this.dbPublicLibrary = new Hyperbee(core, {
-      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+    const coreRef = this.store.get({ name: 'publiclibrary-ref' })
+    this.dbPublicLibraryRef = new Hyperbee(coreRef, {
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
-    await this.dbPublicLibrary.ready()
-    beePubkeys.push({ store: 'publiclibrary', privacy: 'public', pubkey: b4a.toString(this.dbPublicLibrary.key, 'hex')})
+    await this.dbPublicLibraryRef.ready()
+    beePubkeys.push({ store: 'publiclibrary-ref', privacy: 'public', pubkey: b4a.toString(this.dbPublicLibraryRef.key, 'hex')})
     // allow other peer access to public library  (need to check for DDOS ie over asked)
     // join a topic for network 
-    const discovery = this.swarm.join(this.dbPublicLibrary.discoveryKey)
+    const discoveryRef = this.swarm.join(this.dbPublicLibraryRef.discoveryKey)
     // Only display the key once the Hyperbee has been announced to the DHT
-    discovery.flushed().then(() => {
-      console.log('public library open')
+    discoveryRef.flushed().then(() => {
+      console.log('public library ref open')
     })
 
-    const core2 = this.store.get({ name: 'peerlibrary' })
-    this.dbPeerLibrary = new Hyperbee(core2, {
-      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+    const coreMod = this.store.get({ name: 'publiclibrary-mod' })
+    this.dbPublicLibraryMod = new Hyperbee(coreMod, {
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
-    await this.dbPeerLibrary.ready()
-    beePubkeys.push({store:'peerlibrary', privacy: 'private', pubkey: b4a.toString(core2.key, 'hex')})
+    await this.dbPublicLibraryMod.ready()
+    beePubkeys.push({ store: 'publiclibrary-mod', privacy: 'public', pubkey: b4a.toString(this.dbPublicLibraryMod.key, 'hex')})
+    // allow other peer access to public library  (need to check for DDOS ie over asked)
+    // join a topic for network 
+    const discoveryMod = this.swarm.join(this.dbPublicLibraryMod.discoveryKey)
+    // Only display the key once the Hyperbee has been announced to the DHT
+    discoveryMod.flushed().then(() => {
+      console.log('public library mod open')
+    })
+
+    const corePeerRef = this.store.get({ name: 'peerlibrary-ref' })
+    this.dbPeerLibraryRef = new Hyperbee(corePeerRef, {
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      valueEncoding: 'json' // same options as above
+    })
+    await this.dbPeerLibraryRef.ready()
+    beePubkeys.push({store:'peerlibrary-ref', privacy: 'private', pubkey: b4a.toString(corePeerRef.key, 'hex')})
+
+    const corePeerMod = this.store.get({ name: 'peerlibrary-mod' })
+    this.dbPeerLibraryMod = new Hyperbee(corePeerMod, {
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      valueEncoding: 'json' // same options as above
+    })
+    await this.dbPeerLibraryMod.ready()
+    beePubkeys.push({store:'peerlibrary-mod', privacy: 'private', pubkey: b4a.toString(corePeerMod.key, 'hex')})
 
     const core6 = this.store.get({ name: 'peers' })
     this.dbPeers = new Hyperbee(core6, {
-      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
     await this.dbPeers.ready()
@@ -75,7 +98,7 @@ class HyperBee extends EventEmitter {
 
     const core3 = this.store.get({ name: 'bentospaces' })
     this.dbBentospaces = new Hyperbee(core3, {
-      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentospaces.ready()
@@ -83,7 +106,7 @@ class HyperBee extends EventEmitter {
 
     const core14 = this.store.get({ name: 'bentochat' })
     this.dbBentochat = new Hyperbee(core14, {
-      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentochat.ready()
@@ -91,7 +114,7 @@ class HyperBee extends EventEmitter {
 
     const core4 = this.store.get({ name: 'hopresults' })
     this.dbHOPresults = new Hyperbee(core4, {
-      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
     await this.dbHOPresults.ready()
@@ -100,7 +123,7 @@ class HyperBee extends EventEmitter {
 
     const core5 = this.store.get({ name: 'kbledger' })
     this.dbCohereceLedger = new Hyperbee(core5, {
-      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
     await this.dbCohereceLedger.ready()
@@ -110,7 +133,7 @@ class HyperBee extends EventEmitter {
 
     const core7 = this.store.get({ name: 'bentocues' })
     this.dbBentocues = new Hyperbee(core7, {
-      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
 
@@ -125,7 +148,7 @@ class HyperBee extends EventEmitter {
 
     const core13 = this.store.get({ name: 'bentomodels' })
     this.dbBentomodels = new Hyperbee(core13, {
-      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentomodels.ready()
@@ -133,7 +156,7 @@ class HyperBee extends EventEmitter {
 
     const core15 = this.store.get({ name: 'bentoboxes' })
     this.dbBentoBoxes = new Hyperbee(core15, {
-      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentoBoxes.ready()
@@ -141,7 +164,7 @@ class HyperBee extends EventEmitter {
 
     const core8 = this.store.get({ name: 'bentodecisions' })
     this.dbBentodecisions = new Hyperbee(core8, {
-      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentodecisions.ready()
@@ -149,7 +172,7 @@ class HyperBee extends EventEmitter {
 
     const core9 = this.store.get({ name: 'bentomarkers' })
     this.dbBentomarkers = new Hyperbee(core9, {
-      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentomarkers.ready()
@@ -157,7 +180,7 @@ class HyperBee extends EventEmitter {
 
     const core10 = this.store.get({ name: 'research' })
     this.dbBentoresearch = new Hyperbee(core10, {
-      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentoresearch.ready()
@@ -165,7 +188,7 @@ class HyperBee extends EventEmitter {
 
     const core11 = this.store.get({ name: 'bentoproducts' })
     this.dbBentoproducts = new Hyperbee(core11, {
-      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentoproducts.ready()
@@ -173,7 +196,7 @@ class HyperBee extends EventEmitter {
 
     const core12 = this.store.get({ name: 'bentomedia' })
     this.dbBentomedia = new Hyperbee(core12, {
-      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
     await this.dbBentomedia.ready()
@@ -181,7 +204,7 @@ class HyperBee extends EventEmitter {
 
     const core16 = this.store.get({ name: 'besearch' })
     this.dbBesearch = new Hyperbee(core16, {
-      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
     await this.dbBesearch.ready()
@@ -189,7 +212,7 @@ class HyperBee extends EventEmitter {
 
     const core17 = this.store.get({ name: 'beebeelearn' })
     this.dbBeeBeeLearn = new Hyperbee(core17, {
-      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
     await this.dbBeeBeeLearn.ready()
@@ -197,7 +220,7 @@ class HyperBee extends EventEmitter {
 
     const core18 = this.store.get({ name: 'heliclock' })
     this.dbHeliClock = new Hyperbee(core18, {
-      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
     await this.dbHeliClock.ready()
@@ -213,7 +236,6 @@ class HyperBee extends EventEmitter {
     this.liveBees = startBeePubkey
     this.wsocket.send(JSON.stringify(startBeePubkey))
     this.activeBees = beePubkeys
-
     // test list of results
     /* let listResults = await this.peerResults()
     console.log(listResults)
@@ -222,8 +244,8 @@ class HyperBee extends EventEmitter {
     } */
   }
 
-  /* HOP query results */
 
+  /* HOP QUERY RESULTS */
   /**
    * save HOPresults
    * @method saveHOPresults
@@ -318,8 +340,8 @@ class HyperBee extends EventEmitter {
    *
   */
   saveHeliClock = async function (clockEntry) {
-    await this.dbHeliClock.put(chatHistory.chat.chatid, chatHistory)
-    let checkSave = await this.getBentochat(chatHistory.chat.chatid)
+    await this.dbHeliClock.put(clockEntry.id, clockEntry)
+    let checkSave = await this.getBentochat(clockEntry.id)
     return checkSave
   }
 
@@ -919,14 +941,31 @@ class HyperBee extends EventEmitter {
  //** */ public library **//
 
   /**
-   * save pair in keystore public network library
-   * @method savePubliclibrary
+   * save pair in keystore public network library ref
+   * @method savePubliclibraryRef
    *
   */
-  savePubliclibrary = async function (refContract) {
-    await this.dbPublicLibrary.put(refContract.data.hash, refContract.data.contract)
+  savePubliclibraryRef = async function (refContract) {
+    await this.dbPublicLibraryRef.put(refContract.data.hash, refContract.data.contract)
     // go query the key are return the info. to ensure data save asplanned.
-    let saveCheck = await this.getPublicLibrary(refContract.data.hash)
+    let saveCheck = await this.getPublicLibraryRef(refContract.data.hash)
+    let returnMessage = {}
+    returnMessage.stored = true
+    returnMessage.type = refContract.reftype
+    returnMessage.key = saveCheck.key
+    returnMessage.contract = saveCheck.value
+    return returnMessage
+  }
+
+  /**
+   * save pair in keystore public network library mod
+   * @method savePubliclibraryMod
+   *
+  */
+  savePubliclibraryMod = async function (refContract) {
+    await this.dbPublicLibraryMod.put(refContract.data.hash, refContract.data.contract)
+    // go query the key are return the info. to ensure data save asplanned.
+    let saveCheck = await this.getPublicLibraryMod(refContract.data.hash)
     let returnMessage = {}
     returnMessage.stored = true
     returnMessage.type = refContract.reftype
@@ -937,13 +976,13 @@ class HyperBee extends EventEmitter {
   
 
   /**
-   * save pair in keystore db
-   * @method savePeerLibrary
+   * save pair in keystore db peer library ref
+   * @method savePeerLibraryRef
    *
   */
-  savePeerLibrary = async function (refContract) {
-    await this.dbPeerLibrary.put(refContract.data.hash, refContract.data.contract)
-    let saveCheck = await this.getPeerLibrary(refContract.data.hash)
+  savePeerLibraryRef = async function (refContract) {
+    await this.dbPeerLibraryRef.put(refContract.data.hash, refContract.data.contract)
+    let saveCheck = await this.getPeerLibraryRef(refContract.data.hash)
     let returnMessage = {}
     returnMessage.stored = true
     returnMessage.type = refContract.reftype
@@ -953,22 +992,48 @@ class HyperBee extends EventEmitter {
   }
 
   /**
-   * lookup specific result UUID
-   * @method getPublicLibrary
+   * save pair in keystore db peer library mod
+   * @method savePeerLibraryMod
    *
   */
-  getPublicLibrary = async function (contractID) {
-    const nodeData = await this.dbPublicLibrary.get(contractID)
+  savePeerLibraryMod = async function (refContract) {
+    await this.dbPeerLibraryMod.put(refContract.data.hash, refContract.data.contract)
+    let saveCheck = await this.getPeerLibraryMod(refContract.data.hash)
+    let returnMessage = {}
+    returnMessage.stored = true
+    returnMessage.type = refContract.reftype
+    returnMessage.key = saveCheck.key
+    returnMessage.contract = saveCheck.value
+    return returnMessage
+  }
+
+  /**
+   * lookup specific result UUID from public library ref
+   * @method getPublicLibraryRef
+   *
+  */
+  getPublicLibraryRef = async function (contractID) {
+    const nodeData = await this.dbPublicLibraryRef.get(contractID)
     return nodeData
   }
 
   /**
-   * lookup range query of db
-   * @method getPublicLibraryRange
+   * lookup specific result UUID from public library mod
+   * @method getPublicLibraryMod
    *
   */
-  getPublicLibraryRange = async function (range) {
-    const nodeData = this.dbPublicLibrary.createReadStream() // { gt: 'a', lt: 'z' }) // anything >a and <z
+  getPublicLibraryMod = async function (contractID) {
+    const nodeData = await this.dbPublicLibraryMod.get(contractID)
+    return nodeData
+  }
+
+  /**
+   * lookup range query of db public library ref
+   * @method getPublicLibraryRefRange
+   *
+  */
+  getPublicLibraryRefRange = async function (range) {
+    const nodeData = this.dbPublicLibraryRef.createReadStream() // { gt: 'a', lt: 'z' }) // anything >a and <z
     let contractData = []
     for await (const { key, value } of nodeData) {
       contractData.push({ key, value })
@@ -977,32 +1042,12 @@ class HyperBee extends EventEmitter {
   }
 
   /**
-   * return the last entry into db
-   * @method getPublicLibraryLast
+   * lookup range query of db public library mod
+   * @method getPublicLibraryModRange
    *
   */
-  getPublicLibraryLast = async function (dataPrint) {
-    const nodeData = this.dbPublicLibrary.createHistoryStream({ reverse: true, limit: 1 })
-    return nodeData
-  }
-
-  /**
-   * lookup al peer library entries
-   * @method getPeerLibrary
-   *
-  */
-  getPeerLibrary = async function (contractID) {
-    const nodeData = await this.dbPeerLibrary.get(contractID)
-    return nodeData
-  }
-
-  /**
-   * lookup al peer library range
-   * @method getPeerLibraryRanage
-   *
-  */
-  getPeerLibraryRange = async function () {
-    const nodeData = await this.dbPeerLibrary.createReadStream() // { gt: 'a', lt: 'z' })
+  getPublicLibraryModRange = async function (range) {
+    const nodeData = this.dbPublicLibraryMod.createReadStream() // { gt: 'a', lt: 'z' }) // anything >a and <z
     let contractData = []
     for await (const { key, value } of nodeData) {
       contractData.push({ key, value })
@@ -1011,22 +1056,100 @@ class HyperBee extends EventEmitter {
   }
 
   /**
-   * lookup al peer library Last entry
-   * @method getPeerLibraryLast
+   * return the last entry into db public library ref
+   * @method getPublicLibraryRefLast
    *
   */
-  getPeerLibraryLast = async function () {
-    const nodeData = await this.dbPeerLibrary.createHistoryStream({ reverse: true, limit: 1 })
+  getPublicLibraryRefLast = async function (dataPrint) {
+    const nodeData = this.dbPublicLibraryRef.createHistoryStream({ reverse: true, limit: 1 })
     return nodeData
   }
 
   /**
-   * filter peer library to get compute modules with a key
-   * @method getPeerLibComputeModules
+   * return the last entry into db public library mod
+   * @method getPublicLibraryModLast
    *
   */
-  getPeerLibComputeModules = async function () {
-    const moduleData = await this.dbPeerLibrary.createHistoryStream({ reverse: true, limit: 10 })
+  getPublicLibraryModLast = async function (dataPrint) {
+    const nodeData = this.dbPublicLibraryMod.createHistoryStream({ reverse: true, limit: 1 })
+    return nodeData
+  }
+
+  /**
+   * lookup al peer library ref entries
+   * @method getPeerLibraryRef
+   *
+  */
+  getPeerLibraryRef = async function (contractID) {
+    const nodeData = await this.dbPeerLibraryRef.get(contractID)
+    return nodeData
+  }
+
+  /**
+   * lookup al peer library mod entries
+   * @method getPeerLibraryMod
+   *
+  */
+  getPeerLibraryMod = async function (contractID) {
+    const nodeData = await this.dbPeerLibraryMod.get(contractID)
+    return nodeData
+  }
+
+  /**
+   * lookup al peer library ref range
+   * @method getPeerLibraryRefRange
+   *
+  */
+  getPeerLibraryRefRange = async function () {
+    const nodeData = await this.dbPeerLibraryRef.createReadStream() // { gt: 'a', lt: 'z' })
+    let contractData = []
+    for await (const { key, value } of nodeData) {
+      contractData.push({ key, value })
+    }
+    return contractData
+  }
+
+  /**
+   * lookup al peer library mod range
+   * @method getPeerLibraryModRange
+   *
+  */
+  getPeerLibraryModRange = async function () {
+    const nodeData = await this.dbPeerLibraryMod.createReadStream() // { gt: 'a', lt: 'z' })
+    let contractData = []
+    for await (const { key, value } of nodeData) {
+      contractData.push({ key, value })
+    }
+    return contractData
+  }
+
+  /**
+   * lookup al peer library ref Last entry
+   * @method getPeerLibraryRefLast
+   *
+  */
+  getPeerLibraryRefLast = async function () {
+    const nodeData = await this.dbPeerLibraryRef.createHistoryStream({ reverse: true, limit: 1 })
+    return nodeData
+  }
+
+  /**
+   * lookup al peer library mod Last entry
+   * @method getPeerLibraryModLast
+   *
+  */
+  getPeerLibraryModLast = async function () {
+    const nodeData = await this.dbPeerLibraryMod.createHistoryStream({ reverse: true, limit: 1 })
+    return nodeData
+  }
+
+  /**
+   * filter peer library mod to get compute modules with a key
+   * @method getPeerLibModComputeModules
+   *
+  */
+  getPeerLibModComputeModules = async function () {
+    const moduleData = await this.dbPeerLibraryMod.createHistoryStream({ reverse: true, limit: 10 })
     return moduleData
   }
 
@@ -1083,26 +1206,52 @@ class HyperBee extends EventEmitter {
   }
 
   /**
-   * delete nxp ref contract public
-   * @method deleteRefcontPubliclibrary
+   * delete nxp ref contract public library ref
+   * @method deletePublicLibraryRef
    *
   */
-  deleteRefcontPubliclibrary = async function (nxpID) {
+  deletePublicLibraryRef = async function (nxpID) {
     let deleteInfo = {}
-    let deleteStatus = await this.dbPublicLibrary.del(nxpID)
+    let deleteStatus = await this.dbPublicLibraryRef.del(nxpID)
     deleteInfo.success = deleteStatus
     deleteInfo.nxp = nxpID
     return deleteInfo
   }
 
   /**
-   * delete nxp ref contract from peer library
-   * @method deleteRefcontPeerlibrary
+   * delete nxp ref contract public library mod
+   * @method deletePublicLibraryMod
    *
   */
-  deleteRefcontPeerlibrary = async function (nxpID) {
+  deletePublicLibraryMod = async function (nxpID) {
     let deleteInfo = {}
-    let deleteStatus = await this.dbPeerLibrary.del(nxpID)
+    let deleteStatus = await this.dbPublicLibraryMod.del(nxpID)
+    deleteInfo.success = deleteStatus
+    deleteInfo.nxp = nxpID
+    return deleteInfo
+  }
+
+  /**
+   * delete nxp ref contract from peer library ref
+   * @method deletePeerLibraryRef
+   *
+  */
+  deletePeerLibraryRef = async function (nxpID) {
+    let deleteInfo = {}
+    let deleteStatus = await this.dbPeerLibraryRef.del(nxpID)
+    deleteInfo.success = deleteStatus
+    deleteInfo.nxp = nxpID
+    return deleteInfo
+  }
+
+  /**
+   * delete nxp ref contract from peer library mod
+   * @method deletePeerLibraryMod
+   *
+  */
+  deletePeerLibraryMod = async function (nxpID) {
+    let deleteInfo = {}
+    let deleteStatus = await this.dbPeerLibraryMod.del(nxpID)
     deleteInfo.success = deleteStatus
     deleteInfo.nxp = nxpID
     return deleteInfo
@@ -1324,7 +1473,7 @@ class HyperBee extends EventEmitter {
     const store = this.client.corestore('peerspace-hyperbeetemp')
     const core = this.store.get(key)
     this.dbPublicLibraryTemp = new Hyperbee(core, {
-      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
     await this.client.replicate(this.dbPublicLibraryTemp.feed) // fetch from the network
@@ -1366,7 +1515,7 @@ class HyperBee extends EventEmitter {
 
     // load and read the hyperbee identified by `beeKey`
     const beeResults =new Hyperbee(core, {
-      keyEncoding: 'utf-8', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
+      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
       valueEncoding: 'json' // same options as above
     })
 

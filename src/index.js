@@ -102,7 +102,6 @@ class HolepunchWorker extends EventEmitter {
     this.wsocket = ws
     this.BeeData.setWebsocket(ws)
     this.DriveFiles.setWebsocket(ws)
-    // this.activateHypercores()
   }
 
   /**
@@ -390,7 +389,7 @@ class HolepunchWorker extends EventEmitter {
 
   /**
    * process codename  matches after first save has happened.
-   * @method testCorestore
+   * @method processCodenameMatching
    *
   */
   processCodenameMatching = async function (data) {
@@ -468,19 +467,6 @@ class HolepunchWorker extends EventEmitter {
 
     // Record all short messages in core2, and all long ones in core3
     this.core2.append("data data in hypercore")
-  }
-
-  /**
-   * read hypercore test
-   * @method readHypercoreTest
-   *
-  */
-  readHypercoreTest = async function () {
-    const lastBlock = await this.core2.get(this.core1.length - 1)
-    // console.log(`Raw Block ${seq}:`, lastBlock)
-    // console.log(`Decoded Block ${seq}`, Node.decode(lastBlock))
-    // console.log('end of read core')
-    this.readcore = lastBlock
   }
 
   /**
