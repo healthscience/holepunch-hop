@@ -12,6 +12,23 @@ import EventEmitter from 'events'
 import Hyperbee from 'hyperbee'
 import b4a from 'b4a'
 
+import PublicLibraryModule from './modules/publicLibrary.js'
+import PeerLibraryModule from './modules/peerLibrary.js'
+import PeersModule from './modules/peers.js'
+import ResultsModule from './modules/results.js'
+import LedgerModule from './modules/ledger.js'
+import ChatModule from './modules/chat.js'
+import ClockModule from './modules/clock.js'
+import SpacesModule from './modules/spaces.js'
+import CuesModule from './modules/cues/cues.js'
+import BoxesModule from './modules/cues/boxes.js'
+import ModelsModule from './modules/cues/models.js'
+import ResearchModule from './modules/cues/research.js'
+import MarkersModule from './modules/cues/markers.js'
+import ProductsModule from './modules/cues/products.js'
+import MediaModule from './modules/cues/media.js'
+import LearnModule from './modules/cues/learn.js'
+
 class HyperBee extends EventEmitter {
 
   constructor(store, swarm) {
@@ -20,8 +37,6 @@ class HyperBee extends EventEmitter {
     this.store = store
     this.swarm = swarm
     this.liveBees = {}
-    this.confirmPubLibList = {}
-    this.repPublicHolder = {}
     this.activeBees = []
   }
 
@@ -44,1538 +59,324 @@ class HyperBee extends EventEmitter {
 
     const coreRef = this.store.get({ name: 'publiclibrary-ref' })
     this.dbPublicLibraryRef = new Hyperbee(coreRef, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
     })
     await this.dbPublicLibraryRef.ready()
     beePubkeys.push({ store: 'publiclibrary-ref', privacy: 'public', pubkey: b4a.toString(this.dbPublicLibraryRef.key, 'hex')})
-    // allow other peer access to public library  (need to check for DDOS ie over asked)
-    // join a topic for network 
     const discoveryRef = this.swarm.join(this.dbPublicLibraryRef.discoveryKey)
-    // Only display the key once the Hyperbee has been announced to the DHT
     discoveryRef.flushed().then(() => {
       console.log('public library ref open')
     })
 
     const coreMod = this.store.get({ name: 'publiclibrary-mod' })
     this.dbPublicLibraryMod = new Hyperbee(coreMod, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
     })
     await this.dbPublicLibraryMod.ready()
     beePubkeys.push({ store: 'publiclibrary-mod', privacy: 'public', pubkey: b4a.toString(this.dbPublicLibraryMod.key, 'hex')})
-    // allow other peer access to public library  (need to check for DDOS ie over asked)
-    // join a topic for network 
     const discoveryMod = this.swarm.join(this.dbPublicLibraryMod.discoveryKey)
-    // Only display the key once the Hyperbee has been announced to the DHT
     discoveryMod.flushed().then(() => {
       console.log('public library mod open')
     })
 
     const corePeerRef = this.store.get({ name: 'peerlibrary-ref' })
     this.dbPeerLibraryRef = new Hyperbee(corePeerRef, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
     })
     await this.dbPeerLibraryRef.ready()
     beePubkeys.push({store:'peerlibrary-ref', privacy: 'private', pubkey: b4a.toString(corePeerRef.key, 'hex')})
 
     const corePeerMod = this.store.get({ name: 'peerlibrary-mod' })
     this.dbPeerLibraryMod = new Hyperbee(corePeerMod, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
     })
     await this.dbPeerLibraryMod.ready()
     beePubkeys.push({store:'peerlibrary-mod', privacy: 'private', pubkey: b4a.toString(corePeerMod.key, 'hex')})
 
     const core6 = this.store.get({ name: 'peers' })
     this.dbPeers = new Hyperbee(core6, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
     })
     await this.dbPeers.ready()
     beePubkeys.push({store:'peers', privacy: 'private', pubkey: b4a.toString(core6.key, 'hex')})
 
     const core3 = this.store.get({ name: 'bentospaces' })
     this.dbBentospaces = new Hyperbee(core3, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
     })
     await this.dbBentospaces.ready()
     beePubkeys.push({store:'bentospaces', pubkey: b4a.toString(core3.key, 'hex')})
 
     const core14 = this.store.get({ name: 'bentochat' })
     this.dbBentochat = new Hyperbee(core14, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
     })
     await this.dbBentochat.ready()
     beePubkeys.push({store:'bentochat', privacy: 'private', pubkey: b4a.toString(core14.key, 'hex')})
 
     const core4 = this.store.get({ name: 'hopresults' })
     this.dbHOPresults = new Hyperbee(core4, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
     })
     await this.dbHOPresults.ready()
-    // this.client.replicate(this.dbHOPresults.feed)
     beePubkeys.push({store:'hopresults', privacy: 'private', pubkey: b4a.toString(core4.key, 'hex')})
 
     const core5 = this.store.get({ name: 'kbledger' })
     this.dbCohereceLedger = new Hyperbee(core5, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
     })
     await this.dbCohereceLedger.ready()
-    // this.client.replicate(this.dbCohereceLedger.feed)
     beePubkeys.push({store:'kbledger', pubkey: b4a.toString(core5.key, 'hex')})
-    // stores of cues, media, research, markers, products/treatments
 
     const core7 = this.store.get({ name: 'bentocues' })
     this.dbBentocues = new Hyperbee(core7, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
     })
-
     await this.dbBentocues.ready()
     beePubkeys.push({store:'bentocues', privacy: 'public', pubkey: b4a.toString(core7.key, 'hex')})
-    // open the cues library
     const discoveryCues = this.swarm.join(this.dbBentocues.discoveryKey)
-    // Only display the key once the Hyperbee has been announced to the DHT
     discoveryCues.flushed().then(() => {
       console.log('cues library open')
     })
 
     const core13 = this.store.get({ name: 'bentomodels' })
     this.dbBentomodels = new Hyperbee(core13, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
     })
     await this.dbBentomodels.ready()
     beePubkeys.push({store:'bentomodels', privacy: 'public', pubkey: b4a.toString(core13.key, 'hex')})
 
     const core15 = this.store.get({ name: 'bentoboxes' })
     this.dbBentoBoxes = new Hyperbee(core15, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
     })
     await this.dbBentoBoxes.ready()
     beePubkeys.push({store:'bentoboxes', privacy: 'private', pubkey: b4a.toString(core15.key, 'hex')})
 
     const core8 = this.store.get({ name: 'bentodecisions' })
     this.dbBentodecisions = new Hyperbee(core8, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
     })
     await this.dbBentodecisions.ready()
     beePubkeys.push({store:'bentodecisions', pubkey: b4a.toString(core8.key, 'hex')})
 
     const core9 = this.store.get({ name: 'bentomarkers' })
     this.dbBentomarkers = new Hyperbee(core9, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
     })
     await this.dbBentomarkers.ready()
     beePubkeys.push({store:'bentomarkers', privacy: 'private', pubkey: b4a.toString(core9.key, 'hex')})
 
     const core10 = this.store.get({ name: 'research' })
     this.dbBentoresearch = new Hyperbee(core10, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
     })
     await this.dbBentoresearch.ready()
     beePubkeys.push({store:'research', privacy: 'public', pubkey: b4a.toString(core10.key, 'hex')})
 
     const core11 = this.store.get({ name: 'bentoproducts' })
     this.dbBentoproducts = new Hyperbee(core11, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
     })
     await this.dbBentoproducts.ready()
     beePubkeys.push({store:'bentoproducts', privacy: 'private', pubkey: b4a.toString(core11.key, 'hex')})
 
     const core12 = this.store.get({ name: 'bentomedia' })
     this.dbBentomedia = new Hyperbee(core12, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
     })
     await this.dbBentomedia.ready()
     beePubkeys.push({store:'bentomedia', privacy: 'private', pubkey: b4a.toString(core12.key, 'hex')})
 
     const core16 = this.store.get({ name: 'besearch' })
     this.dbBesearch = new Hyperbee(core16, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
     })
     await this.dbBesearch.ready()
     beePubkeys.push({store:'besearch', privacy: 'private', pubkey: b4a.toString(core16.key, 'hex')})
 
     const core17 = this.store.get({ name: 'beebeelearn' })
     this.dbBeeBeeLearn = new Hyperbee(core17, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
     })
     await this.dbBeeBeeLearn.ready()
     beePubkeys.push({store:'beebeelearn', privacy: 'public', pubkey: b4a.toString(core17.key, 'hex')})
 
     const core18 = this.store.get({ name: 'heliclock' })
     this.dbHeliClock = new Hyperbee(core18, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
     })
     await this.dbHeliClock.ready()
     beePubkeys.push({store:'heliclock', privacy: 'private', pubkey: b4a.toString(core18.key, 'hex')})
 
-    // notify hyberbee's active.
+    // Initialize Modules
+    this.PublicLibrary = new PublicLibraryModule(this.dbPublicLibraryRef, this.dbPublicLibraryMod, this.store, this.swarm, this.emit.bind(this))
+    this.PeerLibrary = new PeerLibraryModule(this.dbPeerLibraryRef, this.dbPeerLibraryMod)
+    this.Peers = new PeersModule(this.dbPeers)
+    this.Results = new ResultsModule(this.dbHOPresults)
+    this.Ledger = new LedgerModule(this.dbCohereceLedger)
+    this.Chat = new ChatModule(this.dbBentochat)
+    this.Clock = new ClockModule(this.dbHeliClock)
+    this.Spaces = new SpacesModule(this.dbBentospaces)
+    this.Cues = new CuesModule(this.dbBentocues)
+    this.Boxes = new BoxesModule(this.dbBentoBoxes)
+    this.Models = new ModelsModule(this.dbBentomodels)
+    this.Research = new ResearchModule(this.dbBentoresearch, this.dbBesearch)
+    this.Markers = new MarkersModule(this.dbBentomarkers)
+    this.Products = new ProductsModule(this.dbBentoproducts)
+    this.Media = new MediaModule(this.dbBentomedia)
+    this.Learn = new LearnModule(this.dbBeeBeeLearn)
+
     this.emit('hbee-live')
-    // return beePubkeys
-    let startBeePubkey = {}
-    startBeePubkey.type = 'account'
-    startBeePubkey.action = 'hyperbee-pubkeys'
-    startBeePubkey.data = beePubkeys
+    let startBeePubkey = {
+      type: 'account',
+      action: 'hyperbee-pubkeys',
+      data: beePubkeys
+    }
     this.liveBees = startBeePubkey
     this.wsocket.send(JSON.stringify(startBeePubkey))
     this.activeBees = beePubkeys
-    // test list of results
-    /* let listResults = await this.peerResults()
-    console.log(listResults)
-    for (let res of listResults) {
-      await this.deleteResultsItem(res.key)
-    } */
   }
 
+  // Delegate methods to modules for backward compatibility
+  saveHOPresults = (data) => this.Results.saveHOPresults(data)
+  peerResults = () => this.Results.peerResults()
+  peerResultsItem = (key) => this.Results.peerResultsItem(key)
+  deleteResultsItem = (key) => this.Results.deleteResultsItem(key)
+
+  saveBentochat = (data) => this.Chat.saveBentochat(data)
+  deleteBentochat = (data) => this.Chat.deleteBentochat(data)
+  getBentochat = (key) => this.Chat.getBentochat(key)
+  getBentochatHistory = (type, range) => this.Chat.getBentochatHistory(type, range)
+
+  saveHeliClock = (data) => this.Clock.saveHeliClock(data)
+  deleteHeliClock = (data) => this.Clock.deleteHeliClock(data)
+  getHeliClock = (key) => this.Clock.getHeliClock(key)
+  getHeliClockHistory = (type, range) => this.Clock.getHeliClockHistory(type, range)
+
+  saveSpaceHistory = (data) => this.Spaces.saveSpaceHistory(data)
+  saveBentospace = (data) => this.Spaces.saveBentospace(data)
+  getBentospace = (key) => this.Spaces.getBentospace(key)
+  getAllBentospaces = () => this.Spaces.getAllBentospaces()
+  deleteBentospace = (data) => this.Spaces.deleteBentospace(data)
+  saveSolospace = (data) => this.Spaces.saveSolospace(data)
+  getSolospace = () => this.Spaces.getSolospace()
+
+  saveCues = (data) => this.Cues.saveCues(data)
+  getCues = (key) => this.Cues.getCues(key)
+  getCuesHistory = (type, key) => this.Cues.getCuesHistory(type, key)
+  deleteBentocue = (data) => this.Cues.deleteBentocue(data)
+  updateCuesLibrary = (data) => this.Cues.updateCuesLibrary(data)
+
+  saveBentoBox = (data) => this.Boxes.saveBentoBox(data)
+  getBentoBox = (key) => this.Boxes.getBentoBox(key)
+  getBentoBoxHistory = (type, key) => this.Boxes.getBentoBoxHistory(type, key)
+  deleteBentoBox = (data) => this.Boxes.deleteBentoBox(data)
+
+  saveModel = (data) => this.Models.saveModel(data)
+  getModel = (key) => this.Models.getModel(key)
+  getModelHistory = (type, key) => this.Models.getModelHistory(type, key)
+  deleteBentoModel = (data) => this.Models.deleteBentoModel(data)
+
+  saveMedia = (data) => this.Media.saveMedia(data)
+  getMedia = (key) => this.Media.getMedia(key)
+  getMediaHistory = (type, key) => this.Media.getMediaHistory(type, key)
+  deleteBentomedia = (data) => this.Media.deleteBentomedia(data)
+
+  savePeer = (data) => this.Peers.savePeer(data)
+  getPeer = (key) => this.Peers.getPeer(key)
+  getPeersHistory = (type, key) => this.Peers.getPeersHistory(type, key)
+  deletePeer = (pubkey) => this.Peers.deletePeer(pubkey)
+
+  saveResearch = (data) => this.Research.saveResearch(data)
+  getResearch = (key) => this.Research.getResearch(key)
+  getResearchHistory = (type, key) => this.Research.getResearchHistory(type, key)
+  deleteBentoResearch = (data) => this.Research.deleteBentoResearch(data)
+  saveBesearch = (data) => this.Research.saveBesearch(data)
+  getBesearch = (key) => this.Research.getBesearch(key)
+  getBesearchHistory = (type, key) => this.Research.getBesearchHistory(type, key)
+  deleteBentoBesearch = (data) => this.Research.deleteBentoBesearch(data)
+
+  saveMarker = (data) => this.Markers.saveMarker(data)
+  getMarker = (key) => this.Markers.getMarker(key)
+  getMarkerHistory = (type, key) => this.Markers.getMarkerHistory(type, key)
+  deleteBentoMarker = (data) => this.Markers.deleteBentoMarker(data)
+
+  saveProduct = (data) => this.Products.saveProduct(data)
+  getProduct = (key) => this.Products.getProduct(key)
+  getProductHistory = (type, key) => this.Products.getProductHistory(type, key)
+  deleteBentoProduct = (data) => this.Products.deleteBentoProduct(data)
+
+  saveBeeBeeLearn = (data) => this.Learn.saveBeeBeeLearn(data)
+  deleteBeeBeeLearn = (key) => this.Learn.deleteBeeBeeLearn(key)
+  getBeeBeeLearn = (key) => this.Learn.getBeeBeeLearn(key)
+  getBeeBeeLearnHistory = (type, range) => this.Learn.getBeeBeeLearnHistory(type, range)
+
+  savePubliclibraryRef = (data) => this.PublicLibrary.savePubliclibraryRef(data)
+  savePubliclibraryMod = (data) => this.PublicLibrary.savePubliclibraryMod(data)
+  getPublicLibraryRef = (id) => this.PublicLibrary.getPublicLibraryRef(id)
+  getPublicLibraryMod = (id) => this.PublicLibrary.getPublicLibraryMod(id)
+  getPublicLibraryRefRange = (type, range) => this.PublicLibrary.getPublicLibraryRefRange(type, range)
+  getPublicLibraryModRange = (range) => this.PublicLibrary.getPublicLibraryModRange(range)
+  getPublicLibraryRefLast = (dp) => this.PublicLibrary.getPublicLibraryRefLast(dp)
+  getPublicLibraryModLast = (dp) => this.PublicLibrary.getPublicLibraryModLast(dp)
+  deletePublicLibraryRef = (id) => this.PublicLibrary.deletePublicLibraryRef(id)
+  deletePublicLibraryMod = (id) => this.PublicLibrary.deletePublicLibraryMod(id)
+  replicatePubliclibrary = (data) => this.PublicLibrary.replicatePubliclibrary(data)
+  replicateQueryPubliclibrary = (data) => this.PublicLibrary.replicateQueryPubliclibrary(data)
+  updatePublicLibrary = (data) => this.PublicLibrary.updatePublicLibrary(data)
+
+  savePeerLibraryRef = (data) => this.PeerLibrary.savePeerLibraryRef(data)
+  savePeerLibraryMod = (data) => this.PeerLibrary.savePeerLibraryMod(data)
+  getPeerLibraryRef = (id) => this.PeerLibrary.getPeerLibraryRef(id)
+  getPeerLibraryMod = (id) => this.PeerLibrary.getPeerLibraryMod(id)
+  getPeerLibraryRefRange = () => this.PeerLibrary.getPeerLibraryRefRange()
+  getPeerLibraryModRange = () => this.PeerLibrary.getPeerLibraryModRange()
+  getPeerLibraryRefLast = () => this.PeerLibrary.getPeerLibraryRefLast()
+  getPeerLibraryModLast = () => this.PeerLibrary.getPeerLibraryModLast()
+  getPeerLibModComputeModules = () => this.PeerLibrary.getPeerLibModComputeModules()
+  deletePeerLibraryRef = (id) => this.PeerLibrary.deletePeerLibraryRef(id)
+  deletePeerLibraryMod = (id) => this.PeerLibrary.deletePeerLibraryMod(id)
 
-  /* HOP QUERY RESULTS */
-  /**
-   * save HOPresults
-   * @method saveHOPresults
-   *
-  */
-  saveHOPresults = async function (refContract) {
-    await this.dbHOPresults.put(refContract.hash, refContract.data)
-  }
-
-  peerResults = async function () {
-    const nodeData = this.dbHOPresults.createReadStream()
-    let resData = []
-    for await (const { key, value } of nodeData) {
-      resData.push({ key, value })
-    }
-    return resData
-  }
-
-  /**
-   * lookup results per dataprint hash
-   * @method peerResultsItem
-   *
-  */
-  peerResultsItem = async function (key) {
-    const resultData = await this.dbHOPresults.get(key)
-    return resultData
-  }
-
-  /**
-   * delete results
-   * @method deleteResultsItem
-   *
-  */
-  deleteResultsItem = async function (key) {
-    const resultData = await this.dbHOPresults.del(key)
-    return resultData
-  }
-
-
-  /** CHAT */
-  /**
-   * save chat history
-   * @method saveBentochat
-   *
-  */
-  saveBentochat = async function (chatHistory) {
-    await this.dbBentochat.put(chatHistory.chat.chatid, chatHistory)
-    let checkSave = await this.getBentochat(chatHistory.chat.chatid)
-    return checkSave
-  }
-
-  /**
-   * delete chat item
-   * @method deleteBentochat
-   *
-  */
-  deleteBentochat = async function (chat) {
-    await this.dbBentochat.del(chat.chatid)
-    let deleteInfo = {}
-    deleteInfo.chatid = chat.chatid
-    return deleteInfo
-  }
-
-  /**
-   * lookup peer bentospace layout default
-   * @method getBentochat
-   *
-  */
-  getBentochat = async function (key) {
-    const nodeData = await this.dbBentochat.get(key)
-    return nodeData
-  }
-
-  /**
-   * lookup range save chat history
-   * @method getBentochatHistory
-   *
-  */
-  getBentochatHistory = async function (range) {
-    const chathistoryData = this.dbBentochat.createReadStream() // { gt: 'a', lt: 'z' }) // anything >a and <z
-    let chatData = []
-    for await (const { key, value } of chathistoryData) {
-      chatData.push({ key, value })
-    }
-    return chatData
-  }
-
-  /** HELI CLOCK */
-  /**
-   * save clock entry
-   * @method saveHeliClock
-   *
-  */
-  saveHeliClock = async function (clockEntry) {
-    await this.dbHeliClock.put(clockEntry.id, clockEntry)
-    let checkSave = await this.getBentochat(clockEntry.id)
-    return checkSave
-  }
-
-  /**
-   * delete chat item
-   * @method deleteHeliClock
-   *
-  */
-  deleteHeliClock = async function (entry) {
-    await this.dbHeliClock.del(entry.id)
-    let deleteInfo = {}
-    deleteInfo.id = entry.id
-    return deleteInfo
-  }
-
-  /**
-   * lookup clock entry
-   * @method getHeliClock
-   *
-  */
-  getHeliClock = async function (key) {
-    const nodeData = await this.dbHeliClock.get(key)
-    return nodeData
-  }
-
-  /**
-   * lookup range of heli clock history
-   * @method getHeliClockHistory
-   *
-  */
-  getHeliClockHistory = async function (range) {
-    const clockhistoryData = this.dbHeliClock.createReadStream() // { gt: 'a', lt: 'z' }) // anything >a and <z
-    let clockData = []
-    for await (const { key, value } of clockhistoryData) {
-      clockData.push({ key, value })
-    }
-    return clockData
-  }
-
-  /** SPACE */
-  /**
-   * save space menu
-   * @method saveSpaceHistory
-   *
-  */
-  saveSpaceHistory = async function (spaceContract) {
-    await this.dbBentospaces.put(spaceContract.space.cueid, spaceContract)
-    let checkSave = await this.getBentospace(spaceContract.space.cueid)
-    return checkSave
-  }
-
-  /**
-   * save space layout of bentobox
-   * @method saveBentospace
-   *
-  */
-  saveBentospace = async function (spaceContract) {
-    await this.dbBentospaces.put(spaceContract.cueid, spaceContract)
-    let checkSave = await this.getBentospace(spaceContract.cueid)
-    return checkSave
-  }
-
-  /**
-   * lookup peer bentospace layout default
-   * @method getBentospace
-   *
-  */
-  getBentospace = async function (key) {
-    const nodeData = await this.dbBentospaces.get(key)
-    return nodeData
-  }
-
-  /**
-   * lookup bentospaces all
-   * @method getAllBentospaces
-   *
-  */
-  getAllBentospaces = async function () {
-    const spacesHistory = await this.dbBentospaces.createReadStream()
-    let spacesData = []
-    for await (const { key, value } of spacesHistory) {
-      spacesData.push({ key, value })
-    }    
-    return spacesData
-  }
-
-
-  /**
-   * delete nxp ref contract from peer library
-   * @method deleteBentospace
-   *
-  */
-  deleteBentospace = async function (space) {
-    const deleteStatus = await this.dbBentospaces.del(space.cueid)
-    let deleteInfo = {}
-    deleteInfo.spaceid = space.cueid
-    return deleteInfo
-  }
-
-  /** CUES */
-  /**
-   * save cues
-   * @method saveCues
-   *
-  */
-  saveCues = async function (cuesInfo) {
-    await this.dbBentocues.put(cuesInfo.cueid, cuesInfo.data)
-    let checkSave = await this.getCues(cuesInfo.cueid)
-    return checkSave
-  }
-
-  /**
-   * get one cue by id
-   * @method getCues
-   *
-  */
-  getCues = async function (key) {
-    const nodeData = await this.dbBentocues.get(key)
-    return nodeData
-  }
-
-  /**
-   * get all cuees
-   * @method getCuesHistory
-   *
-  */
-  getCuesHistory = async function (key) {
-    const cuesHistory = await this.dbBentocues.createReadStream()
-    let cuesData = []
-    for await (const { key, value } of cuesHistory) {
-      cuesData.push({ key, value })
-    }
-    return cuesData
-  }
-
-  /**
-   * delete nxp ref contract from peer library
-   * @method deleteBentocue
-  */
-  deleteBentocue = async function (cue) {
-    const deleteStatus = await this.dbBentocues.del(cue.cueid)
-    let deleteInfo = {}
-    deleteInfo.spaceid = cue.cueid
-    return deleteInfo
-  }
-
-  /** BENTOBOXES */
-  /**
-   * save model
-   * @method saveModel
-  */
-  saveBentoBox = async function (boxInfo) {
-    await this.dbBentoBoxes.put(boxInfo.id, boxInfo.data)
-    let checkSave = await this.getBentoBox(boxInfo.id)
-    return checkSave
-  }
-
-  /**
-   * get one cue by id
-   * @method getModel
-   *
-  */
-  getBentoBox = async function (key) {
-    const nodeData = await this.dbBentoBoxes.get(key)
-    return nodeData
-  }
-
-  /**
-   * get all cuees
-   * @method getModelHistory
-   *
-  */
-  getBentoBoxHistory = async function (key) {
-    const boxHistory = await this.dbBentoBoxes.createReadStream()
-    let boxData = []
-    for await (const { key, value } of boxHistory) {
-      boxData.push({ key, value })
-    }
-    return boxData
-  }
-
-  /**
-   * delete nxp ref contract from peer library
-   * @method deleteBentoBox
-  */
-  deleteBentoBox = async function (box) {
-    const deleteStatus = await this.dbBentoBoxes.del(box.id)
-    let deleteInfo = {}
-    deleteInfo.id = box.id
-    return deleteInfo
-  }
-
-
-  /** MODELS */
-  /**
-   * save model
-   * @method saveModel
-  */
-  saveModel = async function (modelInfo) {
-    await this.dbBentomodels.put(modelInfo.id, modelInfo.data)
-    let checkSave = await this.getModel(modelInfo.id)
-    return checkSave
-  }
-
-  /**
-   * get one cue by id
-   * @method getModel
-   *
-  */
-  getModel = async function (key) {
-    const nodeData = await this.dbBentomodels.get(key)
-    return nodeData
-  }
-
-  /**
-   * get all cuees
-   * @method getModelHistory
-   *
-  */
-  getModelHistory = async function (key) {
-    const modelHistory = await this.dbBentomodels.createReadStream()
-    let modelData = []
-    for await (const { key, value } of modelHistory) {
-      modelData.push({ key, value })
-    }
-    return modelData
-  }
-
-  /**
-   * delete nxp ref contract from peer library
-   * @method deleteBentomodel
-  */
-  deleteBentoModel = async function (model) {
-    const deleteStatus = await this.dbBentomodels.del(model.id)
-    let deleteInfo = {}
-    deleteInfo.id = model.id
-    return deleteInfo
-  }
-
- /** MEDIA */
-  /**
-   * save media
-   * @method saveMedia
-   *
-  */
-  saveMedia = async function (mediaInfo) {
-    await this.dbBentomedia.put(mediaInfo.cueid, mediaInfo.data)
-    let checkSave = await this.getMedia(mediaInfo.cueid)
-    return checkSave
-  }
-
-  /**
-   * get one cue by id
-   * @method getMedia
-   *
-  */
-  getMedia = async function (key) {
-    const nodeData = await this.dbBentomedia.get(key)
-    return nodeData
-  }
-
-  /**
-   * get all media
-   * @method getMediaHistory
-   *
-  */
-  getMediaHistory = async function (key) {
-    const cuesHistory = await this.dbBentomedia.createReadStream()
-    let cuesData = []
-    for await (const { key, value } of cuesHistory) {
-      cuesData.push({ key, value })
-    }    
-    return cuesData
-  }
-
-
-  /**
-   * delete nxp ref contract from peer library
-   * @method deleteBentomedia
-  */
-  deleteBentomedia = async function (media) {
-    const deleteStatus = await this.dbBentomedia.del(media.id)
-    let deleteInfo = {}
-    deleteInfo.spaceid = media.id
-    return deleteInfo
-  }
-
-  /** PEERS */
-  /**
-   * save research
-   * @method savePeer
-   *
-  */
-  savePeer = async function (peerInfo) {
-    await this.dbPeers.put(peerInfo.publickey, peerInfo)
-    let checkSave = await this.getPeer(peerInfo.publickey)
-    return checkSave
-  }
-
-  /**
-   * get one peer by publickey
-   * @method getPeer
-   *
-  */
-  getPeer = async function (key) {
-    const nodeData = await this.dbPeers.get(key)
-    return nodeData
-  }
-
-  /**
-   * get all peers
-   * @method getPeersHistory
-   *
-  */
-  getPeersHistory = async function (key) {
-    const peerHistory = await this.dbPeers.createReadStream()
-    let peerData = []
-    for await (const { key, value } of peerHistory) {
-      peerData.push({ key, value })
-    }    
-    return peerData
-  }
-
-  /**
-   * delete contract
-   * @method deletePeer
-  */
-  deletePeer = async function (pubkey) {
-    const deleteStatus = await this.dbPeers.del(pubkey)
-    let deleteInfo = {}
-    deleteInfo.publickey = pubkey
-    return deleteInfo
-  }
-  
-
-  /** RESEARCH */
-  /**
-   * save research
-   * @method saveResearch
-   *
-  */
-  saveResearch = async function (cuesInfo) {
-    await this.dbBentoresearch.put(cuesInfo.cueid, cuesInfo.data)
-    let checkSave = await this.getResearch(cuesInfo.cueid)
-    return checkSave
-  }
-
-  /**
-   * get one cue by id
-   * @method getResearch
-   *
-  */
-  getResearch = async function (key) {
-    const nodeData = await this.dbBentoresearch.get(key)
-    return nodeData
-  }
-
-  /**
-   * get all research
-   * @method getResearchHistory
-   *
-  */
-  getResearchHistory = async function (key) {
-    const cuesHistory = await this.dbBentoresearch.createReadStream()
-    let cuesData = []
-    for await (const { key, value } of cuesHistory) {
-      cuesData.push({ key, value })
-    }    
-    return cuesData
-  }
-
-  /**
-   * delete contract
-   * @method deleteBentoResearch
-  */
-  deleteBentoResearch = async function (cue) {
-    const deleteStatus = await this.dbBentoresearch.del(cue.id)
-    let deleteInfo = {}
-    deleteInfo.spaceid = cue.id
-    return deleteInfo
-  }
-
-  /** MARKER */
-  /**
-   * save marker
-   * @method saveMarker
-   *
-  */
-  saveMarker = async function (cuesInfo) {
-    await this.dbBentomarkers.put(cuesInfo.cueid, cuesInfo.data)
-    let checkSave = await this.getMarker(cuesInfo.cueid)
-    return checkSave
-  }
-
-  /**
-   * get one cue by id
-   * @method getMarker
-   *
-  */
-  getMarker = async function (key) {
-    const nodeData = await this.dbBentomarkers.get(key)
-    return nodeData
-  }
-
-  /**
-   * get all research
-   * @method getMarkerHistory
-   *
-  */
-  getMarkerHistory = async function (key) {
-    const cuesHistory = await this.dbBentomarkers.createReadStream()
-    let cuesData = []
-    for await (const { key, value } of cuesHistory) {
-      cuesData.push({ key, value })
-    }
-    return cuesData
-  }
-
-  /**
-   * delete contract
-   * @method deleteBentoMarker
-  */
-  deleteBentoMarker = async function (cue) {
-    const deleteStatus = await this.dbBentomarkers.del(cue.id)
-    let deleteInfo = {}
-    deleteInfo.spaceid = cue.id
-    return deleteInfo
-  }
-
-  /** Product */
-  /**
-   * save product
-   * @method saveProduct
-   *
-  */
-  saveProduct = async function (cuesInfo) {
-    await this.dbBentoproducts.put(cuesInfo.cueid, cuesInfo.data)
-    let checkSave = await this.getProduct(cuesInfo.cueid)
-    return checkSave
-  }
-
-  /**
-   * get one cue by id
-   * @method getProduct
-   *
-  */
-  getProduct = async function (key) {
-    const nodeData = await this.dbBentoproducts.get(key)
-    return nodeData
-  }
-
-  /**
-   * get all prodcut
-   * @method getProductHistory
-   *
-  */
-  getProductHistory = async function (key) {
-    const cuesHistory = await this.dbBentoproducts.createReadStream()
-    let cuesData = []
-    for await (const { key, value } of cuesHistory) {
-      cuesData.push({ key, value })
-    }
-    return cuesData
-  }
-
-  /**
-   * delete contract
-   * @method deleteBentoProduct
-  */
-  deleteBentoProduct = async function (cue) {
-    const deleteStatus = await this.dbBentoproducts.del(cue.id)
-    let deleteInfo = {}
-    deleteInfo.spaceid = cue.id
-    return deleteInfo
-  }
-
-  /** Besearch */
-  /**
-   * save besearch
-   * @method saveBesearch
-   *
-  */
-  saveBesearch = async function (cuesInfo) {
-    await this.dbBesearch.put(cuesInfo.id, cuesInfo.data)
-    let checkSave = await this.getBesearch(cuesInfo.id)
-    return checkSave
-  }
-
-  /**
-   * get one cue by id
-   * @method getBesearch
-   *
-  */
-  getBesearch = async function (key) {
-    const nodeData = await this.dbBesearch.get(key)
-    return nodeData
-  }
-
-  /**
-   * get all Besearch
-   * @method getBesearchHistory
-   *
-  */
-  getBesearchHistory = async function (key) {
-    const cuesHistory = await this.dbBesearch.createReadStream()
-    let cuesData = []
-    for await (const { key, value } of cuesHistory) {
-      cuesData.push({ key, value })
-    }    
-    return cuesData
-  }
-
-  /**
-   * delete contract
-   * @method deleteBentoBesearch
-  */
-  deleteBentoBesearch = async function (cue) {
-    const deleteStatus = await this.dbBesearch.del(cue.id)
-    let deleteInfo = {}
-    deleteInfo.spaceid = cue.id
-    return deleteInfo
-  }
-
-
-  /** BEEBEE LEARN via @teach */
-  /**
-   * save chat history
-   * @method saveBeeBeeLearn
-   *
-  */
-  saveBeeBeeLearn = async function (teachSession) {
-    await this.dbBeeBeeLearn.put(teachSession.id, teachSession.session)
-    let checkSave = await this.getBeeBeeLearn(teachSession.id)
-    return checkSave
-  }
-
-  /**
-   * delete chat item
-   * @method deleteBeeBeeLearn
-   *
-  */
-  deleteBeeBeeLearn = async function (key) {
-    await this.dbBeeBeeLearn.del(key)
-    let deleteInfo = {}
-    deleteInfo.id = key
-    return deleteInfo
-  }
-
-  /**
-   * lookup peer teach session layout default
-   * @method getBeeBeeLearn
-   *
-  */
-  getBeeBeeLearn = async function (key) {
-    const nodeData = await this.dbBeeBeeLearn.get(key)
-    return nodeData
-  }
-
-  /**
-   * lookup range save learn @teach history
-   * @method getBeeBeeLearnHistory
-   *
-  */
-  getBeeBeeLearnHistory = async function (range) {
-    const teachHistoryData = this.dbBeeBeeLearn.createReadStream() // { gt: 'a', lt: 'z' }) // anything >a and <z
-    let teachData = []
-    for await (const { key, value } of teachHistoryData) {
-      teachData.push({ key, value })
-    }
-    return teachData
-  }
-
-  // old solo spaces
-  /**
-   * save space layout of bentobox
-   * @method saveSolospace
-   *
-  */
-  saveSolospace = async function (spaceContract) {
-    let key = 'startsolospaces'
-    await this.dbBentospaces.put(key, spaceContract)
-    let checkSave = await this.getSolospace(key)
-    return checkSave
-  }
-
-  /**
-   * lookup peer solospace layout default
-   * @method getSolospace
-   *
-  */
-  getSolospace = async function () {
-    let key = 'startsolospaces'
-    const nodeData = await this.dbBentospaces.get(key)
-    return nodeData
-  }
-
- //** */ public library **//
-
-  /**
-   * save pair in keystore public network library ref
-   * @method savePubliclibraryRef
-   *
-  */
-  savePubliclibraryRef = async function (refContract) {
-    await this.dbPublicLibraryRef.put(refContract.data.hash, refContract.data.contract)
-    // go query the key are return the info. to ensure data save asplanned.
-    let saveCheck = await this.getPublicLibraryRef(refContract.data.hash)
-    let returnMessage = {}
-    returnMessage.stored = true
-    returnMessage.type = refContract.reftype
-    returnMessage.key = saveCheck.key
-    returnMessage.contract = saveCheck.value
-    return returnMessage
-  }
-
-  /**
-   * save pair in keystore public network library mod
-   * @method savePubliclibraryMod
-   *
-  */
-  savePubliclibraryMod = async function (refContract) {
-    await this.dbPublicLibraryMod.put(refContract.data.hash, refContract.data.contract)
-    // go query the key are return the info. to ensure data save asplanned.
-    let saveCheck = await this.getPublicLibraryMod(refContract.data.hash)
-    let returnMessage = {}
-    returnMessage.stored = true
-    returnMessage.type = refContract.reftype
-    returnMessage.key = saveCheck.key
-    returnMessage.contract = saveCheck.value
-    return returnMessage
-  }
-  
-
-  /**
-   * save pair in keystore db peer library ref
-   * @method savePeerLibraryRef
-   *
-  */
-  savePeerLibraryRef = async function (refContract) {
-    await this.dbPeerLibraryRef.put(refContract.data.hash, refContract.data.contract)
-    let saveCheck = await this.getPeerLibraryRef(refContract.data.hash)
-    let returnMessage = {}
-    returnMessage.stored = true
-    returnMessage.type = refContract.reftype
-    returnMessage.key = saveCheck.key
-    returnMessage.contract = saveCheck.value
-    return returnMessage
-  }
-
-  /**
-   * save pair in keystore db peer library mod
-   * @method savePeerLibraryMod
-   *
-  */
-  savePeerLibraryMod = async function (refContract) {
-    await this.dbPeerLibraryMod.put(refContract.data.hash, refContract.data.contract)
-    let saveCheck = await this.getPeerLibraryMod(refContract.data.hash)
-    let returnMessage = {}
-    returnMessage.stored = true
-    returnMessage.type = refContract.reftype
-    returnMessage.key = saveCheck.key
-    returnMessage.contract = saveCheck.value
-    return returnMessage
-  }
-
-  /**
-   * lookup specific result UUID from public library ref
-   * @method getPublicLibraryRef
-   *
-  */
-  getPublicLibraryRef = async function (contractID) {
-    const nodeData = await this.dbPublicLibraryRef.get(contractID)
-    return nodeData
-  }
-
-  /**
-   * lookup specific result UUID from public library mod
-   * @method getPublicLibraryMod
-   *
-  */
-  getPublicLibraryMod = async function (contractID) {
-    const nodeData = await this.dbPublicLibraryMod.get(contractID)
-    return nodeData
-  }
-
-  /**
-   * lookup range query of db public library ref
-   * @method getPublicLibraryRefRange
-   *
-  */
-  getPublicLibraryRefRange = async function (range) {
-    const nodeData = this.dbPublicLibraryRef.createReadStream() // { gt: 'a', lt: 'z' }) // anything >a and <z
-    let contractData = []
-    for await (const { key, value } of nodeData) {
-      contractData.push({ key, value })
-    }
-    return contractData
-  }
-
-  /**
-   * lookup range query of db public library mod
-   * @method getPublicLibraryModRange
-   *
-  */
-  getPublicLibraryModRange = async function (range) {
-    const nodeData = this.dbPublicLibraryMod.createReadStream() // { gt: 'a', lt: 'z' }) // anything >a and <z
-    let contractData = []
-    for await (const { key, value } of nodeData) {
-      contractData.push({ key, value })
-    }
-    return contractData
-  }
-
-  /**
-   * return the last entry into db public library ref
-   * @method getPublicLibraryRefLast
-   *
-  */
-  getPublicLibraryRefLast = async function (dataPrint) {
-    const nodeData = this.dbPublicLibraryRef.createHistoryStream({ reverse: true, limit: 1 })
-    return nodeData
-  }
-
-  /**
-   * return the last entry into db public library mod
-   * @method getPublicLibraryModLast
-   *
-  */
-  getPublicLibraryModLast = async function (dataPrint) {
-    const nodeData = this.dbPublicLibraryMod.createHistoryStream({ reverse: true, limit: 1 })
-    return nodeData
-  }
-
-  /**
-   * lookup al peer library ref entries
-   * @method getPeerLibraryRef
-   *
-  */
-  getPeerLibraryRef = async function (contractID) {
-    const nodeData = await this.dbPeerLibraryRef.get(contractID)
-    return nodeData
-  }
-
-  /**
-   * lookup al peer library mod entries
-   * @method getPeerLibraryMod
-   *
-  */
-  getPeerLibraryMod = async function (contractID) {
-    const nodeData = await this.dbPeerLibraryMod.get(contractID)
-    return nodeData
-  }
-
-  /**
-   * lookup al peer library ref range
-   * @method getPeerLibraryRefRange
-   *
-  */
-  getPeerLibraryRefRange = async function () {
-    const nodeData = await this.dbPeerLibraryRef.createReadStream() // { gt: 'a', lt: 'z' })
-    let contractData = []
-    for await (const { key, value } of nodeData) {
-      contractData.push({ key, value })
-    }
-    return contractData
-  }
-
-  /**
-   * lookup al peer library mod range
-   * @method getPeerLibraryModRange
-   *
-  */
-  getPeerLibraryModRange = async function () {
-    const nodeData = await this.dbPeerLibraryMod.createReadStream() // { gt: 'a', lt: 'z' })
-    let contractData = []
-    for await (const { key, value } of nodeData) {
-      contractData.push({ key, value })
-    }
-    return contractData
-  }
-
-  /**
-   * lookup al peer library ref Last entry
-   * @method getPeerLibraryRefLast
-   *
-  */
-  getPeerLibraryRefLast = async function () {
-    const nodeData = await this.dbPeerLibraryRef.createHistoryStream({ reverse: true, limit: 1 })
-    return nodeData
-  }
-
-  /**
-   * lookup al peer library mod Last entry
-   * @method getPeerLibraryModLast
-   *
-  */
-  getPeerLibraryModLast = async function () {
-    const nodeData = await this.dbPeerLibraryMod.createHistoryStream({ reverse: true, limit: 1 })
-    return nodeData
-  }
-
-  /**
-   * filter peer library mod to get compute modules with a key
-   * @method getPeerLibModComputeModules
-   *
-  */
-  getPeerLibModComputeModules = async function () {
-    const moduleData = await this.dbPeerLibraryMod.createHistoryStream({ reverse: true, limit: 10 })
-    return moduleData
-  }
-
-  /*  COHERENCE LEDGER  Knowledge Bundle Ledger */
-
-  /**
-   * save kbledger entry
-   * @method saveKBLentry
-   *
-  */
-  saveKBLentry = async function (ledgerEntry) {
-    await this.dbCohereceLedger.put(ledgerEntry.data, ledgerEntry.hash)
-  }
-
-  /**
-   * get all kbl entries
-   * @method KBLentries
-   *
-  */
-  KBLentries = async function (dataPrint) {
-    const nodeData = this.dbCohereceLedger.createReadStream()
-    let ledgerData = []
-    for await (const { key, value } of nodeData) {
-      ledgerData.push({ key, value })
-    }
-    return ledgerData
-  }
-
-  /**
-   * lookup coherence ledger per results id
-   * @method peerLedgerProof
-   *
-  */
-  peerLedgerProof = async function (dataPrint) {
-    const ledgerData = await this.dbCohereceLedger.get(dataPrint.resultuuid)
-    return ledgerData
-  }
-
-  /**
-   * get stream data for keystore db
-   * @method getStreamHyperbeeDB
-   *
-  */
-  getStreamHyperbeeDB = async function () {
-    // if you want to read a range
-    let rs = this.dbbee.createReadStream({ gt: 'a', lt: 'd' }) // anything >a and <d
-
-    let rs2 = this.dbbee.createReadStream({ gte: 'a', lte: 'd' }) // anything >=a and <=d
-
-    for await (const { key, value } of rs) {
-      console.log(`${key} -> ${value}`)
-    }
-
-  }
-
-  /**
-   * delete nxp ref contract public library ref
-   * @method deletePublicLibraryRef
-   *
-  */
-  deletePublicLibraryRef = async function (nxpID) {
-    let deleteInfo = {}
-    let deleteStatus = await this.dbPublicLibraryRef.del(nxpID)
-    deleteInfo.success = deleteStatus
-    deleteInfo.nxp = nxpID
-    return deleteInfo
-  }
-
-  /**
-   * delete nxp ref contract public library mod
-   * @method deletePublicLibraryMod
-   *
-  */
-  deletePublicLibraryMod = async function (nxpID) {
-    let deleteInfo = {}
-    let deleteStatus = await this.dbPublicLibraryMod.del(nxpID)
-    deleteInfo.success = deleteStatus
-    deleteInfo.nxp = nxpID
-    return deleteInfo
-  }
-
-  /**
-   * delete nxp ref contract from peer library ref
-   * @method deletePeerLibraryRef
-   *
-  */
-  deletePeerLibraryRef = async function (nxpID) {
-    let deleteInfo = {}
-    let deleteStatus = await this.dbPeerLibraryRef.del(nxpID)
-    deleteInfo.success = deleteStatus
-    deleteInfo.nxp = nxpID
-    return deleteInfo
-  }
-
-  /**
-   * delete nxp ref contract from peer library mod
-   * @method deletePeerLibraryMod
-   *
-  */
-  deletePeerLibraryMod = async function (nxpID) {
-    let deleteInfo = {}
-    let deleteStatus = await this.dbPeerLibraryMod.del(nxpID)
-    deleteInfo.success = deleteStatus
-    deleteInfo.nxp = nxpID
-    return deleteInfo
-  }
-
-  /**
-   * repicate the publiclibrary peer to peer
-   * @method replicatePubliclibrary
-   *
-  */
-  replicatePubliclibrary = async function (dataIn) {
-    // create or get the hypercore using the public key supplied as command-line argument
-    const coreRep = this.store.get({ key: b4a.from(dataIn.discoverykey, 'hex') })
-
-    // create a hyperbee instance using the hypercore instance
-    const beePlib = new Hyperbee(coreRep, {
-      keyEncoding: 'utf-8',
-      valueEncoding: 'utf-8'
-    })
-
-    // wait till the hypercore properties to be intialized
-    await coreRep.ready()
-
-    // logging the public key of the hypercore instance
-    // console.log('core key here is:', coreRep.key.toString('hex'))
-
-    // Attempt to connect to peers
-    this.swarm.join(coreRep.discoveryKey, { server: false, client: true })
-
-    await coreRep.update()
-
-    const nodeData = beePlib.createReadStream()
-    let resData = []
-    for await (const { key, value } of nodeData) {
-      resData.push({ key, value })
-    }
-    // data received?
-    if (resData.length > 0) {
-      this.repPublicHolder[dataIn.discoverykey] = resData
-      // notify peer repliate complete, ask if want save
-      this.emit('publib-replicate-notification', { data: { text: 'public library replication complete', publib: dataIn.discoverykey }})
-    } else {
-      this.emit('publib-replicate-notification', { data: { text: 'no data received', publib: dataIn.discoverykey }})
-    }
-  }
-
-  /**
-   * repicate the publiclibrary peer to peer
-   * @method replicateQueryPubliclibrary
-   *
-  */
-  replicateQueryPubliclibrary = async function (dataIn) {
-    // create or get the hypercore using the public key supplied as command-line argument
-    const coreRep = this.store.get({ key: b4a.from(dataIn.data.data.datastores, 'hex') })
-
-    // create a hyperbee instance using the hypercore instance
-    const beePlib = new Hyperbee(coreRep, {
-      keyEncoding: 'utf-8',
-      valueEncoding: 'utf-8'
-    })
-
-    // wait till the hypercore properties to be intialized
-    await coreRep.ready()
-
-    // logging the public key of the hypercore instance
-    // console.log('core key here is:', coreRep.key.toString('hex'))
-
-    // Attempt to connect to peers
-    this.swarm.join(coreRep.discoveryKey, { server: false, client: true })
-
-    await coreRep.update()
-
-    // if provided with specific boarnxp key then just get the contract, extract module contracts and get those contracts and then inform the peer and save to their public library
-    const boardNXPcontract = await beePlib.get(dataIn.data.data.boardID)
-    let unString = JSON.parse(boardNXPcontract.value)
-    let moduleContracts = []
-    for (let mod of unString.modules) {
-      let modC = await beePlib.get(mod)
-      moduleContracts.push(modC)
-    }
-    // next reference contracts, then ref within refs i.e. packaging datatypes
-    let referenceContracts = []
-    for (let modRef of moduleContracts) {
-      let unString = JSON.parse(modRef.value)
-      if (unString.style === 'packaging') {
-        // get list of datatypes
-        for (let ref of unString.info.value.concept.tablestructure) {
-          if (ref?.refcontract) {
-          let refC = await beePlib.get(ref.refcontract)
-            referenceContracts.push(refC)
-          }
-        }
-      } else if (unString.style === 'compute') {
-        // console.log('compute TODO')
-        // console.log(unString)
-      } else if (unString.style === 'visualise') {
-        // console.log('visualise TODO')
-        // console.log(unString)
-      } else if (unString.style === 'question') {
-        let questRef = {}
-        questRef.key = unString.info.key
-        questRef.value = JSON.stringify(unString.info.value)
-        referenceContracts.push(questRef)
-      }
-    }
-    // notify and get confirmation to accept and save to public library
-    if (moduleContracts.length > 0) {
-      // keep hold of data ready to be confirmed
-      let holderConfirm = {}
-      holderConfirm.boardNXP = [boardNXPcontract]
-      holderConfirm.modules = moduleContracts
-      holderConfirm.refcontracts = referenceContracts
-      this.confirmPubLibList[dataIn.data.data.datastores] = holderConfirm
-      this.emit('publibbeebee-notification', dataIn)
-    }
-    // or
-    // now ask for whole of public library
-    /* read all of repliate connect bee and displays */
-    const chathistoryData = beePlib.createReadStream() // { gt: 'a', lt: 'z' }) // anything >a and <z
-    let chatData = []
-    for await (const { key, value } of chathistoryData) {
-      if (key === dataIn.data.boardID) {
-       chatData.push({ key, value })
-      }
-    }
-    // now replicate with peer own public library in whole or per nxp
-    /* let savePublib = await this.updatePublicLibrary(beePlib)
-    let repMessage = {}
-    repMessage.type = 'library'
-    repMessage.action = 'replicate-publiclibrary'
-    repMessage.task = 'replicate'
-    repMessage.reftype = 'publiclibrary'
-    repMessage.data = savePublib
-    return repMessage */
-  }
+  saveKBLentry = (data) => this.Ledger.saveKBLentry(data)
+  KBLentries = () => this.Ledger.KBLentries()
+  peerLedgerProof = (dp) => this.Ledger.peerLedgerProof(dp)
 
-  
-  /**
-   * look up holder and save data to public library datastore
-   * @method saveRepliatePubLibary
-   *
-  */
   saveRepliatePubLibary = async function (data) {
-    // add board nxp
-    let updatePubLib = this.repPublicHolder[data.discoverykey]
+    let updatePubLib = this.PublicLibrary.repPublicHolder[data.discoverykey]
     if (data.library === 'public') {
       await this.updatePublicLibrary(updatePubLib)
     } else if (data.library === 'cues') {
       await this.updateCuesLibrary(updatePubLib)
     }
-    this.repPublicHolder[data.discoverykey] = []
+    this.PublicLibrary.repPublicHolder[data.discoverykey] = []
   }
 
-  /**
-   * peer confirmed add to public library
-   * @method addConfrimPublicLibrary
-   *
-  */
   addConfrimPublicLibrary = async function (data) {
-    // add board nxp
-    await this.updatePublicLibrary(this.confirmPubLibList[data.datastores].boardNXP)
-    // add modules
-    await this.updatePublicLibrary(this.confirmPubLibList[data.datastores].modules)
-    // add reference
-    await this.updatePublicLibrary(this.confirmPubLibList[data.datastores].refcontracts)
+    await this.updatePublicLibrary(this.PublicLibrary.confirmPubLibList[data.datastores].boardNXP)
+    await this.updatePublicLibrary(this.PublicLibrary.confirmPubLibList[data.datastores].modules)
+    await this.updatePublicLibrary(this.PublicLibrary.confirmPubLibList[data.datastores].refcontracts)
   }
-
-  /**
-   * update public library from peers public library
-   * @method updatePublicLibrary
-   *
-  */
-  updatePublicLibrary = async function (libContracts) {
-    // save entries required
-    const batch = this.dbPublicLibrary.batch()
-    for (const { key, value } of libContracts) {
-      await batch.put(key, JSON.parse(value))
-    }
-    await batch.flush()
-
-    // check
-    const libUpdatecheck = this.dbPublicLibrary.createReadStream()
-    let libConracts = []
-    for await (const { key, value } of libUpdatecheck) {
-      libConracts.push({ key, value })
-    }
-    return true
-  }
-
-  /**
-   * update cues library from replication
-   * @method updateCuesLibrary
-   *
-  */
-  updateCuesLibrary = async function (libContracts) {
-    // save entries required
-    const batch = this.dbBentocues.batch()
-    for (const { key, value } of libContracts) {
-      await batch.put(key, JSON.parse(value))
-    }
-    await batch.flush()
-
-    // check
-    const libUpdatecheck = this.dbBentocues.createReadStream()
-    let libConracts = []
-    for await (const { key, value } of libUpdatecheck) {
-      libConracts.push({ key, value })
-    }
-    return true
-  }
-
-  /**
-   * repicate the publiclibrary peer to peer
-   * @method ryOLD
-   *
-  */
-  ryOLD = async function (key) {
-    // key = '3ec0f3b78a0cfe574c4be89b1d703a65f018c0b73ad77e52ac65645d8f51676a'
-    const store = this.client.corestore('peerspace-hyperbeetemp')
-    const core = this.store.get(key)
-    this.dbPublicLibraryTemp = new Hyperbee(core, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
-    })
-    await this.client.replicate(this.dbPublicLibraryTemp.feed) // fetch from the network
-    await this.dbPublicLibraryTemp.ready()
-    // rep demo data
-    let resultsDemoRep = await this.replicateHOPresults()
-    let repResponse = {}
-    repResponse.replicate = true
-    repResponse.type = 'temppubliclibrary'
-    repResponse.demo = resultsDemoRep 
-    return repResponse
-  }
-
-  /**
-   * get the network library reference contracts - all for now replicate source
-   * @method getReplicatePublicLibrary
-   *
-  */
-  getReplicatePublicLibrary = async function (nxp) {
-    // const peerRepData = await this.dbPublicLibraryTemp.get()
-    const peerRepData = await this.dbPublicLibraryTemp.createReadStream()
-    let contractData = []
-    for await (const { key, value } of peerRepData) {
-      contractData.push({ key, value })
-    }
-    return contractData
-  }
-
-  /**
-   * replicate the demo data to the peers results
-   * @method replicateHOPresults
-   *
-  */
-  replicateHOPresults = async function () {
-    const beeKey = 'eff38e0adefd1e1ffcc8dcf4e3413148645a183f2c13679365c431bcc2d26668'
-
-    const store = this.client.corestore('peerspace-hyperbeetemp')
-    const core = this.store.get(beeKey)
-
-    // load and read the hyperbee identified by `beeKey`
-    const beeResults =new Hyperbee(core, {
-      keyEncoding: 'binary', // can be set to undefined (binary), utf-8, ascii or and abstract-encoding
-      valueEncoding: 'json' // same options as above
-    })
-
-    await this.client.replicate(beeResults.feed) // fetch from the network
-    await beeResults.ready()
-    let rs = beeResults.createReadStream() // anything >=a and <=d
-
-    for await (const { key, value } of rs) {
-      // need a save funnction in here
-      if (key === 'bdb6a7db0b479d9b30406cd24f3cc2f315fd3ba0') {
-        let dataR = {}
-        dataR.hash = key
-        dataR.data = value
-        await this.saveHOPresults(dataR)
-      }  
-    }
-    let repRresponse = {}
-    repRresponse.replicate = true
-    repRresponse.type = 'represultsdemo'
-    return repRresponse
-  }
-
-  /**
-   * take nxp id from temporary pubic network library and add to peers public library
-   * @method publicLibraryAddentry
-   *
-  */
-  publicLibraryAddentry = async function (nxp) {
-    const localthis = this
-    const refContract = await this.dbPublicLibraryTemp.get(nxp.nxpID)
-      // need to look up individual module contracts and copy them across
-    for (let mod of refContract.value.modules) {
-      // more hypertie get queries and saving
-      const modRefContract = await localthis.dbPublicLibraryTemp.get(mod)
-        if (modRefContract.value.info.moduleinfo.name === 'visualise') {
-          // what are the datatypes?
-          let datatypeList = []
-          datatypeList.push(modRefContract.value.info.option.settings.xaxis)
-          datatypeList = [...datatypeList, ...modRefContract.value.info.option.settings.yaxis]
-          for (let dtref of datatypeList) {
-            if (dtref !== null) {
-              const tempRC = await localthis.dbPublicLibraryTemp.get(dtref)
-              const saveReprc = await localthis.dbPublicLibrary.put(tempRC.key, tempRC.value)
-              // return saveReprc
-            }
-          }
-        }
-        // need to get the underlying ref contract for module type e.g data, compute, vis
-        if (modRefContract.value.info.refcont) {
-          const tempRC = await localthis.dbPublicLibraryTemp.get(modRefContract.value.info.refcont)
-          const saveRC = await  localthis.dbPublicLibrary.put(tempRC.key, tempRC.value)
-          // return saveRC
-        }
-      const saveRClib = await localthis.dbPublicLibrary.put(modRefContract.key, modRefContract.value)
-      // return saveRClib
-      const savePublibrc = await localthis.dbPublicLibrary.put(refContract.key, refContract.value)
-      // return savePublibrc
-    }
-  }
-
 }
 
 export default HyperBee
