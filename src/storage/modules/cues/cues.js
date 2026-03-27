@@ -11,7 +11,7 @@ class CuesModule {
    * @method saveCues
    */
   saveCues = async function (cuesInfo) {
-    await this.db.put(cuesInfo.cueid, cuesInfo.data)
+    await this.db.put(cuesInfo.hash, cuesInfo.contract)
     return cuesInfo.data
   }
 

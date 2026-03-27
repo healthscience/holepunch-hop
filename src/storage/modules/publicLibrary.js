@@ -18,8 +18,8 @@ class PublicLibraryModule {
    * @method savePubliclibraryRef
    */
   savePubliclibraryRef = async function (refContract) {
-    await this.dbRef.put(refContract.data.hash, refContract.data.contract)
-    return refContract.data.contract
+    await this.dbRef.put(refContract.hash, refContract.contract)
+    return true
   }
 
   /**
@@ -28,7 +28,7 @@ class PublicLibraryModule {
    */
   savePubliclibraryMod = async function (refContract) {
     await this.dbMod.put(refContract.data.hash, refContract.data.contract)
-    return refContract.data.contract
+    return true
   }
 
   /**
