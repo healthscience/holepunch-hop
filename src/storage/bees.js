@@ -28,6 +28,7 @@ import MarkersModule from './modules/cues/markers.js'
 import ProductsModule from './modules/cues/products.js'
 import MediaModule from './modules/cues/media.js'
 import LearnModule from './modules/cues/learn.js'
+import LifestrapModule from './modules/lifestrap/lifestrap.js'
 
 class HyperBee extends EventEmitter {
 
@@ -229,6 +230,14 @@ class HyperBee extends EventEmitter {
     await this.dbHeliClock.ready()
     beePubkeys.push({store:'heliclock', privacy: 'private', pubkey: b4a.toString(core18.key, 'hex')})
 
+    const core19 = this.store.get({ name: 'bentolifestrap' })
+    this.dbBentolifestrap = new Hyperbee(core19, {
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
+    })
+    await this.dbBentolifestrap.ready()
+    beePubkeys.push({store:'bentolifestrap', privacy: 'private', pubkey: b4a.toString(core19.key, 'hex')})
+
     // Initialize Modules
     this.PublicLibrary = new PublicLibraryModule(this.dbPublicLibraryRef, this.dbPublicLibraryMod, this.store, this.swarm, this.emit.bind(this))
     this.PeerLibrary = new PeerLibraryModule(this.dbPeerLibraryRef, this.dbPeerLibraryMod)
@@ -246,6 +255,7 @@ class HyperBee extends EventEmitter {
     this.Products = new ProductsModule(this.dbBentoproducts)
     this.Media = new MediaModule(this.dbBentomedia)
     this.Learn = new LearnModule(this.dbBeeBeeLearn)
+    this.Lifestrap = new LifestrapModule(this.dbBentolifestrap)
 
     this.emit('hbee-live')
     let startBeePubkey = {
@@ -267,76 +277,84 @@ class HyperBee extends EventEmitter {
   saveBentochat = (data) => this.Chat.saveBentochat(data)
   deleteBentochat = (data) => this.Chat.deleteBentochat(data)
   getBentochat = (key) => this.Chat.getBentochat(key)
-  getBentochatHistory = (type, range) => this.Chat.getBentochatHistory(type, range)
+  getBentochatHistory = (lsID, category, range) => this.Chat.getBentochatHistory(lsID, category, range)
 
   saveHeliClock = (data) => this.Clock.saveHeliClock(data)
   deleteHeliClock = (data) => this.Clock.deleteHeliClock(data)
   getHeliClock = (key) => this.Clock.getHeliClock(key)
-  getHeliClockHistory = (type, range) => this.Clock.getHeliClockHistory(type, range)
+  getHeliClockHistory = (lsID, category, range) => this.Clock.getHeliClockHistory(lsID, category, range)
 
   saveSpaceHistory = (data) => this.Spaces.saveSpaceHistory(data)
   saveBentospace = (data) => this.Spaces.saveBentospace(data)
   getBentospace = (key) => this.Spaces.getBentospace(key)
   getAllBentospaces = () => this.Spaces.getAllBentospaces()
   deleteBentospace = (data) => this.Spaces.deleteBentospace(data)
+  
   saveSolospace = (data) => this.Spaces.saveSolospace(data)
   getSolospace = () => this.Spaces.getSolospace()
 
   saveCues = (data) => this.Cues.saveCues(data)
   getCues = (key) => this.Cues.getCues(key)
-  getCuesHistory = (type, key) => this.Cues.getCuesHistory(type, key)
+  getCuesHistory = (lsID, category, key) => this.Cues.getCuesHistory(lsID, category, key)
   deleteBentocue = (data) => this.Cues.deleteBentocue(data)
   updateCuesLibrary = (data) => this.Cues.updateCuesLibrary(data)
 
+  saveLifestrap = (data) => this.Lifestrap.saveLifestrap(data)
+  getLifestrap = (key) => this.Lifestrap.getLifestrap(key)
+  getLifestrapHistory = (lsID, category, key) => this.Lifestrap.getLifestrapHistory(lsID, category, key)
+  deleteLifestrap = (data) => this.Lifestrap.deleteLifestrap(data)
+  updateLifestrapLibrary = (data) => this.Lifestrap.updateLifestrapLibrary(data)
+
   saveBentoBox = (data) => this.Boxes.saveBentoBox(data)
   getBentoBox = (key) => this.Boxes.getBentoBox(key)
-  getBentoBoxHistory = (type, key) => this.Boxes.getBentoBoxHistory(type, key)
+  getBentoBoxHistory = (lsID, category, key) => this.Boxes.getBentoBoxHistory(lsID, category, key)
   deleteBentoBox = (data) => this.Boxes.deleteBentoBox(data)
 
   saveModel = (data) => this.Models.saveModel(data)
   getModel = (key) => this.Models.getModel(key)
-  getModelHistory = (type, key) => this.Models.getModelHistory(type, key)
+  getModelHistory = (lsID, category, key) => this.Models.getModelHistory(lsID, category, key)
   deleteBentoModel = (data) => this.Models.deleteBentoModel(data)
 
   saveMedia = (data) => this.Media.saveMedia(data)
   getMedia = (key) => this.Media.getMedia(key)
-  getMediaHistory = (type, key) => this.Media.getMediaHistory(type, key)
+  getMediaHistory = (lsID, category, key) => this.Media.getMediaHistory(lsID, category, key)
   deleteBentomedia = (data) => this.Media.deleteBentomedia(data)
 
   savePeer = (data) => this.Peers.savePeer(data)
   getPeer = (key) => this.Peers.getPeer(key)
-  getPeersHistory = (type, key) => this.Peers.getPeersHistory(type, key)
+  getPeersHistory = (lsID, category, key) => this.Peers.getPeersHistory(lsID, category, key)
   deletePeer = (pubkey) => this.Peers.deletePeer(pubkey)
 
   saveResearch = (data) => this.Research.saveResearch(data)
   getResearch = (key) => this.Research.getResearch(key)
-  getResearchHistory = (type, key) => this.Research.getResearchHistory(type, key)
+  getResearchHistory = (lsID, category, key) => this.Research.getResearchHistory(lsID, category, key)
   deleteBentoResearch = (data) => this.Research.deleteBentoResearch(data)
+
   saveBesearch = (data) => this.Research.saveBesearch(data)
   getBesearch = (key) => this.Research.getBesearch(key)
-  getBesearchHistory = (type, key) => this.Research.getBesearchHistory(type, key)
+  getBesearchHistory = (lsID, category, key) => this.Research.getBesearchHistory(lsID, category, key)
   deleteBentoBesearch = (data) => this.Research.deleteBentoBesearch(data)
 
   saveMarker = (data) => this.Markers.saveMarker(data)
   getMarker = (key) => this.Markers.getMarker(key)
-  getMarkerHistory = (type, key) => this.Markers.getMarkerHistory(type, key)
+  getMarkerHistory = (lsID, category, key) => this.Markers.getMarkerHistory(lsID, category, key)
   deleteBentoMarker = (data) => this.Markers.deleteBentoMarker(data)
 
   saveProduct = (data) => this.Products.saveProduct(data)
   getProduct = (key) => this.Products.getProduct(key)
-  getProductHistory = (type, key) => this.Products.getProductHistory(type, key)
+  getProductHistory = (lsID, category, key) => this.Products.getProductHistory(lsID, category, key)
   deleteBentoProduct = (data) => this.Products.deleteBentoProduct(data)
 
   saveBeeBeeLearn = (data) => this.Learn.saveBeeBeeLearn(data)
   deleteBeeBeeLearn = (key) => this.Learn.deleteBeeBeeLearn(key)
   getBeeBeeLearn = (key) => this.Learn.getBeeBeeLearn(key)
-  getBeeBeeLearnHistory = (type, range) => this.Learn.getBeeBeeLearnHistory(type, range)
+  getBeeBeeLearnHistory = (lsID, category, range) => this.Learn.getBeeBeeLearnHistory(lsID, category, range)
 
   savePubliclibraryRef = (data) => this.PublicLibrary.savePubliclibraryRef(data)
   savePubliclibraryMod = (data) => this.PublicLibrary.savePubliclibraryMod(data)
   getPublicLibraryRef = (id) => this.PublicLibrary.getPublicLibraryRef(id)
   getPublicLibraryMod = (id) => this.PublicLibrary.getPublicLibraryMod(id)
-  getPublicLibraryRefRange = (type, range) => this.PublicLibrary.getPublicLibraryRefRange(type, range)
+  getPublicLibraryRefRange = (lsID, category, range) => this.PublicLibrary.getPublicLibraryRefRange(lsID, category, range)
   getPublicLibraryModRange = (range) => this.PublicLibrary.getPublicLibraryModRange(range)
   getPublicLibraryRefLast = (dp) => this.PublicLibrary.getPublicLibraryRefLast(dp)
   getPublicLibraryModLast = (dp) => this.PublicLibrary.getPublicLibraryModLast(dp)

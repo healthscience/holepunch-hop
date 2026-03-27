@@ -1,5 +1,6 @@
 'use strict'
 import b4a from 'b4a'
+import { HOPKey } from '../../hop-key-util.js'
 
 class ModelsModule {
   constructor(db) {
@@ -28,10 +29,8 @@ class ModelsModule {
    * get all models
    * @method getModelHistory
    */
-  getModelHistory = async function (typeKey, key) {
-    const prefix = typeKey;
-    const gt = b4a.from(prefix);
-    const lt = b4a.concat([b4a.from(prefix), b4a.from([0xff])]);
+  getModelHistory = async function (lsID, category, key) {
+    const { gt, lt } = HOPKey.range(lsID, category)
 
     const modelHistory = await this.db.createReadStream({
       gt,

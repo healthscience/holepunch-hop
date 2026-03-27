@@ -1,5 +1,6 @@
 'use strict'
 import b4a from 'b4a'
+import { HOPKey } from '../hop-key-util.js'
 
 class PeersModule {
   constructor(db) {
@@ -28,15 +29,13 @@ class PeersModule {
    * get all peers
    * @method getPeersHistory
    */
-  getPeersHistory = async function (typeKey, key) {
-    console.log('getPeersHistory called with typeKey:', typeKey, 'key:', key);
-    if (typeKey === undefined) {
-      console.error('getPeersHistory: typeKey is undefined!');
+  getPeersHistory = async function (lsID, category, key) {
+    console.log('getPeersHistory called with lsID:', lsID, 'category:', category, 'key:', key);
+    if (lsID === undefined) {
+      console.error('getPeersHistory: lsID is undefined!');
       console.trace();
     }
-    const prefix = typeKey;
-    const gt = b4a.from(prefix);
-    const lt = b4a.concat([b4a.from(prefix), b4a.from([0xff])]);
+    const { gt, lt } = HOPKey.range(lsID, category)
     const peerHistory = await this.db.createReadStream({
       gt,
       lt,

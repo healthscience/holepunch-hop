@@ -1,5 +1,6 @@
 'use strict'
 import b4a from 'b4a'
+import { HOPKey } from '../hop-key-util.js'
 
 class ClockModule {
   constructor(db) {
@@ -39,10 +40,8 @@ class ClockModule {
    * lookup range of heli clock history
    * @method getHeliClockHistory
    */
-  getHeliClockHistory = async function (typeKey, range) {
-    const prefix = typeKey;
-    const gt = b4a.from(prefix);
-    const lt = b4a.concat([b4a.from(prefix), b4a.from([0xff])]);
+  getHeliClockHistory = async function (lsID, category, range) {
+    const { gt, lt } = HOPKey.range(lsID, category)
 
     const clockhistoryData = this.db.createReadStream({
       gt,

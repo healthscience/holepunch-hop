@@ -1,5 +1,6 @@
 'use strict'
 import b4a from 'b4a'
+import { HOPKey } from '../hop-key-util.js'
 
 class ChatModule {
   constructor(db) {
@@ -39,10 +40,8 @@ class ChatModule {
    * lookup range save chat history
    * @method getBentochatHistory
    */
-  getBentochatHistory = async function (typeKey, range) {
-    const prefix = typeKey;
-    const gt = b4a.from(prefix);
-    const lt = b4a.concat([b4a.from(prefix), b4a.from([0xff])]);
+  getBentochatHistory = async function (lsID, category, range) {
+    const { gt, lt } = HOPKey.range(lsID, category)
 
     const chathistoryData = this.db.createReadStream({
       gt,

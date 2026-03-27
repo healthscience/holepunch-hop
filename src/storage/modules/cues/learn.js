@@ -1,5 +1,6 @@
 'use strict'
 import b4a from 'b4a'
+import { HOPKey } from '../../hop-key-util.js'
 
 class LearnModule {
   constructor(db) {
@@ -39,10 +40,8 @@ class LearnModule {
    * lookup range save learn @teach history
    * @method getBeeBeeLearnHistory
    */
-  getBeeBeeLearnHistory = async function (typeKey, range) {
-    const prefix = typeKey;
-    const gt = b4a.from(prefix);
-    const lt = b4a.concat([b4a.from(prefix), b4a.from([0xff])]);
+  getBeeBeeLearnHistory = async function (lsID, category, range) {
+    const { gt, lt } = HOPKey.range(lsID, category)
 
     const teachHistoryData = this.db.createReadStream({
       gt,

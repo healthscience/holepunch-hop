@@ -1,6 +1,7 @@
 'use strict'
 import Hyperbee from 'hyperbee'
 import b4a from 'b4a'
+import { HOPKey } from '../hop-key-util.js'
 
 class PublicLibraryModule {
   constructor(dbRef, dbMod, store, swarm, emit) {
@@ -53,10 +54,8 @@ class PublicLibraryModule {
    * lookup range query of db public library ref
    * @method getPublicLibraryRefRange
    */
-  getPublicLibraryRefRange = async function (typeKey, range) {
-    const prefix = typeKey;
-    const gt = b4a.from(prefix);
-    const lt = b4a.concat([b4a.from(prefix), b4a.from([0xff])]);
+  getPublicLibraryRefRange = async function (lsID, category, range) {
+    const { gt, lt } = HOPKey.range(lsID, category)
 
     const streamData = this.dbRef.createReadStream({
       gt,
@@ -209,7 +208,8 @@ class PublicLibraryModule {
    * @method updatePublicLibrary
    */
   updatePublicLibrary = async function (libContracts) {
-    const batch = this.dbMod.batch() // Note: original code used this.dbPublicLibrary which seemed to map to Mod in some contexts but was ambiguous. Based on savePubliclibraryMod, I'll use dbMod.
+    const { gt, lt } = HOPKey.range('NXP')
+    const batch = this.dbMod.batch()
     for (const { key, value } of libContracts) {
       await batch.put(key, JSON.parse(value))
     }

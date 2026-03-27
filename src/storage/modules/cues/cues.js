@@ -1,5 +1,6 @@
 'use strict'
 import b4a from 'b4a'
+import { HOPKey } from '../../hop-key-util.js'
 
 class CuesModule {
   constructor(db) {
@@ -28,10 +29,8 @@ class CuesModule {
    * get all cuees
    * @method getCuesHistory
    */
-  getCuesHistory = async function (typeKey, key) {
-    const prefix = typeKey;
-    const gt = b4a.from(prefix);
-    const lt = b4a.concat([b4a.from(prefix), b4a.from([0xff])]);
+  getCuesHistory = async function (lsID, category, key) {
+    const { gt, lt } = HOPKey.range(lsID, category)
 
     const cuesHistory = await this.db.createReadStream({
       gt,
@@ -62,7 +61,8 @@ class CuesModule {
    * update cues library from replication
    * @method updateCuesLibrary
    */
-  updateCuesLibrary = async function (libContracts) {
+  updateCuesModule = async function (libContracts) {
+    const { gt, lt } = HOPKey.range('CUE')
     const batch = this.db.batch()
     for (const { key, value } of libContracts) {
       await batch.put(key, JSON.parse(value))
