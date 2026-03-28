@@ -11,9 +11,9 @@ class ChatModule {
    * save chat history
    * @method saveBentochat
    */
-  saveBentochat = async function (chatHistory) {
-    await this.db.put(chatHistory.chat.chatid, chatHistory)
-    return chatHistory
+  saveBentochat = async function (chatData) {
+    await this.db.put(chatData.hash, chatData)
+    return true
   }
 
   /**

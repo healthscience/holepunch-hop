@@ -1,35 +1,53 @@
-'use strict'
 import b4a from 'b4a'
 
 export const HOPKey = {
   /**
-   * Create a key from parts using '!' as delimiter
-   * @param {...string} parts
-   * @returns {Buffer}
+   * 1. Create a Primary Content Key
+   * Stored once at the 'Root' level of the peer's Bee.
+   * Format: category!hash (e.g., 'msg!d6c5e5...')
    */
-  create: (...parts) => {
-    return b4a.from(parts.join('!'))
+  createContent: (category, hash) => {
+    return b4a.from(`${category}!${hash}`)
   },
 
   /**
-   * Calculate range boundaries for a prefix
-   * @param {string|Buffer} prefix
-   * @returns {{gt: Buffer, lt: Buffer}}
+   * 2. Create a Stitching (Link) Key
+   * Connects a piece of content to a specific Life-Strap.
+   * Format: LS_ID!link!item_hash
    */
-  range: (prefix) => {
+  stitch: (lsID, itemHash) => {
+    return b4a.from(`${lsID}!link!${itemHash}`)
+  },
+
+  /**
+   * 3. Create a Range for a Life-Strap
+   * Can query the whole strap or just the 'links' inside it.
+   */
+  range: (lsID, subCategory = '') => {
+    // If subCategory is 'link', it pulls only the stitches
+    const prefix = subCategory ? `${lsID}!${subCategory}!` : `${lsID}!`
     const gt = b4a.from(prefix)
     const lt = b4a.concat([gt, b4a.from([0xff])])
     return { gt, lt }
   },
 
   /**
-   * Decode a buffer key to string
-   * @param {Buffer} key
-   * @returns {string}
+   * 4. Decode for BentoBoxDS
    */
-  decode: (key) => {
-    return b4a.toString(key, 'utf-8')
+  decode: (keyBuffer) => {
+    return b4a.toString(keyBuffer, 'utf-8')
+  },
+
+  /**
+   * 5. Parse a Link Key
+   * Extracts the original Item Hash from a Stitching Key.
+   */
+  parseLink: (linkKeyStr) => {
+    const parts = linkKeyStr.split('!')
+    return {
+      lsID: parts[0],
+      type: parts[1], // 'link'
+      itemHash: parts[2]
+    }
   }
 }
-
-export default HOPKey
