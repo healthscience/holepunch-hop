@@ -13,7 +13,7 @@ class LifestrapModule {
    */
   saveLifestrap = async function (lifestrapInfo) {
     await this.db.put(lifestrapInfo.hash, lifestrapInfo.contract)
-    return lifestrapInfo.data
+    return lifestrapInfo
   }
 
   /**
