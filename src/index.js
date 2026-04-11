@@ -32,6 +32,7 @@ class HolepunchWorker extends EventEmitter {
     this.core1 = {}
     this.core2 = {}
     this.core3 = {}
+    this.crypto = {}
     this.discKeypeer = ''
     this.readcore = null
     this.warmPeers = [] // ikeep track of live incoming sharing
@@ -56,6 +57,31 @@ class HolepunchWorker extends EventEmitter {
   }
 
   /**
+   * 
+   * @method setHOPCrypto
+  */
+  setHOPCrypto = function (crypto) {
+    this.crypto = crypto
+    console.log('hop-crypto in palce HP')
+    console.log(this.crypto)
+    if (this.BeeData) {
+      this.BeeData.crypto = crypto
+      const modules = [
+        "PublicLibrary", "PeerLibrary", "Peers", "Results",
+        "Ledger", "Chat", "Clock", "Spaces", "Cues",
+        "Boxes", "Models", "Research", "Markers",
+        "Products", "Media", "Learn", "Lifestrap"
+      ]
+      modules.forEach(mod => {
+        if (this.BeeData[mod]) {
+          this.BeeData[mod].crypto = crypto
+        }
+      })
+    }
+    console.log("hop-crypto in place HP and modules updated")
+  }
+
+  /**
    * setup holepunch protocol
    * @method startHolepunch
    *
@@ -76,7 +102,7 @@ class HolepunchWorker extends EventEmitter {
     })
     
 
-    this.BeeData = new BeeWorker(this.store, this.swarm)
+    this.BeeData = new BeeWorker(this.store, this.swarm, this.crypto)
     this.DriveFiles = new DriveWorker(this.store, this.swarm)
     this.Peers = new PeerWorker(this.store, this.swarm)
   }

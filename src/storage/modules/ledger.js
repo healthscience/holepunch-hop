@@ -1,8 +1,9 @@
 'use strict'
 
 class LedgerModule {
-  constructor(db) {
+  constructor(db, crypto) {
     this.db = db
+    this.crypto = crypto
   }
 
   /**

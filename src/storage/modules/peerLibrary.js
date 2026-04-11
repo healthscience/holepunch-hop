@@ -2,9 +2,10 @@
 import b4a from 'b4a'
 
 class PeerLibraryModule {
-  constructor(dbRef, dbMod) {
+  constructor(dbRef, dbMod, crypto) {
     this.dbRef = dbRef
     this.dbMod = dbMod
+    this.crypto = crypto
   }
 
   /**
@@ -12,7 +13,7 @@ class PeerLibraryModule {
    * @method savePeerLibraryRef
    */
   savePeerLibraryRef = async function (refContract) {
-    await this.dbRef.put(refContract.data.hash, refContract.data.contract)
+    await this.dbRef.put(refContract.key, refContract.contract)
     return refContract.data.contract
   }
 
@@ -21,7 +22,7 @@ class PeerLibraryModule {
    * @method savePeerLibraryMod
    */
   savePeerLibraryMod = async function (refContract) {
-    await this.dbMod.put(refContract.data.hash, refContract.data.contract)
+    await this.dbMod.put(refContract.key, refContract.contract)
     return refContract.data.contract
   }
 
@@ -51,8 +52,7 @@ class PeerLibraryModule {
     const nodeData = await this.dbRef.createReadStream()
     let contractData = []
     for await (const { key, value } of nodeData) {
-      let hexKey = key.toString('hex')
-      contractData.push({ hexKey, value })
+      contractData.push({ key, value })
     }
     return contractData
   }
@@ -65,8 +65,7 @@ class PeerLibraryModule {
     const nodeData = await this.dbMod.createReadStream()
     let contractData = []
     for await (const { key, value } of nodeData) {
-      let hexKey = key.toString('hex')
-      contractData.push({ hexKey, value })
+      contractData.push({ key, value })
     }
     return contractData
   }

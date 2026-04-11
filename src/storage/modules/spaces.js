@@ -1,8 +1,9 @@
 'use strict'
 
 class SpacesModule {
-  constructor(db) {
+  constructor(db, crypto) {
     this.db = db
+    this.crypto = crypto
   }
 
   /**
@@ -10,7 +11,7 @@ class SpacesModule {
    * @method saveSpaceHistory
    */
   saveSpaceHistory = async function (spaceContract) {
-    await this.db.put(spaceContract.space.cueid, spaceContract)
+    await this.db.put(spaceContract.key, spaceContract.contract)
     return spaceContract
   }
 
@@ -19,7 +20,7 @@ class SpacesModule {
    * @method saveBentospace
    */
   saveBentospace = async function (spaceContract) {
-    await this.db.put(spaceContract.cueid, spaceContract)
+    await this.db.put(spaceContract.key, spaceContract.contract)
     return spaceContract
   }
 
@@ -50,9 +51,9 @@ class SpacesModule {
    * @method deleteBentospace
    */
   deleteBentospace = async function (space) {
-    await this.db.del(space.cueid)
+    await this.db.del(space.key)
     let deleteInfo = {}
-    deleteInfo.spaceid = space.cueid
+    deleteInfo.spaceid = space.key
     return deleteInfo
   }
 

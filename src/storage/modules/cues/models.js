@@ -1,10 +1,10 @@
 'use strict'
 import b4a from 'b4a'
-import { HOPKey } from '../../hop-key-util.js'
 
 class ModelsModule {
-  constructor(db) {
+  constructor(db, crypto) {
     this.db = db
+    this.crypto = crypto
   }
 
   /**
@@ -12,7 +12,7 @@ class ModelsModule {
    * @method saveModel
    */
   saveModel = async function (modelInfo) {
-    await this.db.put(modelInfo.id, modelInfo.data)
+    await this.db.put(modelInfo.key, modelInfo.data)
     return modelInfo.data
   }
 
@@ -30,7 +30,7 @@ class ModelsModule {
    * @method getModelHistory
    */
   getModelHistory = async function (lsID, category, key) {
-    const { gt, lt } = HOPKey.range(lsID, category)
+    const { gt, lt } = this.crypto.getRange(lsID, category)
 
     const modelHistory = await this.db.createReadStream({
       gt,
@@ -40,8 +40,7 @@ class ModelsModule {
     })
     let modelData = []
     for await (const { key, value } of modelHistory) {
-      let hexKey = key.toString('hex')
-      modelData.push({ hexKey, value })
+      modelData.push({ key, value })
     }
     return modelData
   }
@@ -51,9 +50,9 @@ class ModelsModule {
    * @method deleteBentoModel
    */
   deleteBentoModel = async function (model) {
-    await this.db.del(model.id)
+    await this.db.del(model.key)
     let deleteInfo = {}
-    deleteInfo.id = model.id
+    deleteInfo.id = model.key
     return deleteInfo
   }
 }

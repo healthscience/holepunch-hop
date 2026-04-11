@@ -1,10 +1,10 @@
 'use strict'
 import b4a from 'b4a'
-import { HOPKey } from '../../hop-key-util.js'
 
 class LearnModule {
-  constructor(db) {
+  constructor(db, crypto) {
     this.db = db
+    this.crypto = crypto
   }
 
   /**
@@ -12,7 +12,7 @@ class LearnModule {
    * @method saveBeeBeeLearn
    */
   saveBeeBeeLearn = async function (teachSession) {
-    await this.db.put(teachSession.id, teachSession.session)
+    await this.db.put(teachSession.key, teachSession.session)
     return teachSession.session
   }
 
@@ -41,7 +41,7 @@ class LearnModule {
    * @method getBeeBeeLearnHistory
    */
   getBeeBeeLearnHistory = async function (lsID, category, range) {
-    const { gt, lt } = HOPKey.range(lsID, category)
+    const { gt, lt } = this.crypto.getRange(lsID, category)
 
     const teachHistoryData = this.db.createReadStream({
       gt,
@@ -51,8 +51,7 @@ class LearnModule {
     })
     let teachData = []
     for await (const { key, value } of teachHistoryData) {
-      let hexKey = key.toString('hex')
-      teachData.push({ hexKey, value })
+      teachData.push({ key, value })
     }
     return teachData
   }

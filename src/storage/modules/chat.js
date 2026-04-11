@@ -1,10 +1,9 @@
 'use strict'
-import b4a from 'b4a'
-import { HOPKey } from '../hop-key-util.js'
 
 class ChatModule {
-  constructor(db) {
+  constructor(db, crypto) {
     this.db = db
+    this.crypto = crypto
   }
 
   /**
@@ -12,7 +11,7 @@ class ChatModule {
    * @method saveBentochat
    */
   saveBentochat = async function (chatData) {
-    await this.db.put(chatData.hash, chatData)
+    await this.db.put(chatData.key, chatData.contract)
     return true
   }
 
@@ -21,7 +20,7 @@ class ChatModule {
    * @method deleteBentochat
    */
   deleteBentochat = async function (chat) {
-    await this.db.del(chat.chatid)
+    await this.db.del(chat.key)
     let deleteInfo = {}
     deleteInfo.chatid = chat.chatid
     return deleteInfo
@@ -41,7 +40,7 @@ class ChatModule {
    * @method getBentochatHistory
    */
   getBentochatHistory = async function (lsID, category, range) {
-    const { gt, lt } = HOPKey.range(lsID, category)
+    const { gt, lt } = this.crypto.getRange(lsID, category)
 
     const chathistoryData = this.db.createReadStream({
       gt,
@@ -51,8 +50,7 @@ class ChatModule {
     })
     let chatData = []
     for await (const { key, value } of chathistoryData) {
-      let hexKey = key.toString('hex')
-      chatData.push({ hexKey, value })
+      chatData.push({ key, value })
     }
     return chatData
   }

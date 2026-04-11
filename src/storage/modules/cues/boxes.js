@@ -1,10 +1,10 @@
 'use strict'
 import b4a from 'b4a'
-import { HOPKey } from '../../hop-key-util.js'
 
 class BoxesModule {
-  constructor(db) {
+  constructor(db, crypto) {
     this.db = db
+    this.crypto = crypto
   }
 
   /**
@@ -30,7 +30,7 @@ class BoxesModule {
    * @method getBentoBoxHistory
    */
   getBentoBoxHistory = async function (lsID, category, key) {
-    const { gt, lt } = HOPKey.range(lsID, category)
+    const { gt, lt } = this.crypto.getRange(lsID, category)
 
     const boxHistory = await this.db.createReadStream({
       gt,

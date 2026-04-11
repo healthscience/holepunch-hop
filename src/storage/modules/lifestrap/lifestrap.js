@@ -1,10 +1,10 @@
 'use strict'
 import b4a from 'b4a'
-import { HOPKey } from '../../hop-key-util.js'
 
 class LifestrapModule {
-  constructor(db) {
+  constructor(db, crypto) {
     this.db = db
+    this.crypto = crypto
   }
 
   /**
@@ -12,7 +12,7 @@ class LifestrapModule {
    * @method saveLifestrap
    */
   saveLifestrap = async function (lifestrapInfo) {
-    await this.db.put(lifestrapInfo.hash, lifestrapInfo.contract)
+    await this.db.put(lifestrapInfo.key, lifestrapInfo.contract)
     return lifestrapInfo
   }
 
@@ -30,7 +30,7 @@ class LifestrapModule {
    * @method getLifestrapHistory
    */
   getLifestrapHistory = async function (lsID, category, key) {
-    const { gt, lt } = HOPKey.range(lsID, category)
+    const { gt, lt } = this.crypto.getRange(lsID, category)
 
     const lifestrapHistory = await this.db.createReadStream({
       gt,
@@ -40,8 +40,7 @@ class LifestrapModule {
     })
     let lifestrapData = []
     for await (const { key, value } of lifestrapHistory) {
-      let hexKey = key.toString('hex')
-      lifestrapData.push({ hexKey, value })
+      lifestrapData.push({ key, value })
     }
     return lifestrapData
   }
@@ -51,9 +50,9 @@ class LifestrapModule {
    * @method deleteLifestrap
    */
   deleteLifestrap = async function (lifestrap) {
-    await this.db.del(lifestrap.lifestrapid)
+    await this.db.del(lifestrap.key)
     let deleteInfo = {}
-    deleteInfo.spaceid = lifestrap.lifestrapid
+    deleteInfo.spaceid = lifestrap.key
     return deleteInfo
   }
 
@@ -62,7 +61,7 @@ class LifestrapModule {
    * @method updateLifestrapLibrary
    */
   updateLifestrapModule = async function (libContracts) {
-    const { gt, lt } = HOPKey.range('LS')
+    const { gt, lt } = this.crypto.getRange('LS')
     const batch = this.db.batch()
     for (const { key, value } of libContracts) {
       await batch.put(key, JSON.parse(value))

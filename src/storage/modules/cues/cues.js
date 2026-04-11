@@ -1,10 +1,9 @@
 'use strict'
-import b4a from 'b4a'
-import { HOPKey } from '../../hop-key-util.js'
 
 class CuesModule {
-  constructor(db) {
+  constructor(db, crypto) {
     this.db = db
+    this.crypto = crypto
   }
 
   /**
@@ -12,7 +11,7 @@ class CuesModule {
    * @method saveCues
    */
   saveCues = async function (cuesInfo) {
-    await this.db.put(cuesInfo.hash, cuesInfo.contract)
+    await this.db.put(cuesInfo.key, cuesInfo.contract)
     return cuesInfo.data
   }
 
@@ -30,7 +29,7 @@ class CuesModule {
    * @method getCuesHistory
    */
   getCuesHistory = async function (lsID, category, key) {
-    const { gt, lt } = HOPKey.range(lsID, category)
+    const { gt, lt } = this.crypto.getRange(lsID, category)
 
     const cuesHistory = await this.db.createReadStream({
       gt,
@@ -51,7 +50,7 @@ class CuesModule {
    * @method deleteBentocue
    */
   deleteBentocue = async function (cue) {
-    await this.db.del(cue.cueid)
+    await this.db.del(cue.key)
     let deleteInfo = {}
     deleteInfo.spaceid = cue.cueid
     return deleteInfo
@@ -62,7 +61,7 @@ class CuesModule {
    * @method updateCuesLibrary
    */
   updateCuesModule = async function (libContracts) {
-    const { gt, lt } = HOPKey.range('CUE')
+    const { gt, lt } = this.crypto.getRange('CUE')
     const batch = this.db.batch()
     for (const { key, value } of libContracts) {
       await batch.put(key, JSON.parse(value))

@@ -1,8 +1,9 @@
 'use strict'
 
 class ResultsModule {
-  constructor(db) {
+  constructor(db, crypto) {
     this.db = db
+    this.crypto = crypto
   }
 
   /**

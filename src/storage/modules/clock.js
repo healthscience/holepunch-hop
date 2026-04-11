@@ -1,10 +1,11 @@
 'use strict'
-import b4a from 'b4a'
-import { HOPKey } from '../hop-key-util.js'
 
 class ClockModule {
-  constructor(db) {
+  constructor(db, crypto) {
     this.db = db
+    this.crypto = crypto
+    console.log('clockc any cryptoososo')
+    console.log(this.crypto)
   }
 
   /**
@@ -41,7 +42,7 @@ class ClockModule {
    * @method getHeliClockHistory
    */
   getHeliClockHistory = async function (lsID, category, range) {
-    const { gt, lt } = HOPKey.range(lsID, category)
+    const { gt, lt } = this.crypto.getRange(lsID, category)
 
     const clockhistoryData = this.db.createReadStream({
       gt,

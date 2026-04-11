@@ -1,10 +1,9 @@
 'use strict'
 import Hyperbee from 'hyperbee'
 import b4a from 'b4a'
-import { HOPKey } from '../hop-key-util.js'
 
 class PublicLibraryModule {
-  constructor(dbRef, dbMod, store, swarm, emit) {
+  constructor(dbRef, dbMod, store, swarm, emit, crypto) {
     this.dbRef = dbRef
     this.dbMod = dbMod
     this.store = store
@@ -12,6 +11,7 @@ class PublicLibraryModule {
     this.emit = emit
     this.repPublicHolder = {}
     this.confirmPubLibList = {}
+    this.crypto = crypto
   }
 
   /**
@@ -19,7 +19,7 @@ class PublicLibraryModule {
    * @method savePubliclibraryRef
    */
   savePubliclibraryRef = async function (refContract) {
-    await this.dbRef.put(refContract.hash, refContract.contract)
+    await this.dbRef.put(refContract.key, refContract.contract)
     return true
   }
 
@@ -55,7 +55,8 @@ class PublicLibraryModule {
    * @method getPublicLibraryRefRange
    */
   getPublicLibraryRefRange = async function (lsID, category, range) {
-    const { gt, lt } = HOPKey.range(lsID, category)
+
+    const { gt, lt } = this.crypto.getRange(lsID, category)
 
     const streamData = this.dbRef.createReadStream({
       gt,
@@ -66,8 +67,7 @@ class PublicLibraryModule {
 
     let contractData = []
     for await (const { key, value } of streamData) {
-      let hexKey = key.toString('hex')
-      contractData.push({ hexKey, value })
+      contractData.push({ key, value })
     }
     return contractData
   }
@@ -80,8 +80,7 @@ class PublicLibraryModule {
     const nodeData = this.dbMod.createReadStream()
     let contractData = []
     for await (const { key, value } of nodeData) {
-      let hexKey = key.toString('hex')
-      contractData.push({ hexKey, value })
+      contractData.push({ key, value })
     }
     return contractData
   }
@@ -208,7 +207,7 @@ class PublicLibraryModule {
    * @method updatePublicLibrary
    */
   updatePublicLibrary = async function (libContracts) {
-    const { gt, lt } = HOPKey.range('NXP')
+    const { gt, lt } = this.crypto.getRange('NXP')
     const batch = this.dbMod.batch()
     for (const { key, value } of libContracts) {
       await batch.put(key, JSON.parse(value))

@@ -1,11 +1,11 @@
 'use strict'
 import b4a from 'b4a'
-import { HOPKey } from '../../hop-key-util.js'
 
 class ResearchModule {
-  constructor(dbResearch, dbBesearch) {
+  constructor(dbResearch, dbBesearch, crypto) {
     this.dbResearch = dbResearch
     this.dbBesearch = dbBesearch
+    this.crypto = crypto
   }
 
   /**
@@ -13,7 +13,7 @@ class ResearchModule {
    * @method saveResearch
    */
   saveResearch = async function (cuesInfo) {
-    await this.dbResearch.put(cuesInfo.cueid, cuesInfo.data)
+    await this.dbResearch.put(cuesInfo.key, cuesInfo.data)
     return cuesInfo.data
   }
 
@@ -31,7 +31,7 @@ class ResearchModule {
    * @method getResearchHistory
    */
   getResearchHistory = async function (lsID, category, key) {
-    const { gt, lt } = HOPKey.range(lsID, category)
+    const { gt, lt } = this.crypto.getRange(lsID, category)
 
     const cuesHistory = await this.dbResearch.createReadStream({
       gt,
@@ -41,8 +41,7 @@ class ResearchModule {
     })
     let cuesData = []
     for await (const { key, value } of cuesHistory) {
-      let hexKey = key.toString('hex')
-      cuesData.push({ hexKey, value })
+      cuesData.push({ key, value })
     }    
     return cuesData
   }
@@ -52,9 +51,9 @@ class ResearchModule {
    * @method deleteBentoResearch
    */
   deleteBentoResearch = async function (cue) {
-    await this.dbResearch.del(cue.id)
+    await this.dbResearch.del(cue.key)
     let deleteInfo = {}
-    deleteInfo.spaceid = cue.id
+    deleteInfo.spaceid = cue.key
     return deleteInfo
   }
 
@@ -63,7 +62,7 @@ class ResearchModule {
    * @method saveBesearch
    */
   saveBesearch = async function (cuesInfo) {
-    await this.dbBesearch.put(cuesInfo.id, cuesInfo.data)
+    await this.dbBesearch.put(cuesInfo.key, cuesInfo.data)
     return cuesInfo.data
   }
 
@@ -81,7 +80,7 @@ class ResearchModule {
    * @method getBesearchHistory
    */
   getBesearchHistory = async function (lsID, category, key) {
-    const { gt, lt } = HOPKey.range(lsID, category)
+    const { gt, lt } = this.crypto.getRange(lsID, category)
 
     const cuesHistory = await this.dbBesearch.createReadStream({
       gt,
@@ -91,8 +90,7 @@ class ResearchModule {
     })
     let cuesData = []
     for await (const { key, value } of cuesHistory) {
-      let hexKey = key.toString('hex')
-      cuesData.push({ hexKey, value })
+      cuesData.push({ key, value })
     }    
     return cuesData
   }
@@ -102,9 +100,9 @@ class ResearchModule {
    * @method deleteBentoBesearch
    */
   deleteBentoBesearch = async function (cue) {
-    await this.dbBesearch.del(cue.id)
+    await this.dbBesearch.del(cue.key)
     let deleteInfo = {}
-    deleteInfo.spaceid = cue.id
+    deleteInfo.spaceid = cue.key
     return deleteInfo
   }
 }

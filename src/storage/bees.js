@@ -32,11 +32,12 @@ import LifestrapModule from './modules/lifestrap/lifestrap.js'
 
 class HyperBee extends EventEmitter {
 
-  constructor(store, swarm) {
+  constructor(store, swarm, crypto) {
     super()
     this.hello = 'hyperbee'
     this.store = store
     this.swarm = swarm
+    this.crypto = crypto
     this.liveBees = {}
     this.activeBees = []
   }
@@ -238,24 +239,24 @@ class HyperBee extends EventEmitter {
     await this.dbBentolifestrap.ready()
     beePubkeys.push({store:'bentolifestrap', privacy: 'private', pubkey: b4a.toString(core19.key, 'hex')})
 
-    // Initialize Modules
-    this.PublicLibrary = new PublicLibraryModule(this.dbPublicLibraryRef, this.dbPublicLibraryMod, this.store, this.swarm, this.emit.bind(this))
-    this.PeerLibrary = new PeerLibraryModule(this.dbPeerLibraryRef, this.dbPeerLibraryMod)
-    this.Peers = new PeersModule(this.dbPeers)
-    this.Results = new ResultsModule(this.dbHOPresults)
-    this.Ledger = new LedgerModule(this.dbCohereceLedger)
-    this.Chat = new ChatModule(this.dbBentochat)
-    this.Clock = new ClockModule(this.dbHeliClock)
-    this.Spaces = new SpacesModule(this.dbBentospaces)
-    this.Cues = new CuesModule(this.dbBentocues)
-    this.Boxes = new BoxesModule(this.dbBentoBoxes)
-    this.Models = new ModelsModule(this.dbBentomodels)
-    this.Research = new ResearchModule(this.dbBentoresearch, this.dbBesearch)
-    this.Markers = new MarkersModule(this.dbBentomarkers)
-    this.Products = new ProductsModule(this.dbBentoproducts)
-    this.Media = new MediaModule(this.dbBentomedia)
-    this.Learn = new LearnModule(this.dbBeeBeeLearn)
-    this.Lifestrap = new LifestrapModule(this.dbBentolifestrap)
+  // Initialize Modules
+    this.PublicLibrary = new PublicLibraryModule(this.dbPublicLibraryRef, this.dbPublicLibraryMod, this.store, this.swarm, this.emit.bind(this), this.crypto)
+    this.PeerLibrary = new PeerLibraryModule(this.dbPeerLibraryRef, this.dbPeerLibraryMod, this.crypto)
+    this.Peers = new PeersModule(this.dbPeers, this.crypto)
+    this.Results = new ResultsModule(this.dbHOPresults, this.crypto)
+    this.Ledger = new LedgerModule(this.dbCohereceLedger, this.crypto)
+    this.Chat = new ChatModule(this.dbBentochat, this.crypto)
+    this.Clock = new ClockModule(this.dbHeliClock, this.crypto)
+    this.Spaces = new SpacesModule(this.dbBentospaces, this.crypto)
+    this.Cues = new CuesModule(this.dbBentocues, this.crypto)
+    this.Boxes = new BoxesModule(this.dbBentoBoxes, this.crypto)
+    this.Models = new ModelsModule(this.dbBentomodels, this.crypto)
+    this.Research = new ResearchModule(this.dbBentoresearch, this.dbBesearch, this.crypto)
+    this.Markers = new MarkersModule(this.dbBentomarkers, this.crypto)
+    this.Products = new ProductsModule(this.dbBentoproducts, this.crypto)
+    this.Media = new MediaModule(this.dbBentomedia, this.crypto)
+    this.Learn = new LearnModule(this.dbBeeBeeLearn, this.crypto)
+    this.Lifestrap = new LifestrapModule(this.dbBentolifestrap, this.crypto)
 
     this.emit('hbee-live')
     let startBeePubkey = {

@@ -1,10 +1,10 @@
 'use strict'
 import b4a from 'b4a'
-import { HOPKey } from '../../hop-key-util.js'
 
 class MediaModule {
-  constructor(db) {
+  constructor(db, crypto) {
     this.db = db
+    this.crypto = crypto
   }
 
   /**
@@ -12,7 +12,7 @@ class MediaModule {
    * @method saveMedia
    */
   saveMedia = async function (mediaInfo) {
-    await this.db.put(mediaInfo.cueid, mediaInfo.data)
+    await this.db.put(mediaInfo.key, mediaInfo.data)
     return mediaInfo.data
   }
 
@@ -30,7 +30,7 @@ class MediaModule {
    * @method getMediaHistory
    */
   getMediaHistory = async function (lsID, category, key) {
-    const { gt, lt } = HOPKey.range(lsID, category)
+    const { gt, lt } = this.crypto.getRange(lsID, category)
 
     const cuesHistory = await this.db.createReadStream({
       gt,
@@ -40,8 +40,7 @@ class MediaModule {
     })
     let cuesData = []
     for await (const { key, value } of cuesHistory) {
-      let hexKey = key.toString('hex')
-      cuesData.push({ hexKey, value })
+      cuesData.push({ key, value })
     }    
     return cuesData
   }
@@ -51,9 +50,9 @@ class MediaModule {
    * @method deleteBentomedia
    */
   deleteBentomedia = async function (media) {
-    await this.db.del(media.id)
+    await this.db.del(media.key)
     let deleteInfo = {}
-    deleteInfo.spaceid = media.id
+    deleteInfo.spaceid = media.key
     return deleteInfo
   }
 }

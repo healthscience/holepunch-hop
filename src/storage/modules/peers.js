@@ -1,10 +1,9 @@
 'use strict'
-import b4a from 'b4a'
-import { HOPKey } from '../hop-key-util.js'
 
 class PeersModule {
-  constructor(db) {
+  constructor(db, crypto) {
     this.db = db
+    this.crypto = crypto
   }
 
   /**
@@ -35,7 +34,7 @@ class PeersModule {
       console.error('getPeersHistory: lsID is undefined!');
       console.trace();
     }
-    const { gt, lt } = HOPKey.range(lsID, category)
+    const { gt, lt } = this.crypto.getRange(lsID, category)
     const peerHistory = await this.db.createReadStream({
       gt,
       lt,
