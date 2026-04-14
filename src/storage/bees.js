@@ -148,7 +148,6 @@ class HyperBee extends EventEmitter {
     beePubkeys.push({store:'bentocues', privacy: 'public', pubkey: b4a.toString(core7.key, 'hex')})
     const discoveryCues = this.swarm.join(this.dbBentocues.discoveryKey)
     discoveryCues.flushed().then(() => {
-      console.log('cues library open')
     })
 
     const core13 = this.store.get({ name: 'bentomodels' })

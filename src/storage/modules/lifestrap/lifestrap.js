@@ -50,9 +50,9 @@ class LifestrapModule {
    * @method deleteLifestrap
    */
   deleteLifestrap = async function (lifestrap) {
-    await this.db.del(lifestrap.key)
+    await this.db.del(lifestrap)
     let deleteInfo = {}
-    deleteInfo.spaceid = lifestrap.key
+    deleteInfo.key = lifestrap
     return deleteInfo
   }
 

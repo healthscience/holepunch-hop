@@ -62,8 +62,6 @@ class HolepunchWorker extends EventEmitter {
   */
   setHOPCrypto = function (crypto) {
     this.crypto = crypto
-    console.log('hop-crypto in palce HP')
-    console.log(this.crypto)
     if (this.BeeData) {
       this.BeeData.crypto = crypto
       const modules = [
@@ -78,7 +76,6 @@ class HolepunchWorker extends EventEmitter {
         }
       })
     }
-    console.log("hop-crypto in place HP and modules updated")
   }
 
   /**
