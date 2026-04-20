@@ -1,6 +1,6 @@
 {
   "name": "holepunch-hop",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "description": "data interface to HOP",
   "main": "src/index.js",
   "type": "module",
