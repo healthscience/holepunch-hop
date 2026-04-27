@@ -33,8 +33,8 @@ class LifestrapModule {
     const { gt, lt } = this.crypto.getRange(lsID, category)
 
     const lifestrapHistory = await this.db.createReadStream({
-      gt,
-      lt,
+      // gt,
+      // lt,
       keyEncoding: 'binary',
       valueEncoding: 'json'
     })

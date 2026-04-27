@@ -68,7 +68,8 @@ class HolepunchWorker extends EventEmitter {
         "PublicLibrary", "PeerLibrary", "Peers", "Results",
         "Ledger", "Chat", "Clock", "Spaces", "Cues",
         "Boxes", "Models", "Research", "Markers",
-        "Products", "Media", "Learn", "Lifestrap"
+        "Products", "Media", "Learn", "Lifestrap",
+        "Orgo", "Gelle", "Lensglue", "Besearch"
       ]
       modules.forEach(mod => {
         if (this.BeeData[mod]) {

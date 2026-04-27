@@ -29,6 +29,10 @@ import ProductsModule from './modules/cues/products.js'
 import MediaModule from './modules/cues/media.js'
 import LearnModule from './modules/cues/learn.js'
 import LifestrapModule from './modules/lifestrap/lifestrap.js'
+import OrgoModule from './modules/orgo/orgo.js'
+import GelleModule from './modules/gelle/gelle.js'
+import LensglueModule from './modules/cues/lensglue.js'
+import BesearchModule from './modules/besearch/besearchBee.js'
 
 class HyperBee extends EventEmitter {
 
@@ -238,6 +242,30 @@ class HyperBee extends EventEmitter {
     await this.dbBentolifestrap.ready()
     beePubkeys.push({store:'bentolifestrap', privacy: 'private', pubkey: b4a.toString(core19.key, 'hex')})
 
+    const core20 = this.store.get({ name: 'bentoorgo' })
+    this.dbBentoorgo = new Hyperbee(core20, {
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
+    })
+    await this.dbBentoorgo.ready()
+    beePubkeys.push({store:'bentoorgo', privacy: 'private', pubkey: b4a.toString(core20.key, 'hex')})
+
+    const core21 = this.store.get({ name: 'bentogelle' })
+    this.dbBentogelle = new Hyperbee(core21, {
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
+    })
+    await this.dbBentogelle.ready()
+    beePubkeys.push({store:'bentogelle', privacy: 'private', pubkey: b4a.toString(core21.key, 'hex')})
+
+    const core22 = this.store.get({ name: 'bentolensglue' })
+    this.dbBentolensglue = new Hyperbee(core22, {
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
+    })
+    await this.dbBentolensglue.ready()
+    beePubkeys.push({store:'bentolensglue', privacy: 'private', pubkey: b4a.toString(core22.key, 'hex')})
+
   // Initialize Modules
     this.PublicLibrary = new PublicLibraryModule(this.dbPublicLibraryRef, this.dbPublicLibraryMod, this.store, this.swarm, this.emit.bind(this), this.crypto)
     this.PeerLibrary = new PeerLibraryModule(this.dbPeerLibraryRef, this.dbPeerLibraryMod, this.crypto)
@@ -256,6 +284,10 @@ class HyperBee extends EventEmitter {
     this.Media = new MediaModule(this.dbBentomedia, this.crypto)
     this.Learn = new LearnModule(this.dbBeeBeeLearn, this.crypto)
     this.Lifestrap = new LifestrapModule(this.dbBentolifestrap, this.crypto)
+    this.Orgo = new OrgoModule(this.dbBentoorgo, this.crypto)
+    this.Gelle = new GelleModule(this.dbBentogelle, this.crypto)
+    this.Lensglue = new LensglueModule(this.dbBentolensglue, this.crypto)
+    this.Besearch = new BesearchModule(this.dbBentoresearch, this.dbBesearch, this.crypto)
 
     this.emit('hbee-live')
     let startBeePubkey = {
@@ -305,6 +337,24 @@ class HyperBee extends EventEmitter {
   deleteLifestrap = (data) => this.Lifestrap.deleteLifestrap(data)
   updateLifestrapLibrary = (data) => this.Lifestrap.updateLifestrapLibrary(data)
 
+  saveOrgo = (data) => this.Orgo.saveOrgo(data)
+  getOrgo = (key) => this.Orgo.getOrgo(key)
+  getOrgoHistory = (lsID, category, key) => this.Orgo.getOrgoHistory(lsID, category, key)
+  deleteOrgo = (data) => this.Orgo.deleteOrgo(data)
+  updateOrgoLibrary = (data) => this.Orgo.updateOrgoModule(data)
+
+  saveGelle = (data) => this.Gelle.saveGelle(data)
+  getGelle = (key) => this.Gelle.getGelle(key)
+  getGelleHistory = (lsID, category, key) => this.Gelle.getGelleHistory(lsID, category, key)
+  deleteGelle = (data) => this.Gelle.deleteGelle(data)
+  updateGelleLibrary = (data) => this.Gelle.updateGelleModule(data)
+
+  saveLensglue = (data) => this.Lensglue.saveLensglue(data)
+  getLensglue = (key) => this.Lensglue.getLensglue(key)
+  getLensglueHistory = (lsID, category, key) => this.Lensglue.getLensglueHistory(lsID, category, key)
+  deleteLensglue = (data) => this.Lensglue.deleteLensglue(data)
+  updateLensglueLibrary = (data) => this.Lensglue.updateLensglueModule(data)
+
   saveBentoBox = (data) => this.Boxes.saveBentoBox(data)
   getBentoBox = (key) => this.Boxes.getBentoBox(key)
   getBentoBoxHistory = (lsID, category, key) => this.Boxes.getBentoBoxHistory(lsID, category, key)
@@ -330,10 +380,10 @@ class HyperBee extends EventEmitter {
   getResearchHistory = (lsID, category, key) => this.Research.getResearchHistory(lsID, category, key)
   deleteBentoResearch = (data) => this.Research.deleteBentoResearch(data)
 
-  saveBesearch = (data) => this.Research.saveBesearch(data)
-  getBesearch = (key) => this.Research.getBesearch(key)
-  getBesearchHistory = (lsID, category, key) => this.Research.getBesearchHistory(lsID, category, key)
-  deleteBentoBesearch = (data) => this.Research.deleteBentoBesearch(data)
+  saveBesearch = (data) => this.Besearch.saveBesearch(data)
+  getBesearch = (key) => this.Besearch.getBesearch(key)
+  getBesearchHistory = (lsID, category, key) => this.Besearch.getBesearchHistory(lsID, category, key)
+  deleteBentoBesearch = (data) => this.Besearch.deleteBentoBesearch(data)
 
   saveMarker = (data) => this.Markers.saveMarker(data)
   getMarker = (key) => this.Markers.getMarker(key)
@@ -386,6 +436,12 @@ class HyperBee extends EventEmitter {
       await this.updatePublicLibrary(updatePubLib)
     } else if (data.library === 'cues') {
       await this.updateCuesLibrary(updatePubLib)
+    } else if (data.library === 'orgo') {
+      await this.updateOrgoLibrary(updatePubLib)
+    } else if (data.library === 'gelle') {
+      await this.updateGelleLibrary(updatePubLib)
+    } else if (data.library === 'lensglue') {
+      await this.updateLensglueLibrary(updatePubLib)
     }
     this.PublicLibrary.repPublicHolder[data.discoverykey] = []
   }
