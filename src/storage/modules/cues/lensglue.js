@@ -42,6 +42,7 @@ class LensglueModule {
     for await (const { key, value } of lensglueHistory) {
       lensglueData.push({ key, value })
     }
+
     return lensglueData
   }
 
@@ -59,7 +60,7 @@ class LensglueModule {
   /**
    * update lensglue library from replication
    * @method updateLensglueModule
-   */
+  */
   updateLensglueModule = async function (libContracts) {
     const { gt, lt } = this.crypto.getRange('LENSGLUE')
     const batch = this.db.batch()

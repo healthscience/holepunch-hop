@@ -25,8 +25,7 @@ class TimeConvertor extends EventEmitter {
   *
   */
   testDataExtact = function (sampleDate) {
-    console.log('time adopter')
-    console.log(sampleDate)
+
     let parseDate0 = DateTime.fromISO(sampleDate)
     let parseDate1 = DateTime.fromHTTP(sampleDate)
     let parseDate2 = DateTime.fromJSDate(sampleDate)

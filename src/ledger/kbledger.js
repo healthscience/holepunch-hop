@@ -44,7 +44,6 @@ class HyperBee extends EventEmitter {
     startLedgerPubkey.type = 'ledger-pubkeys'
     startLedgerPubkey.data = beePubkeys
     this.liveLedger = startLedgerPubkey
-    console.log(this.liveBees)
     // this.wsocket.send(JSON.stringify(startBeePubkey))
   }
 

@@ -4,8 +4,6 @@ class ClockModule {
   constructor(db, crypto) {
     this.db = db
     this.crypto = crypto
-    console.log('clockc any cryptoososo')
-    console.log(this.crypto)
   }
 
   /**

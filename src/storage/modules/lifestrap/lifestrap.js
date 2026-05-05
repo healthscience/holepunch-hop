@@ -1,5 +1,4 @@
 'use strict'
-import b4a from 'b4a'
 
 class LifestrapModule {
   constructor(db, crypto) {
