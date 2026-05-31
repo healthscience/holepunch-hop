@@ -19,7 +19,7 @@ class PublicLibraryModule {
    * @method savePubliclibraryRef
    */
   savePubliclibraryRef = async function (refContract) {
-    await this.dbRef.put(refContract.key, refContract.contract)
+    await this.dbRef.put(refContract.hash, refContract.contract)
     return true
   }
 

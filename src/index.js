@@ -238,7 +238,7 @@ class HolepunchWorker extends EventEmitter {
       peerId.topic = ''
       peerId.live = false
       peerId.livePeerkey = ''
-      this.warmPeers.push(peerId)
+      // this.warmPeers.push(peerId)
       this.emit('peer-incoming-save', peerId)
     })
     // peer live on network?
@@ -269,7 +269,7 @@ class HolepunchWorker extends EventEmitter {
         // has the peer joined already?
         let peerMatch = false
         for (let wpeer of this.warmPeers) {
-          if (wpeer.publickey = message.data.publickey) {
+          if (wpeer.publickey === message.data.publickey) {
             peerMatch = true
           }
         }
@@ -283,7 +283,7 @@ class HolepunchWorker extends EventEmitter {
           this.Peers.peerAlreadyJoinSetData(message.data)
           this.Peers.peerJoin(message.data)
         } else {
-          // twooptions  peer still online so reconnect,  or both been offline, reconnect via topic, if topic first time or subdquesnt?
+          // two options  peer still online so reconnect,  or both been offline, reconnect via topic, if topic first time or subdquesnt?
           // try to connect like first time
           this.warmPeers.push(message.data)
           this.Peers.peerAlreadyJoinSetData(message.data)
@@ -313,7 +313,7 @@ class HolepunchWorker extends EventEmitter {
               this.Peers.topicListen(reEstablishShort.peer.value.topic, message.data.publickey)
             }
           }
-        }
+        } 
       } else if (message.task === 'peer-share-codename') {
         // from peer generating the invite
         this.Peers.setRole({ pubkey: message.data.publickey, codename: message.data.codename, name: message.data.name })
@@ -363,6 +363,16 @@ class HolepunchWorker extends EventEmitter {
   }
 
   /**
+   * keep track of warm peers life and after saved
+   * @method setWarmPeers
+   *
+  */
+  setWarmPeers = function (warmPeers) {
+    // Use concat to merge arrays while preserving existing elements
+    this.warmPeers.push(warmPeers)
+  }
+
+  /**
    * prepare data to send to a warm peer
    * @method warmPeerPrepare
    */
@@ -374,13 +384,13 @@ class HolepunchWorker extends EventEmitter {
       // match publick key to warmpeers
       let peerMatch = {}
       for (let wpeer of this.warmPeers) {
-        if (wpeer.publickey === data) {
+        if (wpeer.key === data) {
           peerMatch = wpeer
         }
       }
       // client of server Role?
       // let role = this.Peers.getRole(data)
-      if (peerMatch.roletaken === 'client') {
+      if (peerMatch.value.concept.roletaken === 'client') {
         let roleStatus = this.Peers.matchCodename(data)
         let codenameInform = {}
         codenameInform.type = 'peer-codename-inform'
@@ -388,7 +398,7 @@ class HolepunchWorker extends EventEmitter {
         codenameInform.data = { inviteCode: roleStatus.codename , publickey: data, peerkey: this.swarm.keyPair.publicKey.toString('hex') }
         this.Peers.writeTonetworkData(data, codenameInform) 
         // inform peer of codename
-      } else if (peerMatch.roletaken === 'server') {
+      } else if (peerMatch.value.concept.roletaken === 'server') {
         // notify beebee peer to live
         let codeNameInform = {}
         codeNameInform.type = 'peer-codename-inform'

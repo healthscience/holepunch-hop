@@ -11,6 +11,8 @@
 */
 import EventEmitter from 'events'
 import crypto from 'crypto'
+import Protomux from 'protomux'
+import c from 'compact-encoding'
 
 class NetworkPeers extends EventEmitter {
   constructor(store, swarm) {
@@ -24,6 +26,7 @@ class NetworkPeers extends EventEmitter {
     this.peerEstContext = {}
     this.peerHolder = {}
     this.peerConnect = {}
+    this.peerChannels = {}
     this.topicHolder = {}
     this.sendTopicHolder = []
     this.peersRole = []
@@ -136,10 +139,25 @@ class NetworkPeers extends EventEmitter {
       this.store.replicate(conn);
 
       // process network message
-      conn.on('data', data =>
-        // assess data
-        this.assessData(publicKey, data)
-      )
+      const mux = Protomux.from(conn)
+      const channel = mux.createChannel({
+        protocol: 'holepunch-hop'
+      })
+
+      const msg = channel.addMessage({
+        encoding: c.json,
+        onmessage: (data) => {
+          this.assessData(publicKey, data)
+        }
+      })
+
+      this.peerChannels[publicKey] = msg
+      channel.open()
+
+      conn.on('close', () => {
+        delete this.peerConnect[publicKey]
+        delete this.peerChannels[publicKey]
+      })
 
       conn.on('error', data => {
         let connectLivekeys = Object.keys(this.peerConnect)
@@ -219,7 +237,7 @@ class NetworkPeers extends EventEmitter {
       roleContext.publickey = publicKeylive
       roleContext.roletaken = roleType
       // first time cheeck for data long with it?
-      this.dataFlowCheck(publicKeylive, 'first')
+      this.dataFlowCheck(publicKeylive, 'first') // only use if chart data  becoming obsolete
       this.emit('connect-warm-first', roleContext)
     }
 }
@@ -303,48 +321,55 @@ class NetworkPeers extends EventEmitter {
    *
   */
   assessData = function (peer, data) {
+    let dataShareIn = data
     if (Buffer.isBuffer(data)) {
       try {
-        let dataShareIn = JSON.parse(data.toString())
-        // match current public key to base id of peer
-        let peerMatch = this.peerMatchbase(peer)
-        if (dataShareIn.type === 'private-chart') {
-          this.emit('beebee-data', { publickey: peerMatch, data: dataShareIn })
-          // two types of chart share above html answer sharing and below from a full bentoboxN1 experiment TODO
-          // need to look at NXP,  modules and within for reference contracts.
-          // Need to replicate public library for contracts (repliate hyberbee)
-          // Need to ask for data source e.g. file (replicate hyberdrive)
-          // Lastly put together SafeFlowECS query to produce chart
-        } else if (dataShareIn.type === 'private-cue-space') {
-          this.emit('cuespace-notification', { publickey: peerMatch, data: dataShareIn })
-        } else if (dataShareIn.type === 'public-library') {
-          this.emit('publiclibrarynotification', { publickey: peerMatch, data: dataShareIn })
-        } else if (dataShareIn.type === 'peer') {
-        } else if (dataShareIn.type === 'peer-codename-inform') {
-          // all peer to match publicke to codename then update save and infom beebee
-          this.emit('peer-codename-match', dataShareIn)
-        } else if (dataShareIn.type === 'topic-reconnect') {
-          // peer has share a topic for future reconnect
-          // check if publickey is  topic key if yes, already active do nothing
-          let topicMatch = this.topicHolder[dataShareIn.topic]
-          if (topicMatch !== undefined) {
-            if (topicMatch.currentPubkey === dataShareIn.publickey) {
-            } else {
-              // server set topic in first connect flow
-              this.emit('peer-reconnect-topic', dataShareIn)
-            }
+        dataShareIn = JSON.parse(data.toString())
+      } catch (e) {
+        console.log('pare eerr o still')
+        return
+      }
+    }
+
+    try {
+      // match current public key to base id of peer
+      let peerMatch = this.peerMatchbase(peer)
+      if (dataShareIn.type === 'private-chart') {
+        this.emit('beebee-data', { publickey: peerMatch, data: dataShareIn })
+        // two types of chart share above html answer sharing and below from a full bentoboxN1 experiment TODO
+        // need to look at NXP,  modules and within for reference contracts.
+        // Need to replicate public library for contracts (repliate hyberbee)
+        // Need to ask for data source e.g. file (replicate hyberdrive)
+        // Lastly put together SafeFlowECS query to produce chart
+      } else if (dataShareIn.type === 'private-cue-space') {
+        this.emit('cuespace-notification', { publickey: peerMatch, data: dataShareIn })
+      } else if (dataShareIn.type === 'public-library') {
+        this.emit('publiclibrarynotification', { publickey: peerMatch, data: dataShareIn })
+      } else if (dataShareIn.type === 'peer') {
+      } else if (dataShareIn.type === 'peer-codename-inform') {
+        // all peer to match publicke to codename then update save and infom beebee
+        this.emit('peer-codename-match', dataShareIn)
+      } else if (dataShareIn.type === 'topic-reconnect') {
+        // peer has share a topic for future reconnect
+        // check if publickey is  topic key if yes, already active do nothing
+        let topicMatch = this.topicHolder[dataShareIn.topic]
+        if (topicMatch !== undefined) {
+          if (topicMatch.currentPubkey === dataShareIn.publickey) {
           } else {
-            // client path
-            dataShareIn.settopic = false
+            // server set topic in first connect flow
             this.emit('peer-reconnect-topic', dataShareIn)
           }
-        } else if (dataShareIn.type === 'topic-reconnect-id') {
-          // update status of livepeer public key
-          this.emit('peer-reconnect-topic-id', peer, dataShareIn.data)
+        } else {
+          // client path
+          dataShareIn.settopic = false
+          this.emit('peer-reconnect-topic', dataShareIn)
         }
-      } catch (e) {
-          return console.error('ignore err')
+      } else if (dataShareIn.type === 'topic-reconnect-id') {
+        // update status of livepeer public key
+        this.emit('peer-reconnect-topic-id', peer, dataShareIn.data)
       }
+    } catch (e) {
+      return console.error('ignore err')
     }
   }
 
@@ -807,132 +832,8 @@ class NetworkPeers extends EventEmitter {
     checkDiscoveryInfo.server = ''
     checkDiscoveryInfo.client = ''
     checkDiscoveryInfo.topic = ''
+
     return checkDiscoveryInfo
-
-
-    /*
-    if (this.peerNetwork.length > 0) {
-      emptyHolder = true
-      // match pubkey to peer to get set topic
-      let matchTopic = ''
-      for (let peer of this.peerNetwork) {
-        if (peer.key === publicKey) {
-          matchTopic = peer.value.topic
-        } else {
-        }
-      }
-      // now use match topic to see if topic set as server or client roles?
-      let sendLogic = []
-      let holderLogic = []
-      for (let sendPeerT of this.sendTopicHolder) {
-        if (sendPeerT.topic === matchTopic) {
-          sendLogic.push(sendPeerT)
-        } else {
-        }
-      }
-      let matchHolderKeys = Object.keys(this.topicHolder)
-      for (let topicH of matchHolderKeys) {
-        if (this.topicHolder[topicH].topic === matchTopic) {
-          holderLogic.push(this.topicHolder[topicH])
-        } else {
-        }
-      }
-      console.log('match topic')
-      console.log(matchTopic)
-      console.log('send logic')
-      console.log(sendLogic)
-      console.log('holder logic')
-      console.log(holderLogic)
-      if (nodeRole === 'client') {
-        console.log('extra workk for client')
-        if (matchTopic.length > 0 && sendLogic.length === 0 && holderLogic.length === 0) {
-          firstTime = true
-        } else {
-          firstTime = true
-        }
-      } else if (nodeRole === 'server') {
-        console.log('extra workk for server')
-        // check if public key match any exsting keyids?
-        /* for (let peer of this.peerNetwork) {
-          if (peer.key === publicKey) {
-            firstTime = false
-          } else {
-            firstTime = true
-          }
-        } 
-      }
- 
-    } else {
-      firstTime = true
-    }
-    
-    // has a topic already been sent to this peer, if not must be first time
-    let beforeSendTopic = false
-    for (let topicS of this.sendTopicHolder) {
-      if (topicS.livePubkey === publicKey) {
-        beforeSendTopic = true
-      }
-    }
-    let checkDiscoveryTopic = {}
-    checkDiscoveryTopic.firstTime = firstTime  // should this be set???
-    if (topicList.length > 0) {
-      for (let topicH of topicList) {
-        const noisePublicKey = Buffer.from(topicH.topic, 'hex')
-        let discovery = this.swarm.status(noisePublicKey)
-        console.log('discovery000000000000000000000000')
-        console.log(discovery.topic.toString('hex'))
-        let discoverTopic = discovery.topic.toString('hex')
-        if (discoverTopic === topicH.topic) {
-          // do the peerid match?
-          discovery.swarm.connections.forEach((value, key) => {
-            console.log('value looooop')
-            checkDiscoveryTopic.server = value.publicKey.toString('hex')
-            checkDiscoveryTopic.client = value.remotePublicKey.toString('hex')
-            checkDiscoveryTopic.topic = discoverTopic
-          })
-          if (checkDiscoveryTopic.client === topicH.peerKey) {
-            console.log('retrun rrrr1111')
-            checkDiscoveryTopic.firstTime = false
-            console.log(checkDiscoveryTopic)
-            return checkDiscoveryTopic
-          } else {
-            if (checkDiscoveryTopic.topic === topicH.topic) {
-              // now check if returning
-              if (firstTime === false && emptyHolder === true) {
-                // match current public key to original key uses a permanent key
-                let permKeyID = ''
-                let topicSet = ''
-                if (checkDiscoveryTopic.client === publicKey) {
-                  permKeyID = checkDiscoveryTopic.client
-                  topicSet = checkDiscoveryTopic.topic
-                }
-                // now use this id to check if peer has been invited
-                let beforeTopicCheck = this.checkTopicModes(topicSet)
-                console.log('beftopicchchc-------------------')
-                console.log(beforeTopicCheck)
-                checkDiscoveryTopic.firstTime = beforeTopicCheck.firstTime
-              } else {
-                checkDiscoveryTopic.firstTime = true
-              }
-              console.log('return rrrr2222')
-              console.log(checkDiscoveryTopic)
-              return checkDiscoveryTopic
-            } else {
-              checkDiscoveryTopic.topic = ''
-            }
-        }
-        } else {
-          
-        }
-      }
-    } else {
-      checkDiscoveryTopic.server = '' 
-      checkDiscoveryTopic.client = ''
-      checkDiscoveryTopic.topic = ''
-      console.log('return rrrr3333')
-      return checkDiscoveryTopic
-    }
-*/   
   }
 
   /**
@@ -997,7 +898,7 @@ class NetworkPeers extends EventEmitter {
   writeTonetwork = function (data, messType) {
     // check this peer has asked for chart data
     let dataSend = data
-    this.peerConnect[data].write(JSON.stringify(dataSend))
+    if (this.peerChannels[data]) this.peerChannels[data].send(dataSend)
   }
 
   /**
@@ -1021,7 +922,7 @@ class NetworkPeers extends EventEmitter {
       topicShare.data = topicGeneration
       this.emit('topic-formed-save', topicShare)
       // inform peer that topic has been created
-      this.peerConnect[publickey].write(JSON.stringify(topicShare))
+      if (this.peerChannels[publickey]) this.peerChannels[publickey].send(topicShare)
   }
 
   /**
@@ -1033,7 +934,7 @@ class NetworkPeers extends EventEmitter {
     let topicReconnectMessage = {}
     topicReconnectMessage.type = 'topic-reconnect-id'
     topicReconnectMessage.data = { topic: topicInfo.topic, peerKey: topicInfo.peerKey }
-    this.peerConnect[topicInfo.currentPubkey].write(JSON.stringify(topicReconnectMessage))
+    if (this.peerChannels[topicInfo.currentPubkey]) this.peerChannels[topicInfo.currentPubkey].send(topicReconnectMessage)
   }
 
 
@@ -1043,7 +944,7 @@ class NetworkPeers extends EventEmitter {
    *
   */
   writeTonetworkData = function (publickey, dataShare) {
-    this.peerConnect[publickey].write(JSON.stringify(dataShare))
+    if (this.peerChannels[publickey]) this.peerChannels[publickey].send(dataShare)
   }
 
   /**
@@ -1056,7 +957,7 @@ class NetworkPeers extends EventEmitter {
       let dataShare = {}
       dataShare.data = data
       dataShare.type = 'public-library'
-      this.peerConnect[publickey].write(JSON.stringify(dataShare))
+      if (this.peerChannels[publickey]) this.peerChannels[publickey].send(dataShare)
   }
 
   /**
@@ -1065,7 +966,7 @@ class NetworkPeers extends EventEmitter {
    *
   */
   writeToCueSpace = function (publickey, data) {
-    this.peerConnect[publickey].write(JSON.stringify(data))
+    if (this.peerChannels[publickey]) this.peerChannels[publickey].send(data)
   }
 
   /**

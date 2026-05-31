@@ -11,7 +11,7 @@ class PeersModule {
    * @method savePeer
    */
   savePeer = async function (peerInfo) {
-    await this.db.put(peerInfo.publickey, peerInfo)
+    await this.db.put(peerInfo.hash, peerInfo.contract)
     return peerInfo
   }
 
@@ -29,12 +29,9 @@ class PeersModule {
    * @method getPeersHistory
    */
   getPeersHistory = async function (lsID, category, key) {
-    console.log('getPeersHistory called with lsID:', lsID, 'category:', category, 'key:', key);
-    if (lsID === undefined) {
-      console.error('getPeersHistory: lsID is undefined!');
-      console.trace();
-    }
-    const { gt, lt } = this.crypto.getRange(lsID, category)
+    //const { gt, lt } = this.crypto.getRange(lsID, category)
+    let gt = Buffer.from(lsID, 'utf-8');
+    let lt = gt + '\xff'
     const peerHistory = await this.db.createReadStream({
       gt,
       lt,
@@ -43,8 +40,7 @@ class PeersModule {
     })
     let peerData = []
     for await (const { key, value } of peerHistory) {
-      let hexKey = key.toString('hex')
-      peerData.push({ hexKey, value })
+      peerData.push({ key, value })
     }    
     return peerData
   }

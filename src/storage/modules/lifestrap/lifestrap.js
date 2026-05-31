@@ -11,7 +11,7 @@ class LifestrapModule {
    * @method saveLifestrap
    */
   saveLifestrap = async function (lifestrapInfo) {
-    await this.db.put(lifestrapInfo.key, lifestrapInfo.contract)
+    await this.db.put(lifestrapInfo.hash, lifestrapInfo.contract)
     return lifestrapInfo
   }
 
@@ -32,8 +32,8 @@ class LifestrapModule {
     const { gt, lt } = this.crypto.getRange(lsID, category)
 
     const lifestrapHistory = await this.db.createReadStream({
-      // gt,
-      // lt,
+      gt,
+      lt,
       keyEncoding: 'binary',
       valueEncoding: 'json'
     })
