@@ -83,8 +83,6 @@ class NetworkPeers extends EventEmitter {
    *
   */
   setupConnectionBegin = function (peerNetwork) {
-    console.log('beging  warm peers ++++++++++++')
-    console.log(peerNetwork)
     this.peerNetwork = peerNetwork
     for (let sPeer of this.peerNetwork) {
       let hexKeyContract = sPeer.key.toString('hex')
@@ -166,7 +164,7 @@ class NetworkPeers extends EventEmitter {
         if (connectLivekeys.length > 0) {
           for (let peer of this.peerNetwork) {
             for (let pconn of connectLivekeys) {
-              if (peer.value.livePeerkey.length > 0) {
+              if (peer.value.concept) { // livePeerkey.length > 0) {
                 if (peer.value.livePeerkey === pconn) {
                   // check if connect is close?
                   // let keysNoise = Object.keys(this.peerConnect[pconn]['noiseStream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['rawStream']['_closed'])
@@ -332,8 +330,6 @@ class NetworkPeers extends EventEmitter {
         return
       }
     }
-    console.log('AASSSESS=======ASSESS++++')
-    console.log(dataShareIn)
 
     try {
       // match current public key to base id of peer
