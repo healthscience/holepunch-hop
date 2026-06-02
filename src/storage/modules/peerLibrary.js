@@ -13,7 +13,7 @@ class PeerLibraryModule {
    * @method savePeerLibraryRef
    */
   savePeerLibraryRef = async function (refContract) {
-    await this.dbRef.put(refContract.key, refContract.contract)
+    await this.dbRef.put(refContract.hash, refContract.contract)
     return refContract.data.contract
   }
 

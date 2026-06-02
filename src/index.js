@@ -146,6 +146,13 @@ class HolepunchWorker extends EventEmitter {
     this.Peers.on('peer-network', (data) => {
       this.wsocket.send(JSON.stringify(data))
     })
+
+    this.Peers.on('warmpeer-match', (data, context) => {
+      // match contract key to live key
+      let keyLiveMatch = this.matchWarmSaveKey(data)
+      this.Peers.completePeerRelationship(keyLiveMatch.value.concept.publickey, context)
+    })
+
     // peer connection active for first time 
     this.Peers.on('peer-connect', (data) => {
      // this.warmPeerPrepare(data)
@@ -391,12 +398,13 @@ class HolepunchWorker extends EventEmitter {
       // client of server Role?
       // let role = this.Peers.getRole(data)
       if (peerMatch.value.concept.roletaken === 'client') {
-        let roleStatus = this.Peers.matchCodename(data)
+        let fullPeerInfo = this.matchWarmSaveKey(data)
+        let roleStatus = this.Peers.matchCodename(fullPeerInfo.value.concept.publickey)
         let codenameInform = {}
         codenameInform.type = 'peer-codename-inform'
         codenameInform.action = 'set'
         codenameInform.data = { inviteCode: roleStatus.codename , publickey: data, peerkey: this.swarm.keyPair.publicKey.toString('hex') }
-        this.Peers.writeTonetworkData(data, codenameInform) 
+        this.Peers.writeTonetworkData(fullPeerInfo.value.concept.publickey, codenameInform) 
         // inform peer of codename
       } else if (peerMatch.value.concept.roletaken === 'server') {
         // notify beebee peer to live
@@ -421,15 +429,36 @@ class HolepunchWorker extends EventEmitter {
     }
   }
 
+  matchWarmSaveKey = function (saveKey) {
+    let keyLive = {}
+    for (let peerSav of this.warmPeers) {
+      if (peerSav.key === saveKey) {
+        keyLive = peerSav
+      }
+    }
+    return keyLive
+  }
+
+  matchWarmSaveLiveKey = function (saveKey) {
+    let keyLive = {}
+    for (let peerSav of this.warmPeers) {
+      if (peerSav?.value?.concept?.publickey === saveKey) {
+        keyLive = peerSav
+      }
+    }
+    return keyLive
+  }
+
   /**
    * process codename  matches after first save has happened.
    * @method processCodenameMatching
    *
   */
   processCodenameMatching = async function (data) {
+    let codePeer = this.matchWarmSaveKey(data)
     let updateCodeName = []
     for (let cname of this.codenameUpdates) {
-      if (cname.data.peerkey === data) {
+      if (cname.data.peerkey === codePeer.value.concept.publickey) {
         let matchCodename = this.Peers.matchPeersCodename(cname)
         // need to matchs
         let warmMatch = {}
@@ -439,6 +468,7 @@ class HolepunchWorker extends EventEmitter {
           }
         }
         matchCodename.peerkey = cname.data.peerkey
+        matchCodename.contractKey = data
         // update save for longterm and inform beebee
         this.emit('peer-codename-update', matchCodename)
       } else {
