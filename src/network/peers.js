@@ -85,13 +85,16 @@ class NetworkPeers extends EventEmitter {
   setupConnectionBegin = function (peerNetwork) {
     this.peerNetwork = peerNetwork
     for (let sPeer of this.peerNetwork) {
-      let hexKeyContract = sPeer.key.toString('hex')
-      if (hexKeyContract.value.concept.settopic === true) {
+      let hexKey = sPeer.key.toString('hex')
+      console.log(hexKey)
+      if (sPeer.value.concept.settopic === true) {
+        console.log('peer server')
         // client role  need to pass on peerUniqueID
-        this.topicConnect(hexKeyContract.key, hexKeyContract.value.concept.topic)
+        this.topicConnect(hexKey, sPeer.value.concept.topic)
       } else {
+        console.log('peer client')
         // server role
-        this.topicListen(hexKeyContract.value.concept.topic, hexKeyContract.key)
+        this.topicListen(sPeer.value.concept.topic, hexKey)
       }
     }
   }
@@ -164,7 +167,7 @@ class NetworkPeers extends EventEmitter {
         if (connectLivekeys.length > 0) {
           for (let peer of this.peerNetwork) {
             for (let pconn of connectLivekeys) {
-              if (peer.value.concept) { // livePeerkey.length > 0) {
+              if (peer.value) { // livePeerkey.length > 0) {
                 if (peer.value.livePeerkey === pconn) {
                   // check if connect is close?
                   // let keysNoise = Object.keys(this.peerConnect[pconn]['noiseStream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['rawStream']['_closed'])
@@ -172,7 +175,7 @@ class NetworkPeers extends EventEmitter {
                   let closeStatus = this.peerConnect[pconn]['noiseStream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['rawStream']['_closed']
                   if (closeStatus === true) {
                     // remove peer & inform beebee
-                    this.emit('peer-disconnect', { publickey: peer.key })
+                    this.emit('peer-disconnect', { peercontract: peer })
                   }
                 }
                } else {
@@ -238,7 +241,7 @@ class NetworkPeers extends EventEmitter {
       roleContext.roletaken = roleType
       // first time cheeck for data long with it?
       this.dataFlowCheck(publicKeylive, 'first') // only use if chart data  becoming obsolete
-      this.emit('connect-warm-first', roleContext)
+      // this.emit('connect-warm-first', roleContext)
     }
 }
 
@@ -250,11 +253,16 @@ class NetworkPeers extends EventEmitter {
     const { publicKey } = info;
     const { topicKeylive, discoveryTopicInfo, serverStatus } = connectionInfo
     // Reconnection logic
-    let topic = topicKeylive[0].toString('hex')
+    let topic = '' 
+    if (topicKeylive.length > 0 ) {
+      topic = topicKeylive[0].toString('hex')
+    } else {
+      console.log('--no live topic list')
+    }
     // match topic to topic holder list to get original pub key ID
     let originalKey = ''
     for (let savePeer of this.peerNetwork) {
-      if (savePeer.value.topic === topic) {
+      if (savePeer.value.concept.topic === topic) {
          originalKey = savePeer.value.publickey
         break;
       }
@@ -282,14 +290,14 @@ class NetworkPeers extends EventEmitter {
   updatePeerStatus = function(topic, publicKey) {
     let originalKey = '';
     for (let savePeer of this.peerNetwork) {
-      if (savePeer.value.topic === topic) {
-        originalKey = savePeer.value.publickey;
+      if (savePeer.value.concept.topic === topic) {
+        originalKey = savePeer.key.toString('hex');
         break;
       }
     }
 
-    const updatePeerStatus = this.peerNetwork.map(savePeer => {
-      if (savePeer.key === originalKey) {
+    const updatePeerHolder = this.peerNetwork.map(savePeer => {
+      if (savePeer.key.toString('hex') === originalKey) {
         return {
           ...savePeer,
           value: {
@@ -301,7 +309,7 @@ class NetworkPeers extends EventEmitter {
       }
       return savePeer;
     });
-    this.peerNetwork = updatePeerStatus;
+    this.peerNetwork = updatePeerHolder;
     this.emit('peer-live-network', originalKey)
   }
 
@@ -569,7 +577,7 @@ class NetworkPeers extends EventEmitter {
     // first match live pubkey to topic and then use topic to get original
     let peerSettings = {}
     for (let savePeer of this.peerNetwork) {
-      if (savePeer.value.topic === topic) {
+      if (savePeer.value.concept.topic === topic) {
         peerSettings = savePeer
       }
     }
@@ -688,6 +696,7 @@ class NetworkPeers extends EventEmitter {
     } else if (nodeRole === 'client') {
       topicList = this.topicHolder
     }
+    let peerContractKey = topicList[0].peerKey
     // previous info at hand 
     let firstTime = false
     let emptyHolder = false
@@ -710,7 +719,7 @@ class NetworkPeers extends EventEmitter {
       let keyMatchTopic = false
       if (topicList.length > 0) {
         for (let topicE of topicList) {
-          if (topicE.livePubkey === publicKey) {
+          if (topicE.livePubkey === peerContractKey) { //publicKey) {
             keyMatchTopic = true
           }
         }
@@ -734,7 +743,7 @@ class NetworkPeers extends EventEmitter {
             // check if public key in network
             let existingPeerCheck = false
             for (let peer of this.peerNetwork) {
-              if (peer.key === publicKey) {
+              if (peer.key.toString('hex') === peerContractKey) { //publicKey) {
                 existingPeerCheck = true
               } else {
                 existingPeerCheck = false
@@ -834,7 +843,7 @@ class NetworkPeers extends EventEmitter {
    * @method writeTonetworkTopic
    *
   */
-  writeTonetworkTopic = function (publickey, codeName) {
+  writeTonetworkTopic = function (peerContract, codeName) {
     const randomString = crypto.randomBytes(32).toString('hex')
     // Convert the random string to a buffer
     const buffer = Buffer.from(randomString, 'hex')
@@ -842,16 +851,19 @@ class NetworkPeers extends EventEmitter {
     // send to other peer topic to allow reconnection in future
     let topicShare = {}
     topicShare.type = 'topic-reconnect'
+    topicShare.peercontract = peerContract
     topicShare.publickey = this.swarm.keyPair.publicKey.toString('hex')
     topicShare.peerkey = this.swarm.keyPair.publicKey.toString('hex')
     topicShare.prime = true
     topicShare.topic = topicGeneration
     topicShare.codename = codeName
     topicShare.data = topicGeneration
+    console.log('server Peer TOPIC prepare')
+    console.log(topicShare)
     this.emit('topic-formed-save', topicShare)
     // inform peer that topic has been created
     // match peer contract key to publickey live
-    this.emit('warmpeer-match', publickey, topicShare)
+    this.emit('warmpeer-match', peerContract, topicShare)
   }
 
   /**
@@ -859,6 +871,8 @@ class NetworkPeers extends EventEmitter {
    * @method completePeerRelationship
    */
    completePeerRelationship = function (liveKey, topicContext) {
+    // update peer contract to store topic and status set
+    this.emit('peer-topic-set', topicContext)
       if (this.peerChannels[liveKey]) this.peerChannels[liveKey].send(topicContext)
   }
 

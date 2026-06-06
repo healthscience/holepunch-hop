@@ -24,6 +24,7 @@ class HolepunchWorker extends EventEmitter {
   constructor(storeName) {
     super()
     this.hello = 'holepunch'
+    this.Peers = {}
     this.peerStore = ''
     this.store = {}
     this.swarm = {}
@@ -170,6 +171,14 @@ class HolepunchWorker extends EventEmitter {
       data.prime = false
       this.emit('peer-topic-update', data)    
     })
+
+    this.Peers.on('peer-topic-set', async (data) => {
+      console.log('peer set topic and need update peer contract, alrady sent to other peer')
+      // keep track of topic info
+      this.topicExhange.push(data)
+      // this.emit('peer-topic-save', data)
+    })
+
     // reconnect topic peer id
     this.Peers.on('peer-reconnect-topic-id', (peerIn, data) => {
       // update status to live
@@ -179,7 +188,7 @@ class HolepunchWorker extends EventEmitter {
       let codeNameInform = {}
       codeNameInform.type = 'peer-codename-inform'
       codeNameInform.action = 'set'
-      codeNameInform.data = { inviteCode: '' , publickey: peerMatch.key }
+      codeNameInform.data = { inviteCode: '' , peercontract: peerMatch }
       this.emit('invite-live-peer', codeNameInform)
     })
     // peer reconnection topic ie. able to reconnect again
@@ -248,12 +257,14 @@ class HolepunchWorker extends EventEmitter {
       // this.warmPeers.push(peerId)
       this.emit('peer-incoming-save', peerId)
     })
+    
     // peer live on network?
     this.Peers.on('peer-live-network', (data) => {
       let peerLive = {}
-      peerLive.publickey = data
+      peerLive.peercontract = data
       this.emit('peer-live-notify', peerLive)
     })
+
     this.Peers.on('peer-disconnect', (data) => {
       this.emit('peer-disconnect-notify', data)
     })
@@ -349,10 +360,10 @@ class HolepunchWorker extends EventEmitter {
     } else if (message.action === 'retry') {
       let peerDefaults = this.Peers.peerMatchTopic(message.data.key)
       // this.Peers.discoveryMatch(message.data.key)
-      if (message.data.value.settopic === true) {
-        this.Peers.topicConnect(message.data.key, message.data.value.topic)
+      if (message.data.value.concept.settopic === true) {
+        this.Peers.topicConnect(message.data.key, message.data.value.concept.topic)
       } else {
-        this.Peers.topicListen(message.data.value.topic, message.data.key)
+        this.Peers.topicListen(message.data.value.concept.topic, message.data.key)
       }
     } else if (message.action === 'peer-closed') {
       this.flushConnections()
@@ -429,6 +440,11 @@ class HolepunchWorker extends EventEmitter {
     }
   }
 
+  /**
+   * 
+   * @method matchWarmSaveKey
+   *
+  */
   matchWarmSaveKey = function (saveKey) {
     let keyLive = {}
     for (let peerSav of this.warmPeers) {
@@ -439,6 +455,11 @@ class HolepunchWorker extends EventEmitter {
     return keyLive
   }
 
+  /**
+   * 
+   * @method matchWarmSaveLiveKey
+   *
+  */
   matchWarmSaveLiveKey = function (saveKey) {
     let keyLive = {}
     for (let peerSav of this.warmPeers) {
@@ -486,15 +507,15 @@ class HolepunchWorker extends EventEmitter {
   topicSaveReturn = function (data) {
     let updateTopic = []
     for (let ctopic of this.topicExhange) {
-      if (ctopic.key === data.publickey) {
+      if (ctopic.peercontract === data.key.toString('hex')) {
         this.emit('peer-reconnect-topic-notify', ctopic)
         // update saved contract to add topic
-        this.emit('peer-topic-update', ctopic)
+        this.emit('peer-topic-save', ctopic)
       } else {
         updateTopic.push(ctopic)
       }
     }
-    this.tpiocSaveReturn = updateTopic
+    this.topicExhange = updateTopic
   }
 
   /**
