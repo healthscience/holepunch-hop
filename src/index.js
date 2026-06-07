@@ -422,7 +422,7 @@ class HolepunchWorker extends EventEmitter {
         let codeNameInform = {}
         codeNameInform.type = 'peer-codename-inform'
         codeNameInform.action = 'set'
-        codeNameInform.data = { inviteCode: '' , publickey: data }
+        codeNameInform.data = { inviteCode: '' , peercontract: peerMatch }
         // in form beebee 
         this.emit('invite-live-peer', codeNameInform)
         // send topic to allow peer to reconnect

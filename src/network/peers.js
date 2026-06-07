@@ -86,13 +86,10 @@ class NetworkPeers extends EventEmitter {
     this.peerNetwork = peerNetwork
     for (let sPeer of this.peerNetwork) {
       let hexKey = sPeer.key.toString('hex')
-      console.log(hexKey)
       if (sPeer.value.concept.settopic === true) {
-        console.log('peer server')
         // client role  need to pass on peerUniqueID
         this.topicConnect(hexKey, sPeer.value.concept.topic)
       } else {
-        console.log('peer client')
         // server role
         this.topicListen(sPeer.value.concept.topic, hexKey)
       }
@@ -127,21 +124,8 @@ class NetworkPeers extends EventEmitter {
     this.swarm.on('connection', (conn, info) => {
       const publicKey = info.publicKey.toString('hex')
       this.peerConnect[publicKey] = conn
-      const connectionInfo = this.prepareConnectionInfo(info, publicKey)
-      // Determine which path to take
-      if (connectionInfo.discoveryTopicInfo.firstTime === false) {
-        this.handleReconnection(conn, info, connectionInfo)
-      } else if (connectionInfo.discoveryTopicInfo.firstTime === true) {
-        this.handleFirstTimeConnection(conn, info, connectionInfo)
-      } else {
-        // need to differenciate between first time and reconnect
-        this.peerSwitchLiveID.push({ publicKey: publicKey, discoveryTopicInfo: connectionInfo })
-      }
-      
-      // Common setup
-      this.store.replicate(conn);
 
-      // process network message
+    // process network message
       const mux = Protomux.from(conn)
       const channel = mux.createChannel({
         protocol: 'holepunch-hop'
@@ -156,6 +140,20 @@ class NetworkPeers extends EventEmitter {
 
       this.peerChannels[publicKey] = msg
       channel.open()
+
+      const connectionInfo = this.prepareConnectionInfo(info, publicKey)
+      // Determine which path to take
+      if (connectionInfo.discoveryTopicInfo.firstTime === false) {
+        this.handleReconnection(conn, info, connectionInfo)
+      } else if (connectionInfo.discoveryTopicInfo.firstTime === true) {
+        this.handleFirstTimeConnection(conn, info, connectionInfo)
+      } else {
+        // need to differenciate between first time and reconnect
+        this.peerSwitchLiveID.push({ publicKey: publicKey, discoveryTopicInfo: connectionInfo })
+      }
+      
+      // Common setup
+      this.store.replicate(conn);
 
       conn.on('close', () => {
         delete this.peerConnect[publicKey]
@@ -241,7 +239,7 @@ class NetworkPeers extends EventEmitter {
       roleContext.roletaken = roleType
       // first time cheeck for data long with it?
       this.dataFlowCheck(publicKeylive, 'first') // only use if chart data  becoming obsolete
-      // this.emit('connect-warm-first', roleContext)
+      this.emit('connect-warm-first', roleContext)
     }
 }
 
@@ -459,7 +457,7 @@ class NetworkPeers extends EventEmitter {
       let roleContext = {}
       roleContext.publickey = data.data.peerkey
       roleContext.roletaken = 'server'
-      this.emit('connect-warm-first', roleContext)
+      // this.emit('connect-warm-first', roleContext)
     }
   }
 
@@ -508,7 +506,7 @@ class NetworkPeers extends EventEmitter {
     // first match live pubkey to topic and then use topic to get original
     let peerSettings = {}
     for (let savePeer of this.peerNetwork) {
-      if (savePeer.key === pubKey) {
+      if (savePeer.key.toString('hex') === pubKey) {
         peerSettings = savePeer
       }
     }
@@ -696,7 +694,10 @@ class NetworkPeers extends EventEmitter {
     } else if (nodeRole === 'client') {
       topicList = this.topicHolder
     }
-    let peerContractKey = topicList[0].peerKey
+    let peerContractKey = '' 
+    if (topicList.length > 0) {
+      peerContractKey = topicList[0].peerKey
+    }
     // previous info at hand 
     let firstTime = false
     let emptyHolder = false
@@ -719,7 +720,7 @@ class NetworkPeers extends EventEmitter {
       let keyMatchTopic = false
       if (topicList.length > 0) {
         for (let topicE of topicList) {
-          if (topicE.livePubkey === peerContractKey) { //publicKey) {
+          if (topicE.livePubkey === peerContractKey) {
             keyMatchTopic = true
           }
         }
@@ -858,8 +859,7 @@ class NetworkPeers extends EventEmitter {
     topicShare.topic = topicGeneration
     topicShare.codename = codeName
     topicShare.data = topicGeneration
-    console.log('server Peer TOPIC prepare')
-    console.log(topicShare)
+
     this.emit('topic-formed-save', topicShare)
     // inform peer that topic has been created
     // match peer contract key to publickey live
