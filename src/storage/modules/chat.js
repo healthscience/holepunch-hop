@@ -10,8 +10,8 @@ class ChatModule {
    * save chat history
    * @method saveBentochat
    */
-  saveBentochat = async function (chatData) {
-    await this.db.put(chatData.key, chatData.contract)
+  saveDialoguechat = async function (chatData) {
+    await this.db.put(chatData.hash, chatData.contract)
     return true
   }
 
@@ -19,10 +19,10 @@ class ChatModule {
    * delete chat item
    * @method deleteBentochat
    */
-  deleteBentochat = async function (chat) {
+  deleteDialoguechat = async function (chat) {
     await this.db.del(chat.key)
     let deleteInfo = {}
-    deleteInfo.chatid = chat.chatid
+    deleteInfo.id = chat.id
     return deleteInfo
   }
 
@@ -30,16 +30,16 @@ class ChatModule {
    * lookup peer bentospace layout default
    * @method getBentochat
    */
-  getBentochat = async function (key) {
+  getDialoguechat = async function (key) {
     const nodeData = await this.db.get(key)
     return nodeData
   }
 
   /**
    * lookup range save chat history
-   * @method getBentochatHistory
+   * @method getDialoguechatHistory
    */
-  getBentochatHistory = async function (lsID, category, range) {
+  getDialoguechatHistory = async function (lsID, category, range) {
     const { gt, lt } = this.crypto.getRange(lsID, category)
 
     const chathistoryData = this.db.createReadStream({

@@ -306,10 +306,10 @@ class HyperBee extends EventEmitter {
   peerResultsItem = (key) => this.Results.peerResultsItem(key)
   deleteResultsItem = (key) => this.Results.deleteResultsItem(key)
 
-  saveBentochat = (data) => this.Chat.saveBentochat(data)
-  deleteBentochat = (data) => this.Chat.deleteBentochat(data)
-  getBentochat = (key) => this.Chat.getBentochat(key)
-  getBentochatHistory = (lsID, category, range) => this.Chat.getBentochatHistory(lsID, category, range)
+  saveDialoguechat = (data) => this.Chat.saveDialoguechat(data)
+  deleteDialoguechat = (data) => this.Chat.deleteDialoguechat(data)
+  getDialoguechat = (key) => this.Chat.getDialoguechat(key)
+  getDialoguechatHistory = (lsID, category, range) => this.Chat.getDialoguechatHistory(lsID, category, range)
 
   saveHeliClock = (data) => this.Clock.saveHeliClock(data)
   deleteHeliClock = (data) => this.Clock.deleteHeliClock(data)
