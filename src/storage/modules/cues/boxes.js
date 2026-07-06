@@ -40,8 +40,7 @@ class BoxesModule {
     })
     let boxData = []
     for await (const { key, value } of boxHistory) {
-      let hexKey = key.toString('hex')
-      boxData.push({ hexKey, value })
+      boxData.push({ key, value })
     }
     return boxData
   }

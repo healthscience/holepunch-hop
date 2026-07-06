@@ -39,8 +39,7 @@ class CuesModule {
     })
     let cuesData = []
     for await (const { key, value } of cuesHistory) {
-      let hexKey = key.toString('hex')
-      cuesData.push({ hexKey, value })
+      cuesData.push({ key, value })
     }
     return cuesData
   }

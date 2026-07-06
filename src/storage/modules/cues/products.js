@@ -40,7 +40,7 @@ class ProductsModule {
     })
     let cuesData = []
     for await (const { key, value } of cuesHistory) {
-      cuesData.push({ hexKey, value })
+      cuesData.push({ key, value })
     }
     return cuesData
   }

@@ -50,8 +50,7 @@ class ClockModule {
     })
     let clockData = []
     for await (const { key, value } of clockhistoryData) {
-      let hexKey = key.toString('hex')
-      clockData.push({ hexKey, value })
+      clockData.push({ key, value })
     }
     return clockData
   }
