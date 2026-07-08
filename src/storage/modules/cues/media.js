@@ -12,7 +12,7 @@ class MediaModule {
    * @method saveMedia
    */
   saveMedia = async function (mediaInfo) {
-    await this.db.put(mediaInfo.key, mediaInfo.data)
+    await this.db.put(mediaInfo.hash, mediaInfo.contract)
     return mediaInfo.data
   }
 

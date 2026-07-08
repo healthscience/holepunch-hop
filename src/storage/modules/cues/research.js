@@ -13,7 +13,7 @@ class ResearchModule {
    * @method saveResearch
    */
   saveResearch = async function (cuesInfo) {
-    await this.dbResearch.put(cuesInfo.key, cuesInfo.data)
+    await this.dbResearch.put(cuesInfo.hash, cuesInfo.contract)
     return cuesInfo.data
   }
 

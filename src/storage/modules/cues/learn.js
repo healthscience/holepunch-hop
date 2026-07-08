@@ -12,7 +12,7 @@ class LearnModule {
    * @method saveBeeBeeLearn
    */
   saveBeeBeeLearn = async function (teachSession) {
-    await this.db.put(teachSession.key, teachSession.session)
+    await this.db.put(teachSession.hash, teachSession.session)
     return teachSession.session
   }
 

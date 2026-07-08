@@ -12,7 +12,7 @@ class OrgoModule {
    * @method saveOrgo
    */
   saveOrgo = async function (orgoInfo) {
-    await this.db.put(orgoInfo.key, orgoInfo.contract)
+    await this.db.put(orgoInfo.hash, orgoInfo.contract)
     return orgoInfo
   }
 

@@ -11,7 +11,7 @@ class SpacesModule {
    * @method saveSpaceHistory
    */
   saveSpaceHistory = async function (spaceContract) {
-    await this.db.put(spaceContract.key, spaceContract.contract)
+    await this.db.put(spaceContract.hash, spaceContract.contract)
     return spaceContract
   }
 

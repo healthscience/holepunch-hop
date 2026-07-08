@@ -12,7 +12,7 @@ class MarkersModule {
    * @method saveMarker
    */
   saveMarker = async function (cuesInfo) {
-    await this.db.put(cuesInfo.key, cuesInfo.data)
+    await this.db.put(cuesInfo.hash, cuesInfo.contract)
     return cuesInfo.data
   }
 

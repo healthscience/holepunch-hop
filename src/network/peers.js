@@ -85,6 +85,8 @@ class NetworkPeers extends EventEmitter {
   setupConnectionBegin = function (peerNetwork) {
     this.peerNetwork = peerNetwork
     for (let sPeer of this.peerNetwork) {
+      console.log('sssss')
+      console.log(sPeer)
       let hexKey = sPeer.key.toString('hex')
       if (sPeer.value.concept.settopic === true) {
         // client role  need to pass on peerUniqueID

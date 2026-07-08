@@ -12,7 +12,7 @@ class ModelsModule {
    * @method saveModel
    */
   saveModel = async function (modelInfo) {
-    await this.db.put(modelInfo.key, modelInfo.data)
+    await this.db.put(modelInfo.hash, modelInfo.contract)
     return modelInfo.data
   }
 

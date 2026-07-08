@@ -103,14 +103,16 @@ describe('peer reconnection', () => {
           savedPeerNetworkClient.push({
             key: publicKeyHex,
             value: {
-              name: 'peer2',
-              publickey: publicKeyHex,
-              roletaken: true,
-              longterm: true,
-              settopic: true,
-              topic: topicReconnect,
-              live: false,
-              livePeerkey: ''
+              concept: {
+                name: 'peer2',
+                publickey: publicKeyHex,
+                roletaken: true,
+                longterm: true,
+                settopic: true,
+                topic: topicReconnect,
+                live: false,
+                livePeerkey: ''
+              }
             }
           })
           // Resolve when client connection is established
@@ -135,14 +137,16 @@ describe('peer reconnection', () => {
           savedPeerNetworkServer.push({
             key: publicKeyHex2,
             value: {
-              name: 'peer1',
-              publickey: publicKeyHex2,
-              roletaken: false,
-              longterm: true,
-              settopic: false,
-              topic: topicReconnect,
-              live: false,
-              livePeerkey: ''
+              concept: {
+                name: 'peer1',
+                publickey: publicKeyHex2,
+                roletaken: false,
+                longterm: true,
+                settopic: false,
+                topic: topicReconnect,
+                live: false,
+                livePeerkey: ''
+              }
             }
           })
           
@@ -197,14 +201,16 @@ describe('peer reconnection', () => {
           peerNetworkMock.push({
             key: testConfig.peer1to2.peer1.publicKey,
             value: {
-              name: 'peer1',
-              publickey: testConfig.peer1to2.peer1.publicKey,
-              roletaken: true,
-              longterm: true,
-              settopic: true,
-              topic: 'letitbe',
-              live: false,
-              livePeerkey: testConfig.peer1to2.peer1.publicKey
+              concept: {
+                name: 'peer1',
+                publickey: testConfig.peer1to2.peer1.publicKey,
+                roletaken: true,
+                longterm: true,
+                settopic: true,
+                topic: 'letitbe',
+                live: false,
+                livePeerkey: testConfig.peer1to2.peer1.publicKey
+              }
             }
           })
 

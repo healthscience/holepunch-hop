@@ -147,14 +147,16 @@ describe('Three Peer Connection Tests', () => {
               savedPeerNetworkClient.push({
                 key: publicKeyHex,
                 value: {
-                  name: 'peer2',
-                  publickey: publicKeyHex,
-                  roletaken: true,
-                  longterm: true,
-                  settopic: true,
-                  topic: topicReconnect,
-                  live: false,
-                  livePeerkey: ''
+                  concept: {
+                    name: 'peer2',
+                    publickey: publicKeyHex,
+                    roletaken: true,
+                    longterm: true,
+                    settopic: true,
+                    topic: topicReconnect,
+                    live: false,
+                    livePeerkey: ''
+                  }
                 }
               })
             // process network message
@@ -197,14 +199,16 @@ describe('Three Peer Connection Tests', () => {
             savedPeerNetworkServer.push({
               key: publicKeyHex2,
               value: {
-                name: 'peer1',
-                publickey: publicKeyHex2,
-                roletaken: false,
-                longterm: true,
-                settopic: false,
-                topic: topicReconnect,
-                live: false,
-                livePeerkey: ''
+                concept: {
+                  name: 'peer1',
+                  publickey: publicKeyHex2,
+                  roletaken: false,
+                  longterm: true,
+                  settopic: false,
+                  topic: topicReconnect,
+                  live: false,
+                  livePeerkey: ''
+                }
               }
             })
             // process network message

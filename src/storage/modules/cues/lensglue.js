@@ -12,7 +12,7 @@ class LensglueModule {
    * @method saveLensglue
    */
   saveLensglue = async function (lensglueInfo) {
-    await this.db.put(lensglueInfo.key, lensglueInfo.contract)
+    await this.db.put(lensglueInfo.hash, lensglueInfo.contract)
     return lensglueInfo
   }
 

@@ -110,14 +110,16 @@ describe('Peer Disconnection Tests', () => {
           peerNetworkMock.push({
             key: testConfig.peer1to2.peer1.publicKey,
             value: {
-              name: 'peer1',
-              publickey: testConfig.peer1to2.peer1.publicKey,
-              roletaken: true,
-              longterm: true,
-              settopic: true,
-              topic: 'letitbe',
-              live: false,
-              livePeerkey: testConfig.peer1to2.peer1.publicKey
+              concept: {
+                name: 'peer1',
+                publickey: testConfig.peer1to2.peer1.publicKey,
+                roletaken: true,
+                longterm: true,
+                settopic: true,
+                topic: 'letitbe',
+                live: false,
+                livePeerkey: testConfig.peer1to2.peer1.publicKey
+              }
             }
           })
           

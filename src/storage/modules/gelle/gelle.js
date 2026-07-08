@@ -12,7 +12,7 @@ class GelleModule {
    * @method saveGelle
    */
   saveGelle = async function (gelleInfo) {
-    await this.db.put(gelleInfo.key, gelleInfo.contract)
+    await this.db.put(gelleInfo.hash, gelleInfo.contract)
     return gelleInfo
   }
 
