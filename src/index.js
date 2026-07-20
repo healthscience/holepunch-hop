@@ -78,6 +78,9 @@ class HolepunchWorker extends EventEmitter {
         }
       })
     }
+    if (this.DriveFiles) {
+      this.DriveFiles.crypto = crypto
+    }
   }
 
   /**
@@ -102,7 +105,7 @@ class HolepunchWorker extends EventEmitter {
     
 
     this.BeeData = new BeeWorker(this.store, this.swarm, this.crypto)
-    this.DriveFiles = new DriveWorker(this.store, this.swarm)
+    this.DriveFiles = new DriveWorker(this.store, this.swarm, this.crypto)
     this.Peers = new PeerWorker(this.store, this.swarm)
   }
 

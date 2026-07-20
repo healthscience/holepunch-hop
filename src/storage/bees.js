@@ -404,6 +404,12 @@ class HyperBee extends EventEmitter {
   savePubliclibraryMod = (data) => this.PublicLibrary.savePubliclibraryMod(data)
   getPublicLibraryRef = (id) => this.PublicLibrary.getPublicLibraryRef(id)
   getPublicLibraryMod = (id) => this.PublicLibrary.getPublicLibraryMod(id)
+  putBlobIndex = async (key, value) => {
+    // Save blob metadata into the public library module store
+    // This allows blob resolutions across peers
+    await this.dbPublicLibraryMod.put(key, value)
+    return { key, value }
+  }
   getPublicLibraryRefRange = (lsID, category, range) => this.PublicLibrary.getPublicLibraryRefRange(lsID, category, range)
   getPublicLibraryModRange = (range) => this.PublicLibrary.getPublicLibraryModRange(range)
   getPublicLibraryRefLast = (dp) => this.PublicLibrary.getPublicLibraryRefLast(dp)

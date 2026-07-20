@@ -20,15 +20,17 @@ import * as chrono from 'chrono-node'
 
 class HypDrive extends EventEmitter {
 
-  constructor(core, swarm) {
+  constructor(core, swarm, crypto) {
     super()
     this.hello = 'hyperdrive'
     this.core = core
     this.swarm = swarm
+    this.crypto = crypto
     this.drive = {}
     this.fileUtility = new Fileparser('')
     this.AdapterSqlite = new SqliteAdapter()
     this.dataBase = {}
+    this.activeWriteStreams = {}
     // this.setupHyperdrive()
   }
 
@@ -149,15 +151,15 @@ class HypDrive extends EventEmitter {
    * @method saveSqliteFirst 
    *
   */
-  saveSqliteFirst = async function (path, name, data) {
+  saveSqliteFirst = async function (path, fileData) {
     let fileResponse = {}
     // file input management
     // protocol to save original file
-    let newPathFile = await this.hyperdriveFilesave(path, name, data)
+    let newPathFile = await this.hyperdriveFilesave(path, fileData.name, fileData.data)
     // extract table and then table columns
     // extract out the headers name for columns
-    const parseData = await this.SQLiteSetup(name)
-    fileResponse.filename = name
+    const parseData = await this.SQLiteSetup(fileData.name)
+    fileResponse.filename = fileData.name
     fileResponse.header = parseData.headers
     fileResponse.tables = parseData.tables
     return fileResponse
@@ -238,9 +240,67 @@ class HypDrive extends EventEmitter {
   }
 
   /**
-   * check read the file if save large file
-   * @method checkLargeList
-   *
+   * Save JSON format directly to Hyperdrive
+   * @method hyperdriveJSONSaveSpec
+   */
+  hyperdriveJSONSaveSpec = async function (fileData) {
+    const buffer = Buffer.from(fileData.content, 'utf8')
+    await this.drive.put('/library/' + fileData.name, buffer, {
+      metadata: { type: 'application/json' }
+    })
+    return { filename: '/library/' + fileData.name }
+  }
+
+  /**
+   * Save Binary/Base64 to Hyperdrive and handle Orgo/Gelle blob indexing
+   * @method hyperdriveBinarySaveSpec
+   */
+  hyperdriveBinarySaveSpec = async function (fileData) {
+    const content = fileData.content
+    const base64Data = content.substring(content.indexOf(',') + 1)
+    const decodedBuffer = Buffer.from(base64Data, 'base64')
+     
+    // write to drive at the content-addressed path
+    await this.drive.put(fileData.path.blobPath, decodedBuffer, {
+      metadata: { type: fileData.path.metaData }
+    })
+        
+    return true
+  }
+
+  /**
+   * Manage Chunked Streams for large files
+   * @method hyperdriveStreamSaveSpec
+   */
+  hyperdriveStreamSaveSpec = async function (streamData) {
+    const path = '/library/' + streamData.file.name
+    
+    if (streamData.firstchunk === true) {
+      this.activeWriteStreams[path] = this.drive.createWriteStream(path, {
+        metadata: { type: streamData.type }
+      })
+    }
+    
+    const activeWriteStream = this.activeWriteStreams[path]
+    if (!activeWriteStream) {
+      throw new Error('Stream not initialized for ' + path)
+    }
+    
+    if (streamData.chunk) {
+      const rawChunk = streamData.chunk.substring(streamData.chunk.indexOf(',') + 1)
+      const buffer = Buffer.from(rawChunk, 'base64')
+      activeWriteStream.write(buffer)
+    }
+    
+    if (streamData.lastchunk === true || streamData.offset >= streamData.filesize) {
+      activeWriteStream.end()
+      delete this.activeWriteStreams[path]
+    }
+    
+    return { filename: path }
+  }
+
+  /**
   */
   checkLargeList = async function (path) {
     let localthis = this
