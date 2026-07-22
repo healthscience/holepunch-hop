@@ -70,7 +70,7 @@ class HolepunchWorker extends EventEmitter {
         "Ledger", "Chat", "Clock", "Spaces", "Cues",
         "Boxes", "Models", "Research", "Markers",
         "Products", "Media", "Learn", "Lifestrap",
-        "Orgo", "Gelle", "Lensglue", "Besearch"
+        "Orgo", "Gelle", "Exocue", "Lensglue", "Besearch"
       ]
       modules.forEach(mod => {
         if (this.BeeData[mod]) {

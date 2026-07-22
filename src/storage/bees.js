@@ -31,6 +31,7 @@ import LearnModule from './modules/cues/learn.js'
 import LifestrapModule from './modules/lifestrap/lifestrap.js'
 import OrgoModule from './modules/orgo/orgo.js'
 import GelleModule from './modules/gelle/gelle.js'
+import ExoCueModule from './modules/exocue/exocue.js'
 import LensglueModule from './modules/cues/lensglue.js'
 import BesearchModule from './modules/besearch/besearchBee.js'
 
@@ -286,6 +287,7 @@ class HyperBee extends EventEmitter {
     this.Lifestrap = new LifestrapModule(this.dbBentolifestrap, this.crypto)
     this.Orgo = new OrgoModule(this.dbBentoorgo, this.crypto)
     this.Gelle = new GelleModule(this.dbBentogelle, this.crypto)
+    this.Exocue = new ExoCueModule(this.dbBentoexocue, this.crypto)
     this.Lensglue = new LensglueModule(this.dbBentolensglue, this.crypto)
     this.Besearch = new BesearchModule(this.dbBentoresearch, this.dbBesearch, this.crypto)
 
@@ -348,6 +350,12 @@ class HyperBee extends EventEmitter {
   getGelleHistory = (lsID, category, key) => this.Gelle.getGelleHistory(lsID, category, key)
   deleteGelle = (data) => this.Gelle.deleteGelle(data)
   updateGelleLibrary = (data) => this.Gelle.updateGelleModule(data)
+
+  saveExoCue = (data) => this.Exocue.saveExoCue(data)
+  getsaveExoCue = (key) => this.Exocue.getExoCue(key)
+  getsaveExoCueHistory = (lsID, category, key) => this.Exocue.getExoCueHistory(lsID, category, key)
+  deletesaveExoCue = (data) => this.Exocue.deleteExoCue(data)
+  updatesaveExoCueLibrary = (data) => this.Exocue.updateExoCueModule(data)
 
   saveLensglue = (data) => this.Lensglue.saveLensglue(data)
   getLensglue = (key) => this.Lensglue.getLensglue(key)
