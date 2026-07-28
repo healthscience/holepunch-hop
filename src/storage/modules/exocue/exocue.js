@@ -2,6 +2,8 @@
 
 class ExoCueModule {
   constructor(db, crypto) {
+    console.log('exoCue HP')
+    console.log(db)
     this.db = db
     this.crypto = crypto
   }

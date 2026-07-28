@@ -243,6 +243,14 @@ class HyperBee extends EventEmitter {
     await this.dbBentolifestrap.ready()
     beePubkeys.push({store:'bentolifestrap', privacy: 'private', pubkey: b4a.toString(core19.key, 'hex')})
 
+    const core23 = this.store.get({ name: 'bentoexocue' })
+    this.dbBentoexocue = new Hyperbee(core23, {
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
+    })
+    await this.dbBentoexocue.ready()
+    beePubkeys.push({store:'bentoexocue', privacy: 'private', pubkey: b4a.toString(core23.key, 'hex')})
+
     const core20 = this.store.get({ name: 'bentoorgo' })
     this.dbBentoorgo = new Hyperbee(core20, {
       keyEncoding: 'binary',
@@ -352,8 +360,8 @@ class HyperBee extends EventEmitter {
   updateGelleLibrary = (data) => this.Gelle.updateGelleModule(data)
 
   saveExoCue = (data) => this.Exocue.saveExoCue(data)
-  getsaveExoCue = (key) => this.Exocue.getExoCue(key)
-  getsaveExoCueHistory = (lsID, category, key) => this.Exocue.getExoCueHistory(lsID, category, key)
+  getExoCue = (key) => this.Exocue.getExoCue(key)
+  getExoCueHistory = (lsID, category, key) => this.Exocue.getExoCueHistory(lsID, category, key)
   deletesaveExoCue = (data) => this.Exocue.deleteExoCue(data)
   updatesaveExoCueLibrary = (data) => this.Exocue.updateExoCueModule(data)
 
