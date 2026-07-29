@@ -32,6 +32,7 @@ import LifestrapModule from './modules/lifestrap/lifestrap.js'
 import OrgoModule from './modules/orgo/orgo.js'
 import GelleModule from './modules/gelle/gelle.js'
 import ExoCueModule from './modules/exocue/exocue.js'
+import OverlayModule from './modules/overaly/overlayMakeContract.js'
 import LensglueModule from './modules/cues/lensglue.js'
 import BesearchModule from './modules/besearch/besearchBee.js'
 
@@ -251,6 +252,15 @@ class HyperBee extends EventEmitter {
     await this.dbBentoexocue.ready()
     beePubkeys.push({store:'bentoexocue', privacy: 'private', pubkey: b4a.toString(core23.key, 'hex')})
 
+
+    const core24 = this.store.get({ name: 'bentooverlay' })
+    this.dbBentooverlay = new Hyperbee(core24, {
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
+    })
+    await this.dbBentooverlay.ready()
+    beePubkeys.push({store:'bentooverlay', privacy: 'private', pubkey: b4a.toString(core24.key, 'hex')})
+
     const core20 = this.store.get({ name: 'bentoorgo' })
     this.dbBentoorgo = new Hyperbee(core20, {
       keyEncoding: 'binary',
@@ -295,6 +305,7 @@ class HyperBee extends EventEmitter {
     this.Lifestrap = new LifestrapModule(this.dbBentolifestrap, this.crypto)
     this.Orgo = new OrgoModule(this.dbBentoorgo, this.crypto)
     this.Gelle = new GelleModule(this.dbBentogelle, this.crypto)
+    this.OverlayData = new OverlayModule(this.dbBentooverlay, this.crypto)
     this.Exocue = new ExoCueModule(this.dbBentoexocue, this.crypto)
     this.Lensglue = new LensglueModule(this.dbBentolensglue, this.crypto)
     this.Besearch = new BesearchModule(this.dbBentoresearch, this.dbBesearch, this.crypto)
@@ -364,6 +375,12 @@ class HyperBee extends EventEmitter {
   getExoCueHistory = (lsID, category, key) => this.Exocue.getExoCueHistory(lsID, category, key)
   deletesaveExoCue = (data) => this.Exocue.deleteExoCue(data)
   updatesaveExoCueLibrary = (data) => this.Exocue.updateExoCueModule(data)
+
+  saveOverlay = (data) => this.OverlayData.saveOverlay(data)
+  getOverlay = (key) => this.OverlayData.getOverlay(key)
+  getOverlayHistory = (lsID, category, key) => this.OverlayData.getOverlayHistory(lsID, category, key)
+  deletesaveOverlay = (data) => this.OverlayData.deleteOverlay(data)
+  updatesaveOverlayLibrary = (data) => this.OverlayData.updateOverlayModule(data)
 
   saveLensglue = (data) => this.Lensglue.saveLensglue(data)
   getLensglue = (key) => this.Lensglue.getLensglue(key)
