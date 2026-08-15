@@ -10,10 +10,10 @@
 */
 import EventEmitter from 'events'
 import fs from 'fs'
-import PeerDrive from './hyperdrive/private-drive.js'
-import PublicDrive from './hyperdrive/public-drive.js'
-import Fileparser from './fileParser.js'
-import SqliteAdapter from '../adapters/sqliteDatabase.js'
+import Hyperdrive from 'hyperdrive'
+import b4a from 'b4a'
+import Fileparser from '.././fileParser.js'
+import SqliteAdapter from '../../adapters/sqliteDatabase.js'
 import csv from 'csv-parser'
 import { DateTime, Interval } from 'luxon'
 import * as chrono from 'chrono-node'
@@ -26,16 +26,11 @@ class HypDrive extends EventEmitter {
     this.core = core
     this.swarm = swarm
     this.crypto = crypto
-    this.drive = {}
+    this.drivePub = {}
     this.fileUtility = new Fileparser('')
     this.AdapterSqlite = new SqliteAdapter()
     this.dataBase = {}
     this.activeWriteStreams = {}
-    // private and public file storage
-    const privateStore = this.core.namespace('private-drive')
-    const publicStore = this.core.namespace('public-drive')
-    this.peerDrive = new PeerDrive(privateStore, swarm, crypto)
-    this.publicDrive = new PublicDrive(publicStore, swarm, crypto)
   }
 
     /**
@@ -47,6 +42,52 @@ class HypDrive extends EventEmitter {
     this.wsocket = ws
   }
 
+  /**
+   * setup hyperdrive protocol
+   * @method setupHyperdrive
+   *
+  */
+  setupHyperdrive = async function () {
+
+    this.drivePub = new Hyperdrive(this.core)
+    await this.drivePub.ready()
+    let startDrivePubkey = {}
+    startDrivePubkey.type = 'account'
+    startDrivePubkey.action = 'drive-pubkey'
+    startDrivePubkey.data =  b4a.toString(this.drivePub.key, 'hex')
+    return true
+  }
+
+  /**
+   * 1. Simple Directory Listing (Non-recursive)
+   * Returns array of file and directory names at a specific path.
+   */
+  async getDirectoryList (folderPath = '/') {
+    // Queries metadata index only; fetches 0 bytes of file content
+    const entries = await this.drivePub.readdir(folderPath);
+    return entries;
+  }
+
+  /**
+   * 2. Full Drive Traversal (Recursive Scan)
+   * Streams metadata objects for every file without fetching raw blobs.
+   */
+  async getAllFileMetadata(prefixPath = '/') {
+    const filePaths = [];
+
+    // drive.list() iterates directly over the underlying metadata Hyperbee
+    for await (const entry of this.drivePub.list(prefixPath)) {
+      filePaths.push({
+        path: entry.key,          // e.g., '/conduction/solar-day-102.bin'
+        size: entry.value.blob.byteLength, // File size in bytes
+        executable: entry.value.executable,
+        customMetadata: entry.value.metadata // Optional user metadata attached to entry
+      });
+    }
+
+    return filePaths;
+  }
+
 
   /**
    * hyperdrive stream write
@@ -55,14 +96,14 @@ class HypDrive extends EventEmitter {
    */
   hyperdriveWritestream = async function (fileData) {
     /* let localthis = this
-    const ws = this.drive.createWriteStream('/blob.txt')
+    const ws = this.drivePub.createWriteStream('/blob.txt')
 
     this.wsocketwrite('Hello, ')
     this.wsocketwrite('world!')
     this.wsocketend()
 
     this.wsocketon('close', function () {
-      const rs = localthis.drive.createReadStream('/blob.txt')
+      const rs = localthis.drivePub.createReadStream('/blob.txt')
       rs.pipe(process.stdout) // prints Hello, world!
     }) */
   }
@@ -73,7 +114,7 @@ class HypDrive extends EventEmitter {
    *
   */
   listFilesFolder = async function (folder) {
-    const stream = await this.drive.list(folder) //  [options])
+    const stream = await this.drivePub.list(folder) //  [options])
     return stream
   }
 
@@ -109,7 +150,7 @@ class HypDrive extends EventEmitter {
   hyperdriveJSONsaveBlind = async function (name, data) {
     // simple JSON file to save from blind input form beebee
     let hyperdrivePath = 'json/' + name
-    let confirmSave = await this.drive.put(hyperdrivePath, data)
+    let confirmSave = await this.drivePub.put(hyperdrivePath, data)
     return confirmSave
   }
 
@@ -122,7 +163,7 @@ class HypDrive extends EventEmitter {
     // extract header info first
     let headerInfo = this.fileUtility.webCSVparse(fData)
     let hyperdrivePath = 'csv/' + fData.data[0].file
-    let confirmSave = await this.drive.put(hyperdrivePath, fData.data[0].content)
+    let confirmSave = await this.drivePub.put(hyperdrivePath, fData.data[0].content)
     let saveStatus = {}
     saveStatus.save = confirmSave
     saveStatus.headerinfo = headerInfo
@@ -171,7 +212,7 @@ class HypDrive extends EventEmitter {
     // var buffer = Buffer.from(dataUrl, 'base64')
     fs.writeFileSync('data.csv', dataUrl)
     if (path === 'text/csv') {
-      await this.drive.put(hyperdrivePath, fs.readFileSync('data.csv', 'utf-8'))
+      await this.drivePub.put(hyperdrivePath, fs.readFileSync('data.csv', 'utf-8'))
       // now remove the temp file for converstion
       fs.unlink('data.csv', (err => {
         if (err) console.log(err);
@@ -180,12 +221,12 @@ class HypDrive extends EventEmitter {
         }
       }))
     } else if (path === 'json') {
-      await this.drive.put(hyperdrivePath, data)
+      await this.drivePub.put(hyperdrivePath, data)
     } else if (path === 'sqlite') {
       var dataUrl = data.split(",")[1]
       var buffer = Buffer.from(dataUrl, 'base64')
       fs.writeFileSync('tempsql.db', buffer)
-      await this.drive.put(hyperdrivePath, fs.readFileSync('tempsql.db'))
+      await this.drivePub.put(hyperdrivePath, fs.readFileSync('tempsql.db'))
       fs.unlink('tempsql.db', (err => {
         if (err) console.log(err);
         else {
@@ -204,8 +245,8 @@ class HypDrive extends EventEmitter {
   hyperdriveStreamSave = async function (path, data, first) {
     let ws
     if (first === true) {
-      // await this.drive.del(path)
-      ws = this.drive.createWriteStream(path)
+      // await this.drivePub.del(path)
+      ws = this.drivePub.createWriteStream(path)
       ws.write(data)
     }
     // use listener
@@ -229,12 +270,42 @@ class HypDrive extends EventEmitter {
    */
   hyperdriveJSONSaveSpec = async function (fileData) {
     const buffer = Buffer.from(fileData.content, 'utf8')
-    await this.drive.put('/library/' + fileData.name, buffer, {
+    await this.drivePub.put('/library/' + fileData.name, buffer, {
       metadata: { type: 'application/json' }
     })
     return { filename: '/library/' + fileData.name }
   }
 
+  /**
+   * Save Binary/Base64/JSON to Hyperdrive safely
+   * @method hyperdriveBinarySaveSpec
+   */
+  hyperdriveBinarySaveSpec = async function (fileData) {
+    let decodedBuffer
+    const content = fileData.content
+
+    if (b4a.isBuffer(content) || content instanceof Uint8Array) {
+      // 1. Raw buffer passed directly
+      decodedBuffer = content
+    } else if (typeof content === 'string' && content.startsWith('data:')) {
+      // 2. Base64 Data URL from readAsDataURL() (Images, SQLite, PDFs, etc.)
+      const base64Data = content.substring(content.indexOf(',') + 1)
+      decodedBuffer = b4a.from(base64Data, 'base64')
+    } else if (typeof content === 'object') {
+      // 3. JavaScript object
+      decodedBuffer = b4a.from(JSON.stringify(content), 'utf-8')
+    } else {
+      // 4. Plain UTF-8 JSON text from readAsText()
+      decodedBuffer = b4a.from(content, 'utf-8')
+    }
+
+    // Write clean bytes to Hyperdrive content-addressed path
+    await this.drivePub.put(fileData.path.blobPath, decodedBuffer, {
+      metadata: { type: fileData.path.metaData }
+    })
+
+    return true
+  }
 
   /**
    * Manage Chunked Streams for large files
@@ -244,7 +315,7 @@ class HypDrive extends EventEmitter {
     const path = '/library/' + streamData.file.name
     
     if (streamData.firstchunk === true) {
-      this.activeWriteStreams[path] = this.drive.createWriteStream(path, {
+      this.activeWriteStreams[path] = this.drivePub.createWriteStream(path, {
         metadata: { type: streamData.type }
       })
     }
@@ -294,7 +365,7 @@ class HypDrive extends EventEmitter {
    *
   */
   checkLargeSave = async function (path) {
-    const rs = this.drive.createReadStream(path)
+    const rs = this.drivePub.createReadStream(path)
     for await (const chunk of rs) {
      console.log('rs', chunk.toString()) // => <Buffer ..>
     }
@@ -347,7 +418,7 @@ class HypDrive extends EventEmitter {
    */
   hyperdriveReadfile = async function (path) {
     // File reads
-    const entry = await this.drive.get(path)
+    const entry = await this.drivePub.get(path)
     entry.on('data',  function(chunk) {
     })
     return true
@@ -360,8 +431,8 @@ class HypDrive extends EventEmitter {
   */
   getFile = async function (path) {
     // File reads to buffer and recreate file
-    // const bufFromGet2 = await this.drive.get(path)
-    const fileData = await this.drive.get(path)
+    // const bufFromGet2 = await this.drivePub.get(path)
+    const fileData = await this.drivePub.get(path)
 
     return fileData
   }
@@ -373,9 +444,9 @@ class HypDrive extends EventEmitter {
   */
   hyperdriveLocalfile = async function (path) {
     // File reads to buffer and recreate file
-    // const bufFromGet2 = await this.drive.get(path)
-    const { value: entry } = await this.drive.entry(path)
-    const blobs = await this.drive.getBlobs()
+    // const bufFromGet2 = await this.drivePub.get(path)
+    const { value: entry } = await this.drivePub.entry(path)
+    const blobs = await this.drivePub.getBlobs()
     const bufFromEntry = await blobs.get(entry.blob)
     let localFile = 'localdb'
     fs.writeFileSync(localFile, bufFromEntry)
@@ -391,9 +462,9 @@ class HypDrive extends EventEmitter {
     console.log('hyperdreive----')
     console.log(path)
     // File reads to buffer and recreate file
-    // const bufFromGet2 = await this.drive.get(path)
-    const { value: entry } = await this.drive.entry(path)
-    const blobs = await this.drive.getBlobs()
+    // const bufFromGet2 = await this.drivePub.get(path)
+    const { value: entry } = await this.drivePub.entry(path)
+    const blobs = await this.drivePub.getBlobs()
     const bufFromEntry = await blobs.get(entry.blob)
     let localFile = 'localcsv'
     fs.writeFileSync(localFile, bufFromEntry)
@@ -509,12 +580,12 @@ class HypDrive extends EventEmitter {
   *
   */
   readCSVfile = async function (fpath, headerSet) {
-    // const rs2 = this.drive.createReadStream(fpath) // 'text/csv/testshed11530500.csv') // '/blob.txt')
+    // const rs2 = this.drivePub.createReadStream(fpath) // 'text/csv/testshed11530500.csv') // '/blob.txt')
     // rs2.pipe(process.stdout) // prints file content
-    const rs = this.drive.createReadStream(fpath) // 'text/csv/testshed11530500.csv') // '/blob.txt')
+    const rs = this.drivePub.createReadStream(fpath) // 'text/csv/testshed11530500.csv') // '/blob.txt')
     return new Promise((resolve, reject) => {
       const results = []
-      // this.drive.createReadStream(fpath)
+      // this.drivePub.createReadStream(fpath)
         rs.pipe(csv({ headers: headerSet.headerset, separator: headerSet.delimiter, skipLines: headerSet.dataline }))
         .on('data', (data) => results.push(data))
         .on('end', () => {
@@ -529,7 +600,7 @@ class HypDrive extends EventEmitter {
   *
   */
   readCSVfileStream = async function (fpath) {
-    const rs = this.drive.createReadStream(fpath, { start: 0, end: 120 })
+    const rs = this.drivePub.createReadStream(fpath, { start: 0, end: 120 })
       return new Promise((resolve, reject) => {
       let results = []
         rs.on('data', (data) => results.push(data.toString()))
@@ -546,9 +617,9 @@ class HypDrive extends EventEmitter {
   */
   hyperdriveReplicate = async function (type) {
     // Swarm on the network
-    await this.client.replicate(this.drive)
+    await this.client.replicate(this.drivePub)
     await new Promise(r => setTimeout(r, 3e3)) // just a few seconds
-    await this.client.network.configure(this.drive, {announce: false, lookup: false})
+    await this.client.network.configure(this.drivePub, {announce: false, lookup: false})
   }
 
 }

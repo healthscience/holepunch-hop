@@ -70,7 +70,7 @@ class HolepunchWorker extends EventEmitter {
         "Ledger", "Chat", "Clock", "Spaces", "Cues",
         "Boxes", "Models", "Research", "Markers",
         "Products", "Media", "Learn", "Lifestrap",
-        "Orgo", "Gelle", "Exocue", "Lensglue", "Besearch"
+        "Orgo", "Gelle", "Exocue", 'OverlayData', "Lensglue", "Besearch"
       ]
       modules.forEach(mod => {
         if (this.BeeData[mod]) {
@@ -115,7 +115,8 @@ class HolepunchWorker extends EventEmitter {
    *
   */
   activateHypercores = async function () {
-    await this.DriveFiles.setupHyperdrive()
+    await this.DriveFiles.peerDrive.setupHyperdrive()
+    await this.DriveFiles.publicDrive.setupHyperdrive()
     await this.BeeData.setupHyperbee()
     this.Peers.networkKeys()
     this.emit('hcores-active')
@@ -138,6 +139,7 @@ class HolepunchWorker extends EventEmitter {
    *
   */
   startStores = async function () {
+    console.log('start stores 111')
     await this.activateHypercores()
   }
 

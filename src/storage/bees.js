@@ -32,7 +32,7 @@ import LifestrapModule from './modules/lifestrap/lifestrap.js'
 import OrgoModule from './modules/orgo/orgo.js'
 import GelleModule from './modules/gelle/gelle.js'
 import ExoCueModule from './modules/exocue/exocue.js'
-import OverlayModule from './modules/overaly/overlayMakeContract.js'
+import OverlayModule from './modules/overlay/overlayData.js'
 import LensglueModule from './modules/cues/lensglue.js'
 import BesearchModule from './modules/besearch/besearchBee.js'
 

@@ -10,10 +10,10 @@
 */
 import EventEmitter from 'events'
 import fs from 'fs'
-import PeerDrive from './hyperdrive/private-drive.js'
-import PublicDrive from './hyperdrive/public-drive.js'
-import Fileparser from './fileParser.js'
-import SqliteAdapter from '../adapters/sqliteDatabase.js'
+import Hyperdrive from 'hyperdrive'
+import b4a from 'b4a'
+import Fileparser from '../fileParser.js'
+import SqliteAdapter from '../../adapters/sqliteDatabase.js'
 import csv from 'csv-parser'
 import { DateTime, Interval } from 'luxon'
 import * as chrono from 'chrono-node'
@@ -31,11 +31,6 @@ class HypDrive extends EventEmitter {
     this.AdapterSqlite = new SqliteAdapter()
     this.dataBase = {}
     this.activeWriteStreams = {}
-    // private and public file storage
-    const privateStore = this.core.namespace('private-drive')
-    const publicStore = this.core.namespace('public-drive')
-    this.peerDrive = new PeerDrive(privateStore, swarm, crypto)
-    this.publicDrive = new PublicDrive(publicStore, swarm, crypto)
   }
 
     /**
@@ -47,6 +42,52 @@ class HypDrive extends EventEmitter {
     this.wsocket = ws
   }
 
+  /**
+   * setup hyperdrive protocol
+   * @method setupHyperdrive
+   *
+  */
+  setupHyperdrive = async function () {
+    this.drive = new Hyperdrive(this.core)
+    await this.drive.ready()
+    let conductionDrivePubkey = {}
+    conductionDrivePubkey.type = 'account'
+    conductionDrivePubkey.action = 'drive-conduction-pubkey'
+    conductionDrivePubkey.data =  b4a.toString(this.drive.key, 'hex')
+    // need to info beebee of keys
+    // this.wsocket.send(JSON.stringify(startDrivePubkey))
+    return true
+  }
+
+    /**
+   * 1. Simple Directory Listing (Non-recursive)
+   * Returns array of file and directory names at a specific path.
+   */
+  async getDirectoryList (folderPath = '/') {
+    // Queries metadata index only; fetches 0 bytes of file content
+    const entries = await this.drive.readdir(folderPath);
+    return entries;
+  }
+
+  /**
+   * 2. Full Drive Traversal (Recursive Scan)
+   * Streams metadata objects for every file without fetching raw blobs.
+   */
+  async getAllFileMetadata(prefixPath = '/') {
+    const filePaths = [];
+
+    // drive.list() iterates directly over the underlying metadata Hyperbee
+    for await (const entry of this.drive.list(prefixPath)) {
+      filePaths.push({
+        path: entry.key,          // e.g., '/conduction/solar-day-102.bin'
+        size: entry.value.blob.byteLength, // File size in bytes
+        executable: entry.value.executable,
+        customMetadata: entry.value.metadata // Optional user metadata attached to entry
+      });
+    }
+
+    return filePaths;
+  }
 
   /**
    * hyperdrive stream write
@@ -235,6 +276,36 @@ class HypDrive extends EventEmitter {
     return { filename: '/library/' + fileData.name }
   }
 
+  /**
+   * Save Binary/Base64/JSON to Hyperdrive safely
+   * @method hyperdriveBinarySaveSpec
+   */
+  hyperdriveBinarySaveSpec = async function (fileData) {
+    let decodedBuffer
+    const content = fileData.content
+
+    if (b4a.isBuffer(content) || content instanceof Uint8Array) {
+      // 1. Raw buffer passed directly
+      decodedBuffer = content
+    } else if (typeof content === 'string' && content.startsWith('data:')) {
+      // 2. Base64 Data URL from readAsDataURL() (Images, SQLite, PDFs, etc.)
+      const base64Data = content.substring(content.indexOf(',') + 1)
+      decodedBuffer = b4a.from(base64Data, 'base64')
+    } else if (typeof content === 'object') {
+      // 3. JavaScript object
+      decodedBuffer = b4a.from(JSON.stringify(content), 'utf-8')
+    } else {
+      // 4. Plain UTF-8 JSON text from readAsText()
+      decodedBuffer = b4a.from(content, 'utf-8')
+    }
+
+    // Write clean bytes to Hyperdrive content-addressed path
+    await this.drive.put(fileData.path.blobPath, decodedBuffer, {
+      metadata: { type: fileData.path.metaData }
+    })
+
+    return true
+  }
 
   /**
    * Manage Chunked Streams for large files

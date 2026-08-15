@@ -2,8 +2,6 @@
 
 class OverlayModule {
   constructor(db, crypto) {
-    console.log('Overlay HP')
-    console.log(db)
     this.db = db
     this.crypto = crypto
   }
