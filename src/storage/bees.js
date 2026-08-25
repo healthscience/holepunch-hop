@@ -1,6 +1,6 @@
 'use strict'
 /**
-*  Manage HyperBee  key store datastore
+*  Manage HyperBee key store datastore
 *
 * @class HyperBee
 * @package    HyperBee
@@ -8,7 +8,7 @@
 * @license    http://www.gnu.org/licenses/old-licenses/gpl-3.0.html
 * @version    $Id$
 */
-import EventEmitter from 'events'
+import { EventEmitter } from 'events'
 import Hyperbee from 'hyperbee'
 import b4a from 'b4a'
 
@@ -48,20 +48,61 @@ class HyperBee extends EventEmitter {
     this.activeBees = []
   }
 
-  /**
-   * pass on websocket to library
-   * @method setWebsocket
-   *
-  */
   setWebsocket = function (ws) {
     this.wsocket = ws
   }
 
   /**
+   * Resolves a query/keyword directly against local Hyperbee entries.
+   * @param {string} inputString
+   * @returns {Promise<Object|null>} Target containing datatypeRegex, hashes, etc.
+   */
+  async resolve(inputString) {
+    if (!inputString || typeof inputString !== 'string' || !this.publicBee) {
+      return null
+    }
+
+    try {
+      const entry = await this.publicBee.get(inputString)
+      return entry?.value ? JSON.parse(entry.value.toString()) : null
+    } catch (err) {
+      return null
+    }
+  }
+
+  // passes input string + real BeeWorker instance directly
+  async Ingest (inputQuery) {
+    const cues = await this.osmosis.triggerOsmosis(inputQuery, this.BeeData)
+    // `cues` is ready for hop-gradient state sorting
+    return cues
+  }
+
+// Producer method to dispatch incoming queries through the pipeline
+  emitSafeflowQuery(queryData) {
+    this.emit('safeflow-query', queryData)
+  }
+  
+  // Triggered when a incoming stream contains a SafeFlow query
+  handleIncomingSafeflowQuery(queryData) {
+    this.emit('safeflow-query', queryData)
+  }
+
+  /**
+   * Returns active public library keys and discovery keys for Protomux broadcast.
+   */
+  getPublicManifest() {
+    if (!this.dbPublicLibraryRef || !this.dbPublicLibraryMod) return null
+    return {
+      publicLibraryRefKey: b4a.toString(this.dbPublicLibraryRef.key, 'hex'),
+      publicLibraryModKey: b4a.toString(this.dbPublicLibraryMod.key, 'hex'),
+      publicLibraryRefDiscoveryKey: b4a.toString(this.dbPublicLibraryRef.discoveryKey, 'hex'),
+      publicLibraryModDiscoveryKey: b4a.toString(this.dbPublicLibraryMod.discoveryKey, 'hex')
+    }
+  }
+
+  /**
    * setup hypercore protocol
-   * @method setupHyperbee
-   *
-  */
+   */
   setupHyperbee = async function () {
     let beePubkeys = []
 
@@ -72,9 +113,11 @@ class HyperBee extends EventEmitter {
     })
     await this.dbPublicLibraryRef.ready()
     beePubkeys.push({ store: 'publiclibrary-ref', privacy: 'public', pubkey: b4a.toString(this.dbPublicLibraryRef.key, 'hex')})
-    const discoveryRef = this.swarm.join(this.dbPublicLibraryRef.discoveryKey)
+    
+    // Join swarm topic for public replication
+    const discoveryRef = this.swarm.join(this.dbPublicLibraryRef.discoveryKey, { server: true, client: true })
     discoveryRef.flushed().then(() => {
-      console.log('public library ref open')
+      console.log('public library ref open for replication')
     })
 
     const coreMod = this.store.get({ name: 'publiclibrary-mod' })
@@ -84,9 +127,11 @@ class HyperBee extends EventEmitter {
     })
     await this.dbPublicLibraryMod.ready()
     beePubkeys.push({ store: 'publiclibrary-mod', privacy: 'public', pubkey: b4a.toString(this.dbPublicLibraryMod.key, 'hex')})
-    const discoveryMod = this.swarm.join(this.dbPublicLibraryMod.discoveryKey)
+    
+    // Join swarm topic for public modules replication
+    const discoveryMod = this.swarm.join(this.dbPublicLibraryMod.discoveryKey, { server: true, client: true })
     discoveryMod.flushed().then(() => {
-      console.log('public library mod open')
+      console.log('public library mod open for replication')
     })
 
     const corePeerRef = this.store.get({ name: 'peerlibrary-ref' })
@@ -152,9 +197,8 @@ class HyperBee extends EventEmitter {
     })
     await this.dbBentocues.ready()
     beePubkeys.push({store:'bentocues', privacy: 'public', pubkey: b4a.toString(core7.key, 'hex')})
-    const discoveryCues = this.swarm.join(this.dbBentocues.discoveryKey)
-    discoveryCues.flushed().then(() => {
-    })
+    const discoveryCues = this.swarm.join(this.dbBentocues.discoveryKey, { server: true, client: true })
+    discoveryCues.flushed().then(() => {})
 
     const core13 = this.store.get({ name: 'bentomodels' })
     this.dbBentomodels = new Hyperbee(core13, {
@@ -252,7 +296,6 @@ class HyperBee extends EventEmitter {
     await this.dbBentoexocue.ready()
     beePubkeys.push({store:'bentoexocue', privacy: 'private', pubkey: b4a.toString(core23.key, 'hex')})
 
-
     const core24 = this.store.get({ name: 'bentooverlay' })
     this.dbBentooverlay = new Hyperbee(core24, {
       keyEncoding: 'binary',
@@ -285,7 +328,7 @@ class HyperBee extends EventEmitter {
     await this.dbBentolensglue.ready()
     beePubkeys.push({store:'bentolensglue', privacy: 'private', pubkey: b4a.toString(core22.key, 'hex')})
 
-  // Initialize Modules
+    // Initialize Modules
     this.PublicLibrary = new PublicLibraryModule(this.dbPublicLibraryRef, this.dbPublicLibraryMod, this.store, this.swarm, this.emit.bind(this), this.crypto)
     this.PeerLibrary = new PeerLibraryModule(this.dbPeerLibraryRef, this.dbPeerLibraryMod, this.crypto)
     this.Peers = new PeersModule(this.dbPeers, this.crypto)
@@ -317,11 +360,13 @@ class HyperBee extends EventEmitter {
       data: beePubkeys
     }
     this.liveBees = startBeePubkey
-    this.wsocket.send(JSON.stringify(startBeePubkey))
+    if (this.wsocket) {
+      this.wsocket.send(JSON.stringify(startBeePubkey))
+    }
     this.activeBees = beePubkeys
   }
 
-  // Delegate methods to modules for backward compatibility
+  // Delegated methods...
   saveHOPresults = (data) => this.Results.saveHOPresults(data)
   peerResults = () => this.Results.peerResults()
   peerResultsItem = (key) => this.Results.peerResultsItem(key)
@@ -438,8 +483,6 @@ class HyperBee extends EventEmitter {
   getPublicLibraryRef = (id) => this.PublicLibrary.getPublicLibraryRef(id)
   getPublicLibraryMod = (id) => this.PublicLibrary.getPublicLibraryMod(id)
   putBlobIndex = async (key, value) => {
-    // Save blob metadata into the public library module store
-    // This allows blob resolutions across peers
     await this.dbPublicLibraryMod.put(key, value)
     return { key, value }
   }
@@ -471,6 +514,12 @@ class HyperBee extends EventEmitter {
 
   saveRepliatePubLibary = async function (data) {
     let updatePubLib = this.PublicLibrary.repPublicHolder[data.discoverykey]
+    
+    // Pass replicated payload through hop-osmosis membrane check
+    if (this.osmosis && typeof this.osmosis.filterIngress === 'function') {
+      updatePubLib = await this.osmosis.filterIngress(data.library, updatePubLib)
+    }
+
     if (data.library === 'public') {
       await this.updatePublicLibrary(updatePubLib)
     } else if (data.library === 'cues') {
@@ -482,6 +531,7 @@ class HyperBee extends EventEmitter {
     } else if (data.library === 'lensglue') {
       await this.updateLensglueLibrary(updatePubLib)
     }
+    
     this.PublicLibrary.repPublicHolder[data.discoverykey] = []
   }
 
