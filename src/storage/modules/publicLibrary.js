@@ -158,48 +158,56 @@ class PublicLibraryModule {
    * repicate the publiclibrary peer to peer (query)
    * @method replicateQueryPubliclibrary
    */
-  replicateQueryPubliclibrary = async function (dataIn) {
-    const coreRep = this.store.get({ key: b4a.from(dataIn.data.data.datastores, 'hex') })
-    const beePlib = new Hyperbee(coreRep, {
-      keyEncoding: 'utf-8',
-      valueEncoding: 'utf-8'
-    })
-    await coreRep.ready()
-    this.swarm.join(coreRep.discoveryKey, { server: false, client: true })
-    await coreRep.update()
+  replicateQueryPubliclibrary = async function (repStore) {
+    console.log('HP replicagte public library')
+    console.log(repStore)
+    // many public library hyperbees
+      const coreRep = this.store.get({ key: b4a.from(repStore.manifest.pubkey, 'hex') })
+      const beePlib = new Hyperbee(coreRep, {
+        keyEncoding: 'binary',
+        valueEncoding: 'json'
+      })
+      await coreRep.ready()
+      this.swarm.join(coreRep.discoveryKey, { server: false, client: true })
+      await coreRep.update()
 
-    const boardNXPcontract = await beePlib.get(dataIn.data.data.boardID)
-    let unString = JSON.parse(boardNXPcontract.value)
-    let moduleContracts = []
-    for (let mod of unString.modules) {
-      let modC = await beePlib.get(mod)
-      moduleContracts.push(modC)
-    }
-    let referenceContracts = []
-    for (let modRef of moduleContracts) {
-      let unString = JSON.parse(modRef.value)
-      if (unString.style === 'packaging') {
-        for (let ref of unString.info.value.concept.tablestructure) {
-          if (ref?.refcontract) {
-            let refC = await beePlib.get(ref.refcontract)
-            referenceContracts.push(refC)
-          }
-        }
-      } else if (unString.style === 'question') {
-        let questRef = {}
-        questRef.key = unString.info.key
-        questRef.value = JSON.stringify(unString.info.value)
-        referenceContracts.push(questRef)
+      // 
+      this.emit('osmosis-notification', repStore)
+      /*
+      const boardNXPcontract = await beePlib.get(dataIn.data.data.boardID)
+      let unString = JSON.parse(boardNXPcontract.value)
+      let moduleContracts = []
+      for (let mod of unString.modules) {
+        let modC = await beePlib.get(mod)
+        moduleContracts.push(modC)
       }
-    }
-    if (moduleContracts.length > 0) {
-      let holderConfirm = {}
-      holderConfirm.boardNXP = [boardNXPcontract]
-      holderConfirm.modules = moduleContracts
-      holderConfirm.refcontracts = referenceContracts
-      this.confirmPubLibList[dataIn.data.data.datastores] = holderConfirm
-      this.emit('publibbeebee-notification', dataIn)
-    }
+      let referenceContracts = []
+      for (let modRef of moduleContracts) {
+        let unString = JSON.parse(modRef.value)
+        if (unString.style === 'packaging') {
+          for (let ref of unString.info.value.concept.tablestructure) {
+            if (ref?.refcontract) {
+              let refC = await beePlib.get(ref.refcontract)
+              referenceContracts.push(refC)
+            }
+          }
+        } else if (unString.style === 'question') {
+          let questRef = {}
+          questRef.key = unString.info.key
+          questRef.value = JSON.stringify(unString.info.value)
+          referenceContracts.push(questRef)
+        }
+      }
+
+      if (moduleContracts.length > 0) {
+        let holderConfirm = {}
+        holderConfirm.boardNXP = [boardNXPcontract]
+        holderConfirm.modules = moduleContracts
+        holderConfirm.refcontracts = referenceContracts
+        this.confirmPubLibList[dataIn.data.data.datastores] = holderConfirm
+        this.emit('publibbeebee-notification', )
+      } */
+
   }
 
   /**

@@ -39,8 +39,7 @@ export class PeerProtocol {
     this.publicKey = options.publicKey
     this.onMessage = options.onMessage || (() => {})
     this.onOsmosis = options.onOsmosis || (() => {})
-    this.localManifest = options.localManifest || null
-    
+    this.localManifest = options.localManifest
     this.mux = Protomux.from(conn)
     this.channel = null
     this.controlHandler = null
@@ -50,21 +49,43 @@ export class PeerProtocol {
   }
 
   _setupChannel() {
-    this.channel = this.mux.createChannel({ protocol: 'holepunch-hop' })
+    // Check if the channel already exists on this Protomux instance
+    for (const ch of this.mux) {
+      if (ch.protocol === 'holepunch-hop') {
+        this.channel = ch
+        break
+      }
+    }
 
-    // Channel 1: General Purpose Control (JSON)
-    // Used for manifests, discovery keys, codenames
-    this.controlHandler = this.channel.addMessage({
-      encoding: c.json,
-      onmessage: (data) => this.onMessage(this.publicKey, data)
-    })
+    // Create the channel if it does not exist yet
+    if (!this.channel) {
+      this.channel = this.mux.createChannel({ protocol: 'holepunch-hop' })
+    }
 
-    // Channel 2: High-Frequency Osmosis (Binary Schema)
-    // Dedicated entirely to safeflow-ecs and thermodynamic syncing
-    this.osmosisHandler = this.channel.addMessage({
-      encoding: osmosisSchema,
-      onmessage: (data) => this.onOsmosis(this.publicKey, data)
-    })
+    if (!this.channel) return
+
+    // Register message handlers if they haven't been attached yet
+    if (!this.controlHandler) {
+      try {
+        this.controlHandler = this.channel.addMessage({
+          encoding: c.json,
+          onmessage: (data) => this.onMessage(this.publicKey, data)
+        })
+      } catch (err) {
+        // Handler already registered on this channel
+      }
+    }
+
+    if (!this.osmosisHandler) {
+      try {
+        this.osmosisHandler = this.channel.addMessage({
+          encoding: osmosisSchema,
+          onmessage: (data) => this.onOsmosis(this.publicKey, data)
+        })
+      } catch (err) {
+        // Handler already registered on this channel
+      }
+    }
 
     this.channel.open()
 
