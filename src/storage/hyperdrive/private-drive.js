@@ -69,26 +69,39 @@ class HypDrive extends EventEmitter {
     return entries;
   }
 
-  /**
-   * 2. Full Drive Traversal (Recursive Scan)
-   * Streams metadata objects for every file without fetching raw blobs.
-   */
-  async getAllFileMetadata(prefixPath = '/') {
-    const filePaths = [];
 
-    // drive.readdir() iterates directly over the underlying metadata Hyperbee
-    for await (const entry of this.drive.readdir(prefixPath)) {
-      filePaths.push({
-        path: entry.key,          // e.g., '/conduction/solar-day-102.bin'
-        size: entry.value.blob.byteLength, // File size in bytes
-        executable: entry.value.executable,
-        customMetadata: entry.value.metadata // Optional user metadata attached to entry
-      });
+  /**
+   * 2. Full Drive Traversal (Scan Directory)
+   * Streams metadata objects for every file without fetching raw blobs.
+  */
+/**
+   * 2. Full Drive Traversal (Scan Directory)
+   * Streams metadata objects for every file without fetching raw blobs.
+  */
+  async getAllFileMetadata (folder = '/') {
+    // 1. Ensure Hyperdrive instance is initialized
+    if (!this.drive || typeof this.drive.readdir !== 'function') {
+      await this.setupHyperdrive()
     }
 
-    return filePaths;
-  }
+    const metadata = []
 
+    // 2. Iterate the AsyncIterable stream directly using for await...of
+    for await (const name of this.drive.readdir(folder)) {
+      const filePath = folder === '/' ? `/${name}` : `${folder}/${name}`
+      const entry = await this.drive.entry(filePath)
+
+      if (entry) {
+        metadata.push({
+          key: filePath,
+          seq: entry.seq,
+          value: entry.value
+        })
+      }
+    }
+
+    return metadata
+  }
   /**
    * hyperdrive stream write
    * @method hyperdriveWritestream 
