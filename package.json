@@ -1,6 +1,6 @@
 {
   "name": "holepunch-hop",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "description": "data interface to HOP",
   "main": "src/index.js",
   "type": "module",
@@ -38,6 +38,7 @@
     "hyperdrive": "^11.0.0-alpha.10",
     "hyperswarm": "^4.3.5",
     "localdrive": "github:holepunchto/localdrive",
+    "hop-osmosis": "^0.0.1",
     "luxon": "^3.4.4",
     "sqlite3": "^5.1.7"
   },
