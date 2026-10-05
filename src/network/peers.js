@@ -12,6 +12,7 @@ class NetworkPeers extends EventEmitter {
     this.hello = 'hyperpeers'
     this.store = store
     this.swarm = swarm
+    this.peerManifests = new Map()
     this.protocols = new Map()
     this.drive = {}
     this.peerPrime = ''
@@ -320,7 +321,11 @@ class NetworkPeers extends EventEmitter {
       } else if (dataShareIn.type === 'private-cue-space') {
         this.emit('cuespace-notification', { publickey: peerMatch, data: dataShareIn })
       } else if (dataShareIn.type === 'public-library') {
-        this.emit('publiclibrary-notification', { publickey: peerMatch, data: dataShareIn })
+         if (dataShareIn.action === 'auto-announce') {
+          // set the maps
+          this.peerManifests.set(peerMatch, dataShareIn.data)
+          this.emit('publiclibrary-notification-manifest', peerMatch)
+         }
       } else if (dataShareIn.type === 'peer-codename-inform') {
         this.emit('peer-codename-match', dataShareIn)
       } else if (dataShareIn.type === 'topic-reconnect') {

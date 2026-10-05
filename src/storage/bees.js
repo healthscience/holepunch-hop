@@ -46,6 +46,7 @@ class HyperBee extends EventEmitter {
     this.swarm = swarm
     this.crypto = crypto
     this.liveBees = {}
+    this.commonBees = new Map()
     this.activeBees = []
     // Osmosis membrane initialized directly with holepunch-hop's swarm
     this.osmosis = createOsmosisMembrane(this.swarm, energyBudget, solarCycle)
@@ -103,11 +104,11 @@ class HyperBee extends EventEmitter {
     })
     await this.dbPublicLibraryRef.ready()
     beePubkeys.push({ store: 'publiclibrary-ref', privacy: 'public', pubkey: b4a.toString(this.dbPublicLibraryRef.key, 'hex')})
+    this.commonBees.set('publiclibrary-ref', this.dbPublicLibraryRef)
     
     // Join swarm topic for public replication
     const discoveryRef = this.swarm.join(this.dbPublicLibraryRef.discoveryKey, { server: true, client: true })
     discoveryRef.flushed().then(() => {
-      console.log('public library -replic- refs')
     })
 
     const coreMod = this.store.get({ name: 'publiclibrary-mod' })
@@ -117,11 +118,11 @@ class HyperBee extends EventEmitter {
     })
     await this.dbPublicLibraryMod.ready()
     beePubkeys.push({ store: 'publiclibrary-mod', privacy: 'public', pubkey: b4a.toString(this.dbPublicLibraryMod.key, 'hex')})
-    
+    this.commonBees.set('publiclibrary-mod', this.dbPublicLibraryMod)
+
     // Join swarm topic for public modules replication
     const discoveryMod = this.swarm.join(this.dbPublicLibraryMod.discoveryKey, { server: true, client: true })
     discoveryMod.flushed().then(() => {
-      console.log('public library -replic- modules')
     })
 
     const corePeerRef = this.store.get({ name: 'peerlibrary-ref' })
@@ -189,6 +190,7 @@ class HyperBee extends EventEmitter {
     beePubkeys.push({store:'bentocues', privacy: 'public', pubkey: b4a.toString(core7.key, 'hex')})
     const discoveryCues = this.swarm.join(this.dbBentocues.discoveryKey, { server: true, client: true })
     discoveryCues.flushed().then(() => {})
+    this.commonBees.set('bentocues', this.dbBentocues)
 
     const core13 = this.store.get({ name: 'bentomodels' })
     this.dbBentomodels = new Hyperbee(core13, {
@@ -200,8 +202,9 @@ class HyperBee extends EventEmitter {
     // Join swarm topic for public replication
     const discoveryModels = this.swarm.join(this.dbBentomodels.discoveryKey, { server: true, client: true })
     discoveryModels.flushed().then(() => {
-      console.log('public library -replic- models')
     })
+    this.commonBees.set('bentomodels', this.dbBentomodels)
+
 
     const core15 = this.store.get({ name: 'bentoboxes' })
     this.dbBentoBoxes = new Hyperbee(core15, {
@@ -236,6 +239,7 @@ class HyperBee extends EventEmitter {
     beePubkeys.push({store:'research', privacy: 'public', pubkey: b4a.toString(core10.key, 'hex')})
     const discoveryResearch = this.swarm.join(this.dbBentoresearch.discoveryKey, { server: true, client: true })
     discoveryResearch.flushed().then(() => {})
+    this.commonBees.set('research', this.dbBentoresearch)
 
     const core11 = this.store.get({ name: 'bentoproducts' })
     this.dbBentoproducts = new Hyperbee(core11, {
@@ -270,6 +274,8 @@ class HyperBee extends EventEmitter {
     beePubkeys.push({store:'beebeelearn', privacy: 'public', pubkey: b4a.toString(core17.key, 'hex')})
     const discoveryLearn = this.swarm.join(this.dbBeeBeeLearn.discoveryKey, { server: true, client: true })
     discoveryLearn.flushed().then(() => {})
+    this.commonBees.set('beebeelearn', this.dbBeeBeeLearn)
+
 
     const core18 = this.store.get({ name: 'heliclock' })
     this.dbHeliClock = new Hyperbee(core18, {
@@ -328,7 +334,7 @@ class HyperBee extends EventEmitter {
     beePubkeys.push({store:'bentolensglue', privacy: 'private', pubkey: b4a.toString(core22.key, 'hex')})
 
     // Initialize Modules
-    this.PublicLibrary = new PublicLibraryModule(this.dbPublicLibraryRef, this.dbPublicLibraryMod, this.store, this.swarm, this.emit.bind(this), this.crypto)
+    this.PublicLibrary = new PublicLibraryModule(this.dbPublicLibraryRef, this.dbPublicLibraryMod, this.store, this.swarm, this.emit.bind(this), this.crypto, this.commonBees)
     this.PeerLibrary = new PeerLibraryModule(this.dbPeerLibraryRef, this.dbPeerLibraryMod, this.crypto)
     this.Peers = new PeersModule(this.dbPeers, this.crypto)
     this.Results = new ResultsModule(this.dbHOPresults, this.crypto)

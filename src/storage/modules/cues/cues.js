@@ -29,7 +29,13 @@ class CuesModule {
    * @method getCuesHistory
    */
   getCuesHistory = async function (lsID, category, key) {
+    console.log('get cues higotry-----------')
+    console.log(lsID)
+    console.log(category)
     const { gt, lt } = this.crypto.getRange(lsID, category)
+    console.log('ragne-------')
+    console.log(gt)
+    console.log(lt)
 
     const cuesHistory = await this.db.createReadStream({
       gt,

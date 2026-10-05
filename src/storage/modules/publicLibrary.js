@@ -3,12 +3,13 @@ import Hyperbee from 'hyperbee'
 import b4a from 'b4a'
 
 class PublicLibraryModule {
-  constructor(dbRef, dbMod, store, swarm, emit, crypto) {
+  constructor(dbRef, dbMod, store, swarm, emit, crypto, commonBees) {
     this.dbRef = dbRef
     this.dbMod = dbMod
     this.store = store
     this.swarm = swarm
     this.emit = emit
+    this.commonBees = commonBees
     this.repPublicHolder = {}
     this.confirmPubLibList = {}
     this.crypto = crypto
@@ -157,22 +158,58 @@ class PublicLibraryModule {
   /**
    * repicate the publiclibrary peer to peer (query)
    * @method replicateQueryPubliclibrary
-   */
-  replicateQueryPubliclibrary = async function (repStore) {
-    console.log('HP replicagte public library')
-    console.log(repStore)
-    // many public library hyperbees
-      const coreRep = this.store.get({ key: b4a.from(repStore.manifest.pubkey, 'hex') })
-      const beePlib = new Hyperbee(coreRep, {
-        keyEncoding: 'binary',
-        valueEncoding: 'json'
-      })
-      await coreRep.ready()
-      this.swarm.join(coreRep.discoveryKey, { server: false, client: true })
-      await coreRep.update()
+  */
+  async replicateQueryPubliclibrary (data) {
+    const { peerKey, beeKey, store, manifest } = data
 
-      // 
-      this.emit('osmosis-notification', repStore)
+    if (!beeKey) return null
+
+    // 1. Mount core & Hyperbee instance from corestore
+    const coreRep = this.store.get({ key: b4a.from(beeKey, 'hex') })
+    const bee = new Hyperbee(coreRep, {
+      keyEncoding: 'binary',
+      valueEncoding: 'json'
+    })
+    await bee.ready()
+
+    // 2. Poll remote core length header over Hyperswarm and download blocks
+    if (bee.core) {
+      let retries = 0
+      while (bee.core.length === 0 && retries < 20) {
+        const updated = await bee.core.update({ wait: true })
+        retries++
+        if (!updated && retries > 5) break
+      }
+
+      if (bee.core.length > 0) {
+        const download = bee.core.download({ start: 0, end: bee.core.length })
+        await download.downloaded()
+      }
+    }
+
+    // 3. Update view pointer to reflect newly downloaded blocks
+    await bee.update()
+
+    // 4. Resolve local primary Bee directly from this.commonBees Map
+    const targetLocalBee = this.commonBees.get(store)
+    let entryCount = 0
+
+    if (targetLocalBee) {
+      await targetLocalBee.ready()
+      for await (const entry of bee.createReadStream()) {
+        await targetLocalBee.put(entry.key, entry.value)
+        entryCount++
+      }
+      await targetLocalBee.update()
+
+    } else {
+      console.warn(`[osmosis:bee:trace] Warning: Local Bee store for "${store}" not found in this.commonBees!`)
+    }
+
+    this.emit('publib-replicate-notification', { store, peerKey })
+    return bee
+
+
       /*
       const boardNXPcontract = await beePlib.get(dataIn.data.data.boardID)
       let unString = JSON.parse(boardNXPcontract.value)

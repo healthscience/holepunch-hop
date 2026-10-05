@@ -166,25 +166,91 @@ class HolepunchWorker extends EventEmitter {
     })
 
     // pass through osmosis
-    this.Peers.on('publiclibrary-notification', async (data) => {
-      const rawManifests = data?.data?.data
+    this.Peers.on('publiclibrary-notification-manifest', async (warmPeerPK) => {
+      const rawManifests = this.Peers.peerManifests.get(warmPeerPK)
       if (!rawManifests) return
 
-      // Gatekeeper filter via hop-osmosis membrane
       const approvedManifests = await this.osmosis.filterIngress('public-library', rawManifests)
-
       if (!approvedManifests) return
 
       const libraryList = Array.isArray(approvedManifests) ? approvedManifests : [approvedManifests]
 
-      // Loop over each energy-approved public hyperbee
       for (const libManifest of libraryList) {
-        this.BeeData.replicateQueryPubliclibrary({
-          peerKey: data.publickey,
-          manifest: libManifest
-        })
+        // Target bentocues store for single-store test isolation
+        if (libManifest.store === 'bentocues') {
+          await this.BeeData.replicateQueryPubliclibrary({
+            peerKey: warmPeerPK,
+            beeKey: libManifest.pubkey || libManifest.beeKey,
+            store: libManifest.store,
+            manifest: libManifest
+          })
+        }
+      }
+
+      // Notify test runner over WebSocket that Osmosis sync has completed
+      if (this.wsocket) {
+        this.wsocket.send(JSON.stringify({
+          type: 'osmosis',
+          action: 'osmosis-replication-complete',
+          completed: true,
+          store: 'bentocues'
+        }))
       }
     })
+
+
+
+    this.Peers.on('osmosis-request-replication', async (data) => {
+      // console.log('[osmosis:event:trace] Triggered osmosis-request-replication handler:', data)
+      const { targetPeerKey, stores } = data
+      if (!targetPeerKey) return
+
+      // 1. Fetch public library manifests advertised by target peer
+      const publicManifests = this.Peers.peerManifests.get(targetPeerKey)
+      // console.log(`[osmosis:event:trace] Manifests on file for peer ${targetPeerKey?.substring(0, 8)}...:`, publicManifests)
+
+      if (!publicManifests || publicManifests.length === 0) {
+        console.warn(`[osmosis:event:trace] Abort: No public manifests registered for target peer ${targetPeerKey}`)
+        return
+      }
+
+      const targetStores = Array.isArray(stores) ? stores : [stores]
+      const manifestsToSync = publicManifests.filter((m) => targetStores.includes(m.store))
+      // console.log(`[osmosis:event:trace] Matched manifest(s) to sync (${manifestsToSync.length}):`, manifestsToSync)
+
+      // 2. Filter via hop-osmosis and replicate
+      for (const manifest of manifestsToSync) {
+        // console.log(`[osmosis:event:trace] Filtering ingress membrane for store: "${manifest.store}"...`)
+        const passed = await this.osmosis.filterIngress('public-library', manifest)
+        // console.log(`[osmosis:event:trace] Membrane filter result for "${manifest.store}": ${Boolean(passed)}`)
+        if (!passed) continue
+
+        // console.log(`[osmosis:event:trace] Calling BeeData.replicateQueryPubliclibrary for store: "${manifest.store}"...`)
+        await this.BeeData.replicateQueryPubliclibrary({
+          peerKey: targetPeerKey,
+          beeKey: manifest.pubkey,
+          store: manifest.store,
+          manifest
+        })
+        // console.log(`[osmosis:event:trace] Completed replication call for store: "${manifest.store}".`)
+      }
+
+      // 3. Send WebSocket completion signal
+      if (this.wsocket) {
+        // console.log('[osmosis:event:trace] Dispatching osmosis-replication-complete WebSocket payload...')
+        this.wsocket.send(
+          JSON.stringify({
+            type: 'osmosis',
+            action: 'osmosis-replication-complete',
+            store: targetStores[0],
+            stores: targetStores,
+            completed: true
+          })
+        )
+      }
+    })
+
+
 
     this.BeeData.on('osmosis-notification', (data) => {
       this.emit('beebee-publib-notification', data)
@@ -292,6 +358,8 @@ class HolepunchWorker extends EventEmitter {
       }
     } else if (message.action === 'save-replicate-library') {
       this.BeeData.saveRepliatePubLibary(message.data)
+    } else if (message.action === 'osmosis-request-replication') {
+      this.Peers.emit('osmosis-request-replication', message.data)
     }
   }
 

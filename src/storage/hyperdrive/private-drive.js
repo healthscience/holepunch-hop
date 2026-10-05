@@ -76,8 +76,8 @@ class HypDrive extends EventEmitter {
   async getAllFileMetadata(prefixPath = '/') {
     const filePaths = [];
 
-    // drive.list() iterates directly over the underlying metadata Hyperbee
-    for await (const entry of this.drive.list(prefixPath)) {
+    // drive.readdir() iterates directly over the underlying metadata Hyperbee
+    for await (const entry of this.drive.readdir(prefixPath)) {
       filePaths.push({
         path: entry.key,          // e.g., '/conduction/solar-day-102.bin'
         size: entry.value.blob.byteLength, // File size in bytes
