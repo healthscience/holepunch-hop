@@ -1,102 +1,191 @@
 'use strict'
 
 import EventEmitter from 'events'
-import crypto from 'crypto'
 import b4a from 'b4a'
+import crypto from 'crypto'
 
 import { PeerProtocol } from './osmosis/protocol.js'
+import { match } from 'assert'
 
 class NetworkPeers extends EventEmitter {
-  constructor (store, swarm, options) {
+  constructor (store, swarm, options = {}) {
     super()
     this.hello = 'hyperpeers'
     this.store = store
     this.swarm = swarm
-    this.peerManifests = new Map()
-    this.protocols = new Map()
-    this.drive = {}
-    this.peerPrime = ''
-    this.peerNetwork = []
-    this.peerEstContext = {}
-    this.peerHolder = {}
-    this.peerConnect = {}
-    this.topicHolder = {}
-    this.sendTopicHolder = []
-    this.peersRole = []
-    this.discoveryList = []
-    this.peerSwitchLiveID = []
     this.getPublicManifest = options.getPublicManifest
+
+    // Streamlined RAM State Maps
+    this.activeSessions = new Map() // Map<peerHex, { conn, protocol }>
+
+    // Scoped RAM state maps
+    this.pendingPeers = new Map()
+    this.pendingTopic = new Map()
+    this.warmPeers = new Map()
+    // this.pendingInvites = new Map() // Map<codename, { pubkey, codename, name }>
+    this.peerHolder = {}
+
     this._setupSwarm()
   }
 
   _setupSwarm () {
     this.swarm.on('connection', (conn, info) => {
       const peerHex = b4a.toString(info.publicKey, 'hex')
-      this.peerConnect[peerHex] = conn
 
-      // Single Protomux channel multiplexing via PeerProtocol
       const protocol = new PeerProtocol(conn, {
         publicKey: peerHex,
-        localManifest: this.getPublicManifest(),
+        localManifest: typeof this.getPublicManifest === 'function' ? this.getPublicManifest() : {},
         onMessage: (peerKey, payload) => this.handlePeerControl(peerKey, payload),
         onOsmosis: (peerKey, frame) => this.handlePeerOsmosis(peerKey, frame)
       })
 
-      this.protocols.set(peerHex, protocol)
+      this.activeSessions.set(peerHex, { conn, protocol })
 
-      // Connection lifecycle & discovery assessment
-      const connectionInfo = this.prepareConnectionInfo(info, peerHex)
-      if (connectionInfo.discoveryTopicInfo.firstTime === false) {
-        this.handleReconnection(conn, info, connectionInfo)
-      } else if (connectionInfo.discoveryTopicInfo.firstTime === true) {
-        this.handleFirstTimeConnection(conn, info, connectionInfo)
-      } else {
-        this.peerSwitchLiveID.push({ publicKey: peerHex, discoveryTopicInfo: connectionInfo })
-      }
-
-      // Replicate core store across swarm stream
       if (this.store && typeof this.store.replicate === 'function') {
         this.store.replicate(conn)
       }
 
+      this._evaluateConnection(info, peerHex)
+
       conn.on('close', () => {
-        this.protocols.delete(peerHex)
-        delete this.peerConnect[peerHex]
-
-        for (const peer of this.peerNetwork) {
-          if (peer.value?.livePeerkey === peerHex) {
-            this.emit('peer-disconnect', { peercontract: peer })
-          } else if (peer.key === peerHex) {
-            this.emit('peer-disconnect', { publickey: peer.key })
-          }
-        }
-
+        this.activeSessions.delete(peerHex)
+        delete this.peerHolder[peerHex]
+        this.emit('peer-disconnect', { publickey: peerHex })
         this.emit('peer-disconnected', peerHex)
       })
 
-      conn.on('error', () => {})
-      this.emit('peer-connected', peerHex)
+      conn.on('error', (err) => {
+        this.emit('peer-error', { peerHex, error: err })
+      })
     })
   }
 
-  handlePeerControl (peerKey, payload) {
-    if (payload?.type === 'public-library' && this.hyperbee) {
-      this.hyperbee.saveRepliatePubLibary(payload.data)
+  networkKeys () {
+    const peerNxKeys = {
+      publickey: b4a.toString(this.swarm.keyPair.publicKey, 'hex')
+    }
+    const networkMessage = {
+      type: 'account',
+      action: 'network-keys',
+      data: peerNxKeys
+    }
+    this.emit('peer-network', networkMessage)
+    this.swarm.listen()
+  }
+
+  setupConnectionBegin (peerNetwork) {
+    if (!Array.isArray(peerNetwork)) return
+    for (let i = 0; i < peerNetwork.length; i++) {
+      const sPeer = peerNetwork[i]
+      const hexKey = typeof sPeer.key === 'string' ? sPeer.key : b4a.toString(sPeer.key, 'hex')
+      const concept = sPeer.value && sPeer.value.concept
+      if (concept && concept.settopic === true) {
+        this.topicConnect(hexKey, concept.topic)
+      } else if (concept && concept.topic) {
+        this.topicListen(concept.topic, hexKey)
+      }
+    }
+  }
+
+  // Peer generates invite token peer accept invite
+  setPendingRole (stage, pubkey, codename, name) {
+    console.log('START  PENDING PATH')
+    let inviteStage = false
+    if (stage === 'peer-share-codename' || stage === 'peer-share-invite') {
+      inviteStage = true      
+    }
+
+    const stagingRecord = {
+      key: pubkey,
+      stages: { 
+        inviteGenerated: inviteStage,
+        connected: false,
+        codenameMatched: false
+      },
+      setPendingRole: null,
+      committedToDisk: false,
+      concept: {
+        name: name,
+        codename: codename,
+        publickey: pubkey,
+        roletaken: null,
+        longterm: true,
+        settopic: false,
+        topic: '',
+        live: false
+      }
+    };
+
+    console.log('STAGE BEFORE')
+    console.log(stage)
+    if (stage === 'peer-share-codename') {
+      this.pendingPeers.set(codename, stagingRecord);
+    } else if (stage === 'peer-share-invite') {
+      console.log('SET PATH PEER JOIN')
+      this.pendingTopic.set(pubkey, stagingRecord);
+      // peer connection activate
+      this.peerJoin(pubkey, stagingRecord)
+    }
+  }
+
+  // Peer generates invite token peer accept invite
+  updatePendingRole (publicKey, stage) {
+    console.log('UPDATE PENDING-----------')
+    // get existing pending pendingPeers or pendingTopic
+    let existingPending = {}
+    if (stage === '') {
+
+    }
+    // update pending MAP state
+
+ 
+  }
+
+  _evaluateConnection (info, peerHex) {
+    console.log('HP---EVALUTE connection------------------')
+    console.log('[Transport] Connection established:', peerHex, 'Is Client:', info.client)
+
+    if (info.client) {
+      // Acceptor / Dialer Path: Check if this connection maps to a pending invite
+      const pendingRecord = this.matchPendingTopic(peerHex)
+
+      if (pendingRecord) {
+        // Transmit the codename to unlock the remote Generator's pendingPeers map
+        this.warmPeerIdentityPrepare(peerHex, pendingRecord)
+
+      } else {
+        console.log('[Acceptor] Outbound connection established, but no pendingTopic entry exists for:', peerHex)
+      }
+    } else {
+      // Generator / Listener Path: Inbound connection. 
+      // Do not force a lookup here; wait for the incoming peer-codename-inform packet.
+      console.log('[Generator] Inbound connection registered. Awaiting remote codename packet.')
+    }
+  }
+
+  handlePeerControl (peerKey, netData) {
+    console.log('HOP peers.js   handlePeerControl------1111111-------------------------')
+    /*if (netData && netData.type === 'public-library' && this.hyperbee) {
+      this.hyperbee.saveRepliatePubLibary(netData.data)
+    }*/
+    
+    if (netData && netData.type === 'peer-codename-inform') {
+      console.log('code name comes in from HOP network')
+      this.codenameMatchIdentity(peerKey, netData.data)
     }
     
-    // Pass raw control payloads to assessment pipeline
-    this.assessData(peerKey, payload)
-    this.emit('control', { peerKey, payload })
+    if (netData && netData.type === 'topic-reconnect-id') {
+      this.matchTopicConfirm(peerKey, netData.data)
+    }
+  
   }
 
   handlePeerOsmosis (peerKey, frame) {
-    // Route thermodynamic frame to hop-osmosis membrane
-    if (this.hyperbee?.osmosis?.receiveOsmosisFrame) {
+    if (this.hyperbee && this.hyperbee.osmosis && typeof this.hyperbee.osmosis.receiveOsmosisFrame === 'function') {
       this.hyperbee.osmosis.receiveOsmosisFrame(peerKey, frame)
     }
 
-    // Emit into safeflow-ecs
-    if (this.hyperbee?.emitSafeflowQuery) {
+    if (this.hyperbee && typeof this.hyperbee.emitSafeflowQuery === 'function') {
       this.hyperbee.emitSafeflowQuery({
         peerKey,
         action: frame.action,
@@ -109,34 +198,225 @@ class NetworkPeers extends EventEmitter {
     this.emit('osmosis-frame', { peerKey, frame })
   }
 
-  broadcastOsmosis (heliAngle, entropy, ecsVectorBuffer, action = 0) {
-    for (const protocol of this.protocols.values()) {
-      protocol.sendOsmosis(heliAngle, entropy, ecsVectorBuffer, action)
+  /**
+   * 
+   * @mehthod matchPendingTopic
+   * @param {*} stage 
+   * @param {*} peerPubkey 
+   * @param {*} peerData 
+   * @returns 
+  */
+   matchPendingTopic (publicKey) {
+    // pendinTipc map
+    let pendingTopicMatch = this.pendingTopic.get(publicKey)
+    return pendingTopicMatch
+
+  }
+
+  /**
+   * 
+   *  Sanitize pubkey in peer-codename-match before saving
+   * 
+  */
+  codenameMatchIdentity (publicKey, data) {
+    if (data && data.inviteCode) {
+      const matchedCodename = this.matchPeersCodename(data.inviteCode)
+      console.log('match to codename returned')
+      console.log(matchedCodename)
+      if (matchedCodename) {
+        console.log('YES MATCH GEN TOPIC PATH')
+        // prepare the topic to reconnect with peer
+        this.prepareTonetworkTopic(publicKey, matchedCodename)
+      } else {
+        console.log('STOP')
+      }
+
+    } 
+  }
+
+  /**
+   *  
+   * 
+  */
+  matchTopicConfirm(data) {
+    console.log('MATCH TOPIC CONFIRMMMMMMMMMMMMMMM')
+    // save the peerContract check three stages complete
+    this.emit('topic-formed-save-accept', data)
+  }  
+
+  async handleCodenameArrival(peerKey, codenameData) {
+    console.log('handlecodename arriaveooooooooooooooooooooooooooooooo')
+    const record = this.warmPeers.get(peerKey);
+    if (!record) return;
+
+    // Resolve identity
+    const matched = this.matchPeersCodename(codenameData);
+    if (matched && matched.name) {
+      record.concept.name = matched.name;
+      record.stages.codenameMatched = true;
+    }
+
+    // Check if fully staged
+    if (record.stages.inviteGenerated && record.stages.connected && record.stages.codenameMatched && !record.committedToDisk) {
+      record.committedToDisk = true;
+
+      // ATOMIC COMMITTED SAVE TO HYPERBEE
+      const formedContract = this.libComposer.livePeer.peerPrepare('hopeer', record.concept);
+      await this.BeeData.savePeer(formedContract);
+
+      // Safe to emit downstream now that state is complete and persisted
+      this.emit('peer-codename-update', {
+        contractKey: peerKey,
+        name: record.concept.name
+      });
     }
   }
 
-  sendPeerControl (peerHex, payload) {
-    const protocol = this.protocols.get(peerHex)
-    if (protocol) {
-      protocol.sendControl(payload)
+
+  latestPeerNetwork (peerNetwork) {
+    this.setupConnectionBegin(peerNetwork)
+  }
+
+  peerJoin (publicKey, stagingRecord) {
+    console.log('PEER JOIN')
+    if (!publicKey || !stagingRecord) return
+    this.peerHolder[publicKey] = stagingRecord
+    const noisePublicKey = b4a.from(publicKey, 'hex')
+    if (noisePublicKey.length === 32) {
+      this.swarm.joinPeer(noisePublicKey, { server: true, client: true })
+    }
+  }
+
+  peerLeave (peerLeaveKey) {
+    delete this.peerHolder[peerLeaveKey]
+    const noisePublicKey = b4a.from(peerLeaveKey, 'hex')
+    if (noisePublicKey.length === 32) {
+      this.swarm.leavePeer(noisePublicKey)
+    }
+  }
+
+  peerAlreadyJoinSetData (peerContext) {
+    if (peerContext && peerContext.publickey) {
+      this.peerHolder[peerContext.publickey] = peerContext
+      return true
+    }
+    return false
+  }
+
+  matchPeersCodename (codenameID) {
+    console.log('CODENAME  ID')
+    console.log(codenameID)
+    console.log(this.pendingPeers)
+    let peerMatch = this.pendingPeers.get(codenameID)
+    return peerMatch
+  }
+
+  inviteDecoded (invite) {
+    const raw = typeof invite === 'string'
+      ? invite
+      : ((invite && (invite.invite || invite.publickey)) || '')
+
+    const splitInvite = []
+
+    if (typeof raw === 'string' && raw.includes(':')) {
+      const parts = raw.split(':')
+      const prefix = parts[0]
+      const hexString = parts[1]
+      if (prefix === 'hop' && hexString) {
+        const next32Bytes = hexString.slice(0, 64)
+        const remainder = hexString.slice(64)
+        splitInvite.push('hop', next32Bytes, remainder)
+        return splitInvite
+      }
+    }
+
+    const pubKeyFallback = (invite && invite.publickey) ? invite.publickey : raw
+    const codenameFallback = (invite && invite.codename) ? invite.codename : ''
+    splitInvite.push('hop', pubKeyFallback, codenameFallback)
+    return splitInvite
+  }
+
+  checkConnectivityStatus (message, warmPeers = [], decodePath) {
+    const ptopStatus = {}
+    if (!message || !message.data) return ptopStatus
+
+    if (decodePath === 'invite-gen') {
+      const parts = this.inviteDecoded(message.data)
+      if (typeof message.data === 'string' || (message.data && message.data.invite)) {
+        message.data = { publickey: parts[1], codename: parts[2] }
+      } else {
+        message.data.publickey = parts[1]
+        message.data.codename = parts[2]
+      }
+    }
+
+    const targetKey = message.data.publickey
+    const isLive = targetKey ? this.activeSessions.has(targetKey) : false
+
+    let matchedRole = null
+    if (targetKey) {
+      // matchedRole = this.matchCodename(targetKey)
+    }
+
+    ptopStatus.peer = {}
+    ptopStatus.existing = false
+    ptopStatus.live = isLive
+    ptopStatus.role = matchedRole ? matchedRole.role : null
+    ptopStatus.data = message.data
+    ptopStatus.action = message.action
+    ptopStatus.task = message.task
+
+    return ptopStatus
+  }
+
+  broadcastOsmosis (heliAngle, entropy, ecsVectorBuffer, action = 0) {
+    for (const session of this.activeSessions.values()) {
+      session.protocol.sendOsmosis(heliAngle, entropy, ecsVectorBuffer, action)
     }
   }
 
   getChannel (publickey) {
-    const protocol = this.protocols.get(publickey)
-    if (protocol) return protocol
-
-    const matchedKey = this.peerMatchbase(publickey)
-    return this.protocols.get(matchedKey) || null
+    const session = this.activeSessions.get(publickey)
+    return session ? session.protocol : null
   }
 
+  /**
+   * prepare message to identify connection i.e. info other peer of codename from inite
+   * @method warmPeerIdentityPrepare
+   * @param {*} data 
+   * @param {*} existing 
+  */
+  warmPeerIdentityPrepare (publicKeyInvitee, identityCode) {
+    console.log('ID FORMING IN')
+    console.log(identityCode)
+
+    const codenameInform = {
+      type: 'peer-codename-inform',
+      action: 'set',
+      data: {
+        inviteCode: identityCode.concept.codename,
+        publickey: this.swarm.keyPair.publicKey.toString('hex'),
+        peerkey: publicKeyInvitee //  peerkey what other peer is looking for
+      }
+    }
+    // update status of stages 
+    this.updatePendingRole(codenameInform)
+    console.log('CODENAME PREPARED  SEND NEXT')
+    console.log(codenameInform)
+    this.writeTonetworkData(publicKeyInvitee, codenameInform)
+  }
+
+
   writeTonetwork (data) {
-    const targetKey = typeof data === 'string' ? data : data?.publickey
+    const targetKey = typeof data === 'string' ? data : data.publickey
     const channel = this.getChannel(targetKey)
     if (channel) channel.sendControl(data)
   }
 
   writeTonetworkData (publickey, dataShare) {
+    console.log('write data to NWEPOERIRIRIRI')
+    console.log(publickey)
+    console.log(dataShare)
     const channel = this.getChannel(publickey)
     if (channel) channel.sendControl(dataShare)
   }
@@ -163,580 +443,52 @@ class NetworkPeers extends EventEmitter {
       type: 'topic-reconnect-id',
       data: { topic: topicInfo.topic, peerKey: topicInfo.peerKey }
     }
-    const channel = this.getChannel(topicInfo.currentPubkey)
+    const channel = this.getChannel(topicInfo.currentPubkey || publickey)
     if (channel) channel.sendControl(topicReconnectMessage)
   }
 
-  networkKeys () {
-    const peerNxKeys = {
-      publickey: this.swarm.keyPair.publicKey.toString('hex')
-    }
-    const networkMessage = {
-      type: 'account',
-      action: 'network-keys',
-      data: peerNxKeys
-    }
-    this.emit('peer-network', networkMessage)
-    this.listenNetwork()
-    this.peerJoinClient()
-  }
-
-  listenNetwork () {
-    // Swarm listeners are unified inside _setupSwarm()
-  }
-
-  setRole (peerData) {
-    const setRole = { send: 'prime', invite: peerData }
-    this.peersRole.push(setRole)
-  }
-
-  setupConnectionBegin (peerNetwork) {
-    this.peerNetwork = peerNetwork
-    for (const sPeer of this.peerNetwork) {
-      const hexKey = sPeer.key.toString('hex')
-      if (sPeer.value?.concept?.settopic === true) {
-        this.topicConnect(hexKey, sPeer.value.concept.topic)
-      } else if (sPeer.value?.concept?.topic) {
-        this.topicListen(sPeer.value.concept.topic, hexKey)
-      }
-    }
-  }
-
-  latestPeerNetwork (peerNetwork) {
-    this.peerNetwork = [...this.peerNetwork, ...peerNetwork]
-  }
-
-  setRestablished (pubKey, established) {
-    this.peerEstContext[pubKey] = established
-  }
-
-  prepareConnectionInfo (info, publicKey) {
-    const topicKeylive = info.topics || []
-    const roleTaken = info.client
-    let discoveryTopicInfo = {}
-
-    if (topicKeylive.length === 0) {
-      const role = roleTaken === false ? 'server' : 'client'
-      discoveryTopicInfo = this.checkDisoveryStatus(role, publicKey, topicKeylive)
-      if (discoveryTopicInfo === undefined) {
-        discoveryTopicInfo = { firstTime: false, topic: '' }
-      }
-    } else {
-      discoveryTopicInfo = { firstTime: false, topic: '' }
-    }
-
-    return {
-      topicKeylive,
-      roleTaken,
-      discoveryTopicInfo
-    }
-  }
-
-  handleFirstTimeConnection (conn, info, connectionInfo) {
-    const publicKeylive = info.publicKey.toString('hex')
-    const roleTaken = info.client
-
-    if (this.topicHolder[publicKeylive] === undefined) {
-      const roleType = roleTaken === false ? 'server' : 'client'
-      const roleContext = {
-        publickey: publicKeylive,
-        roletaken: roleType
-      }
-      this.dataFlowCheck(publicKeylive, 'first')
-      this.emit('connect-warm-first', roleContext)
-    }
-  }
-
-  handleReconnection (conn, info, connectionInfo) {
-    const { publicKey } = info
-    const { topicKeylive } = connectionInfo
-
-    let topic = ''
-    if (topicKeylive.length > 0) {
-      topic = topicKeylive[0].toString('hex')
-    }
-
-    let originalKey = ''
-    for (const savePeer of this.peerNetwork) {
-      if (savePeer.value?.concept?.topic === topic) {
-        originalKey = savePeer.value.publickey
-        break
-      }
-    }
-
-    if (topic.length > 0) {
-      const topicMatch = this.topicHolder[topic]
-      if (topicMatch && Object.keys(topicMatch).length > 0) {
-        topicMatch.currentPubkey = publicKey.toString('hex')
-        this.topicHolder[topic] = topicMatch
-        this.dataFlowCheck(topic, 'client')
-        this.updatePeerStatus(topic, publicKey.toString('hex'))
-        this.writeTopicReconnect(originalKey, topicMatch)
-      }
-      this.dataFlowCheck(publicKey.toString('hex'), 'server')
-    }
-  }
-
-  updatePeerStatus (topic, publicKey) {
-    let originalKey = ''
-    for (const savePeer of this.peerNetwork) {
-      if (savePeer.value?.concept?.topic === topic) {
-        originalKey = savePeer.key.toString('hex')
-        break
-      }
-    }
-
-    this.peerNetwork = this.peerNetwork.map(savePeer => {
-      if (savePeer.key.toString('hex') === originalKey) {
-        return {
-          ...savePeer,
-          value: {
-            ...savePeer.value,
-            live: true,
-            livePeerkey: publicKey
-          }
-        }
-      }
-      return savePeer
-    })
-    this.emit('peer-live-network', originalKey)
-  }
-
-  assessData (peer, data) {
-    let dataShareIn = data
-    if (Buffer.isBuffer(data)) {
-      try {
-        dataShareIn = JSON.parse(data.toString())
-      } catch (e) {
-        return
-      }
-    }
-
-    console.log('assess data ===================================')
-    console.log(dataShareIn)
-    try {
-      const peerMatch = this.peerMatchbase(peer)
-      if (dataShareIn.type === 'private-chart') {
-        this.emit('beebee-data', { publickey: peerMatch, data: dataShareIn })
-      } else if (dataShareIn.type === 'private-cue-space') {
-        this.emit('cuespace-notification', { publickey: peerMatch, data: dataShareIn })
-      } else if (dataShareIn.type === 'public-library') {
-         if (dataShareIn.action === 'auto-announce') {
-          // set the maps
-          this.peerManifests.set(peerMatch, dataShareIn.data)
-          this.emit('publiclibrary-notification-manifest', peerMatch)
-         }
-      } else if (dataShareIn.type === 'peer-codename-inform') {
-        this.emit('peer-codename-match', dataShareIn)
-      } else if (dataShareIn.type === 'topic-reconnect') {
-        const topicMatch = this.topicHolder[dataShareIn.topic]
-        if (topicMatch !== undefined) {
-          if (topicMatch.currentPubkey !== dataShareIn.publickey) {
-            this.emit('peer-reconnect-topic', dataShareIn)
-          }
-        } else {
-          dataShareIn.settopic = false
-          this.emit('peer-reconnect-topic', dataShareIn)
-        }
-      } else if (dataShareIn.type === 'topic-reconnect-id') {
-        this.emit('peer-reconnect-topic-id', peer, dataShareIn.data)
-      }
-    } catch (e) {
-      console.error('Data assessment error:', e)
-    }
-  }
-
-  checkConnectivityStatus (message, warmPeers, decodePath) {
-    const ptopStatus = {}
-    let savedPtoP = false
-    let livePtoP = false
-    let savedpeerInfo = {}
-
-    if (decodePath === 'invite-gen') {
-      const parts = this.inviteDecoded(message.data)
-      if (typeof message.data === 'string' || message.data?.invite) {
-        message.data = { publickey: parts[1], codename: parts[2] }
-      } else {
-        message.data.publickey = parts[1]
-        message.data.codename = parts[2]
-      }
-    }
-
-    const targetKey = message.data.publickey
-
-    for (const exPeer of this.peerNetwork) {
-      if (exPeer.key === targetKey) {
-        savedPtoP = true
-        savedpeerInfo = exPeer
-      }
-    }
-
-    let peerLiveStatus = false
-    for (const sPeer of this.peerNetwork) {
-      if (sPeer.key === targetKey) {
-        peerLiveStatus = sPeer.value?.live || false
-      }
-    }
-
-    if (peerLiveStatus === true) {
-      livePtoP = true
-    } else {
-      for (const wpeer of warmPeers) {
-        const openConn = this.peerConnect[targetKey]
-        if (openConn !== undefined) {
-          livePtoP = true
-        }
-      }
-    }
-
-    ptopStatus.peer = savedpeerInfo
-    ptopStatus.existing = savedPtoP
-    ptopStatus.live = livePtoP
-    ptopStatus.role = this.peersRole[targetKey]
-    ptopStatus.data = message.data
-    ptopStatus.action = message.action
-    ptopStatus.task = message.task
-    return ptopStatus
-  }
-
-  matchInviteFirst (data) {
-    let roleMatch = false
-    for (const peerRole of this.peersRole) {
-      if (peerRole.invite?.codename === data.data?.inviteCode) {
-        roleMatch = true
-        break
-      }
-    }
-  }
-
-  matchCodename (data) {
-    let inviteIn = {}
-    for (const roleP of this.peersRole) {
-      if (roleP.invite?.pubkey === data) {
-        inviteIn = roleP
-      }
-    }
-    const codeNameInvite = {
-      codename: inviteIn.invite?.codename,
-      invitePubkey: data,
-      name: inviteIn.invite?.name
-    }
-    return {
-      publickey: data,
-      role: inviteIn,
-      codename: codeNameInvite.codename,
-      name: codeNameInvite.name
-    }
-  }
-
-  matchPeersCodename (data) {
-    let inviteIn = {}
-    for (const roleP of this.peersRole) {
-      if (roleP.invite?.codename === data.data?.inviteCode) {
-        inviteIn = roleP
-      }
-    }
-    return {
-      publickey: data,
-      role: inviteIn,
-      codename: inviteIn.invite?.codename,
-      name: inviteIn.invite?.name
-    }
-  }
-
-  peerMatchTopic (pubKey) {
-    let peerSettings = {}
-    for (const savePeer of this.peerNetwork) {
-      if (savePeer.key?.toString('hex') === pubKey) {
-        peerSettings = savePeer
-      }
-    }
-    return peerSettings
-  }
-
-  discoveryMatch (pubKey) {
-    return true
-  }
-
-  topicPublicKeyMatch (topic) {
-    let topicSettings = {}
-    for (const livePeer of this.peerSwitchLiveID) {
-      if (livePeer.connectionInfo?.topic === topic) {
-        topicSettings = livePeer.publicKey
-      }
-    }
-    return topicSettings
-  }
-
-  peerMatchbase (currPubKey) {
-    let originalKey = ''
-    for (const savePeer of this.peerNetwork) {
-      if (savePeer.value?.livePeerkey === currPubKey) {
-        originalKey = savePeer.key
-      }
-    }
-    return originalKey.length === 0 ? currPubKey : originalKey
-  }
-
-  matchPeerTopic (topic) {
-    let peerSettings = {}
-    for (const savePeer of this.peerNetwork) {
-      if (savePeer.value?.concept?.topic === topic) {
-        peerSettings = savePeer
-      }
-    }
-    return peerSettings
-  }
-
-  inviteDecoded (invite) {
-    const raw = typeof invite === 'string'
-      ? invite
-      : (invite?.invite || invite?.publickey || '')
-
-    const splitInvite = []
-
-    if (typeof raw === 'string' && raw.includes(':')) {
-      const [prefix, hexString] = raw.split(':')
-      if (prefix === 'hop' && hexString) {
-        const next32Bytes = hexString.slice(0, 64)
-        const remainder = hexString.slice(64)
-        splitInvite.push('hop', next32Bytes, remainder)
-        return splitInvite
-      }
-    }
-
-    splitInvite.push('hop', invite?.publickey || raw, invite?.codename || '')
-    return splitInvite
-  }
-
-  dataFlowCheck (topicIn, role) {
-    let peerTopeerState = {}
-    let matchPeer = {}
-
-    if (role === 'client') {
-      matchPeer = this.topicHolder[topicIn] || {}
-      const peerActionData = this.peerHolder[matchPeer.peerKey]
-      if (peerActionData !== undefined) {
-        peerTopeerState = peerActionData.data || {}
-      }
-    } else if (role === 'server') {
-      matchPeer.currentPubkey = topicIn
-      const checkDiscoveryTopic = {}
-      for (const topicH of this.sendTopicHolder) {
-        const noisePublicKey = Buffer.from(topicH.topic, 'hex')
-        const discovery = this.swarm.status(noisePublicKey)
-        if (discovery && discovery.topic?.toString('hex') === topicH.topic) {
-          discovery.swarm.connections.forEach((value) => {
-            checkDiscoveryTopic.server = value.publicKey.toString('hex')
-            checkDiscoveryTopic.client = value.remotePublicKey.toString('hex')
-            checkDiscoveryTopic.topic = topicH.topic
-          })
-        }
-      }
-
-      let peerMTopic = {}
-      for (const peerh of this.peerNetwork) {
-        if (peerh.value?.topic === checkDiscoveryTopic.topic) {
-          peerMTopic = peerh
-        }
-      }
-
-      if (Object.keys(peerMTopic).length === 0) {
-        peerMTopic.key = topicIn
-      }
-
-      const peerActionData = this.peerHolder[peerMTopic.key]
-      peerTopeerState = peerActionData?.data || {}
-    } else if (role === 'first') {
-      const peerActionData = this.peerHolder[topicIn]
-      peerTopeerState = peerActionData?.data || {}
-    }
-
-    const checkDataShare = Object.keys(peerTopeerState).length
-    if (checkDataShare > 0) {
-      if (peerTopeerState.type === 'private-chart') {
-        this.writeTonetworkData(matchPeer.currentPubkey, peerTopeerState)
-      }
-    }
-  }
-
-  checkDisoveryStatus (nodeRole, publicKey, topic) {
-    let topicList = []
-    if (nodeRole === 'server') {
-      topicList = this.sendTopicHolder
-    } else if (nodeRole === 'client') {
-      topicList = this.topicHolder
-    }
-
-    let peerContractKey = ''
-    if (topicList.length > 0) {
-      peerContractKey = topicList[0].peerKey
-    }
-
-    let firstTime = false
-    const emptyHolder = false
-
-    if (this.peerNetwork.length === 0) {
-      firstTime = true
-    } else {
-      let keyMatchTopic = false
-      if (topicList.length > 0) {
-        for (const topicE of topicList) {
-          if (topicE.livePubkey === peerContractKey) {
-            keyMatchTopic = true
-          }
-        }
-      }
-
-      if (keyMatchTopic === false) {
-        if (nodeRole === 'client') {
-          if (!topic || topic.length === 0) {
-            firstTime = true
-          }
-        } else if (nodeRole === 'server') {
-          if (topicList.length === 0) {
-            firstTime = true
-          } else {
-            let existingPeerCheck = false
-            for (const peer of this.peerNetwork) {
-              if (peer.key?.toString('hex') === peerContractKey) {
-                existingPeerCheck = true
-              }
-            }
-            if (existingPeerCheck === false) {
-              firstTime = 'wait-topic-confirm'
-            } else {
-              firstTime = false
-            }
-          }
-        }
-      }
-    }
-
-    return {
-      firstTime,
-      emptyHolder,
-      role: nodeRole,
-      server: '',
-      client: '',
-      topic: ''
-    }
-  }
-
-  checkTopicModes (matchTopic) {
-    const sendLogic = this.sendTopicHolder.filter(s => s.topic === matchTopic)
-    const holderLogic = Object.keys(this.topicHolder).filter(t => this.topicHolder[t].topic === matchTopic)
-    return { firstTime: sendLogic.length === 0 && holderLogic.length === 0 }
-  }
-
-  routeDataPath (livePubkey, peerTopeerState) {
-    const checkDataShare = Object.keys(peerTopeerState || {}).length
-    if (checkDataShare > 0) {
-      if (peerTopeerState.type === 'private-chart') {
-        this.writeTonetworkData(livePubkey, peerTopeerState)
-      } else if (peerTopeerState.type === 'public-n1-experiment') {
-        this.writeToPublicLibrary(livePubkey, peerTopeerState)
-      } else if (peerTopeerState.type === 'private-cue-space') {
-        this.writeToCueSpace(livePubkey, peerTopeerState)
-      } else if (peerTopeerState.type === 'peer-write') {
-        this.writeTonetwork(peerTopeerState)
-      } else if (peerTopeerState.type === 'public-library') {
-        this.writeToPublicLibrary(livePubkey, peerTopeerState)
-      }
-    }
-  }
-
-  writeTonetworkTopic (peerContract, codeName) {
-    const randomString = crypto.randomBytes(32).toString('hex')
-    const topicGeneration = randomString
+  prepareTonetworkTopic (publicKey, peerRecord) {
+    console.log('Peers  write TOPIC TO NETWORK')
+    const topicGeneration = crypto.randomBytes(32).toString('hex')
 
     const topicShare = {
       type: 'topic-reconnect',
-      peercontract: peerContract,
-      publickey: this.swarm.keyPair.publicKey.toString('hex'),
-      peerkey: this.swarm.keyPair.publicKey.toString('hex'),
+      peercontract: peerRecord,
+      publickey: b4a.toString(this.swarm.keyPair.publicKey, 'hex'),
+      peerkey: b4a.toString(this.swarm.keyPair.publicKey, 'hex'),
       prime: true,
       topic: topicGeneration,
-      codename: codeName,
+      codename: peerRecord.concept.codename,
       data: topicGeneration
     }
+    // inform peer of topic
+    this.writeTopicReconnect(publicKey, topicShare)
 
     this.emit('topic-formed-save', topicShare)
-    this.emit('warmpeer-match', peerContract, topicShare)
-  }
-
-  peerJoin (peerContext) {
-    this.checkTimerConnection(peerContext.publickey)
-    this.peerHolder[peerContext.publickey] = peerContext
-    const noisePublicKey = Buffer.from(peerContext.publickey, 'hex')
-    if (noisePublicKey.length === 32) {
-      this.swarm.joinPeer(noisePublicKey, { server: true, client: false })
-    }
-  }
-
-  checkTimerConnection (key) {
-    setTimeout(() => {
-      if (this.peerConnect[key] === undefined && !Object.keys(this.peerConnect).length) {
-        this.emit('peer-share-fail', key)
-      }
-    }, 6000)
-  }
-
-  peerLeave (peerLeaveKey) {
-    this.peerHolder[peerLeaveKey] = {}
-    this.swarm.leavePeer(peerLeaveKey)
-  }
-
-  peerAlreadyJoinSetData (peerContext) {
-    this.peerHolder[peerContext.publickey] = peerContext
-    return true
-  }
-
-  peerJoinClient () {
-    this.swarm.listen()
+    // upgrade to warm peer
   }
 
   async topicConnect (peerID, topic) {
-    const noisePublicKey = Buffer.from(topic, 'hex')
+    const noisePublicKey = b4a.from(topic, 'hex')
     if (noisePublicKey.length === 32) {
-      const topicKeylive = noisePublicKey.toString('hex')
-      this.topicHolder[topic] = {
-        role: 'server',
-        livePubkey: this.swarm.keyPair.publicKey.toString('hex'),
-        topic,
-        key: topicKeylive,
-        timestamp: ''
-      }
-      this.sendTopicHolder.push({
-        livePubkey: this.swarm.keyPair.publicKey.toString('hex'),
-        peerKey: peerID,
-        topic
-      })
-      const peerConnect = this.swarm.join(noisePublicKey, { server: true, client: false })
-      this.discoveryList.push({ peerKey: peerID, topic, discovery: peerConnect })
+      const peerConnect = this.swarm.join(noisePublicKey, { server: true, client: true })
       await peerConnect.flushed()
     }
   }
 
   async topicListen (topic, peerKey) {
-    const noisePublicKey = Buffer.from(topic, 'hex')
+    const noisePublicKey = b4a.from(topic, 'hex')
     if (noisePublicKey.length === 32) {
-      const topicKeylive = noisePublicKey.toString('hex')
-      this.topicHolder[topic] = {
-        role: 'client',
-        topic,
-        key: topicKeylive,
-        peerKey,
-        timestamp: ''
-      }
-      const peerConnect = this.swarm.join(noisePublicKey, { server: false, client: true })
-      this.discoveryList.push({ peerKey, topic, discovery: peerConnect })
+      this.swarm.join(noisePublicKey, { server: true, client: true })
       await this.swarm.flush()
     }
   }
 
   async leaveTopic (topic) {
-    await this.swarm.leave(topic)
+    const noisePublicKey = b4a.from(topic, 'hex')
+    if (noisePublicKey.length === 32) {
+      await this.swarm.leave(noisePublicKey)
+    }
   }
 }
 
