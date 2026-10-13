@@ -546,7 +546,7 @@ class NetworkPeers extends EventEmitter {
     this.writeTopicReconnect(publicKey, topicShare)
 
     // update Peer Record
-    this.setPeerRecordTopic(publicKey, topicShare)
+    this.setPeerRecordTopic(peerRecord.concept.codename, topicShare)
 
     let confirmRecord = this.peerRecordAssess('peer', publicKey, peerRecord.concept.codename)
     if (confirmRecord.confirm === true ) {
