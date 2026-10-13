@@ -21,6 +21,7 @@ class NetworkPeers extends EventEmitter {
     // Scoped RAM state maps
     this.pendingPeers = new Map()
     this.pendingTopic = new Map()
+    this.pendingNoidentity = new Map()
     this.warmPeers = new Map()
     // this.pendingInvites = new Map() // Map<codename, { pubkey, codename, name }>
     this.peerHolder = {}
@@ -99,6 +100,7 @@ class NetworkPeers extends EventEmitter {
       key: pubkey,
       stages: { 
         inviteGenerated: inviteStage,
+        codenameGenerated: false,
         connected: false,
         codenameMatched: false
       },
@@ -128,22 +130,88 @@ class NetworkPeers extends EventEmitter {
     }
   }
 
-  // Peer generates invite token peer accept invite
-  updatePendingRole (publicKey, stage) {
-    console.log('UPDATE PENDING-----------')
-    // get existing pending pendingPeers or pendingTopic
-    let existingPending = {}
-    if (stage === '') {
-
-    }
-    // update pending MAP state
-
- 
+  // incoming connection but not matched to any invite identity yet
+  pendingSetNoidentity (publicKey, role) {
+    console.log('connected but NO IDENTITY')
+    console.log(publicKey)
+    console.log(role)
+    let noIdentity = {}
+    noIdentity.publickey = publicKey
+    noIdentity.client = role
+    this.pendingNoidentity.set(publicKey, noIdentity)
   }
 
+  // Peer generates invite token peer accept invite
+  updatePendingTopic (publicKey) {
+    console.log('UPDATE PENDING-----------')
+    // get existing pending pendingPeers or pendingTopic
+    let existingPending = this.pendingTopic.get(publicKey)
+    existingPending.stages.connected = true
+    existingPending.stages.codenameGenerated = true
+    // update pending MAP state
+    this.pendingTopic.set(publicKey, existingPending)
+    console.log('exisitng TOPIC PENDING UPDATED STAGE')
+    console.log(this.pendingTopic)
+  }
+
+  // Peer confirm codename match to invite
+  updatePendingPeers (publicKey) {
+    console.log('UPDATE PENDING-WARM----------')
+    // get existing pending pendingPeers or pendingTopic
+    let existingPending = this.pendingPeers.get(publicKey)
+    existingPending.stages.codenameMatched = true
+    // update pending MAP state
+    this.pendingPeers.set(publicKey, existingPending)
+    console.log('exisitng WARM PENDING UPDATED STAGE')
+    console.log(this.pendingPeers)
+  }
+
+  // assess all the peer record stages and confirm completion
+  peerRecordAssess (pendingType, publicKey, codename) {
+    console.log('RECORD ASSESS ----- ASSESS---')
+    let liveRecord = {}
+    if (pendingType === 'peer') {
+      liveRecord = this.pendingPeers.get(codename)
+    } else if (pendingType === 'topic') {
+      liveRecord = this.pendingTopic.get(publicKey)
+    }
+    console.log('ASSESS  PEER RECORD')
+    console.log(liveRecord)
+
+    let stagesConfirm = false
+
+    if (pendingType === 'peer') {
+      // check if connected?
+      if (liveRecord.stages.connected === false) {
+        // check the identiy connect for
+        let liveConnection = this.pendingNoidentity.get(publicKey)
+        if (liveConnection) {
+          if (liveRecord.stages.inviteGenerated === true && liveRecord.stages.codenameMatched ===  true ) {
+            stagesConfirm = true
+          }
+        }
+      }
+    }
+
+    if (pendingType === 'topic') {
+      // check if connected?
+      if (liveRecord.stages.connected === true) {
+        // check the identiy connect for
+        if (liveRecord.stages.inviteGenerated === true && liveRecord.stages.codenameGenerated ===  true ) {
+          stagesConfirm = true
+        }
+      }
+    }
+    let confirmPeer = {}
+    confirmPeer.confirm = stagesConfirm
+    confirmPeer.record = liveRecord
+    return confirmPeer
+  }
+
+
   _evaluateConnection (info, peerHex) {
-    console.log('HP---EVALUTE connection------------------')
-    console.log('[Transport] Connection established:', peerHex, 'Is Client:', info.client)
+    // console.log('HP---EVALUTE connection------------------')
+    // console.log('[Transport] Connection established:', peerHex, 'Is Client:', info.client)
 
     if (info.client) {
       // Acceptor / Dialer Path: Check if this connection maps to a pending invite
@@ -157,20 +225,19 @@ class NetworkPeers extends EventEmitter {
         console.log('[Acceptor] Outbound connection established, but no pendingTopic entry exists for:', peerHex)
       }
     } else {
-      // Generator / Listener Path: Inbound connection. 
+      // update pending to show connection established
+      this.pendingSetNoidentity(peerHex, info.client)
       // Do not force a lookup here; wait for the incoming peer-codename-inform packet.
-      console.log('[Generator] Inbound connection registered. Awaiting remote codename packet.')
     }
   }
 
   handlePeerControl (peerKey, netData) {
-    console.log('HOP peers.js   handlePeerControl------1111111-------------------------')
+    // console.log('HOP peers.js   handlePeerControl------1111111-------------------------')
     /*if (netData && netData.type === 'public-library' && this.hyperbee) {
       this.hyperbee.saveRepliatePubLibary(netData.data)
     }*/
     
     if (netData && netData.type === 'peer-codename-inform') {
-      console.log('code name comes in from HOP network')
       this.codenameMatchIdentity(peerKey, netData.data)
     }
     
@@ -221,10 +288,9 @@ class NetworkPeers extends EventEmitter {
   codenameMatchIdentity (publicKey, data) {
     if (data && data.inviteCode) {
       const matchedCodename = this.matchPeersCodename(data.inviteCode)
-      console.log('match to codename returned')
-      console.log(matchedCodename)
       if (matchedCodename) {
-        console.log('YES MATCH GEN TOPIC PATH')
+        // update peerRecord
+        this.updatePendingPeers(matchedCodename.concept.codename)
         // prepare the topic to reconnect with peer
         this.prepareTonetworkTopic(publicKey, matchedCodename)
       } else {
@@ -234,18 +300,46 @@ class NetworkPeers extends EventEmitter {
     } 
   }
 
+  updatePeerRecordTopic (publicKey, data) {
+    console.log('data in TPOOIC  set')
+    console.log(data)
+    // get the existing pending record
+    let liveRecord = this.pendingTopic.get(publicKey)
+    liveRecord.concept.settopic = false
+    liveRecord.concept.topic = data.topic
+  }
+
+  setPeerRecordTopic (publicKey, data) {
+    console.log('GENERATE TOPIC')
+    console.log(publicKey)
+    console.log(this.pendingPeers)
+    console.log(data)
+    // get the existing pending record
+    let liveRecord = this.pendingPeers.get(publicKey)
+    liveRecord.concept.settopic = true
+    liveRecord.concept.topic = data.topic
+  }
+
   /**
    *  
    * 
   */
-  matchTopicConfirm(data) {
-    console.log('MATCH TOPIC CONFIRMMMMMMMMMMMMMMM')
-    // save the peerContract check three stages complete
-    this.emit('topic-formed-save-accept', data)
+  matchTopicConfirm(publicKey, data) {
+    // update peer record for topic
+    this.updatePeerRecordTopic(publicKey, data)
+    // peerRecord assess and then allow saving if all complete
+    let checkRecord = this.peerRecordAssess('topic', publicKey, '')
+    if (checkRecord.confirm === true) {
+      this.emit('peer-record-formed-accept', checkRecord.record)
+    } else {
+      // inform beebee peer connection has not been established
+
+      // remove pending
+
+    }
   }  
 
   async handleCodenameArrival(peerKey, codenameData) {
-    console.log('handlecodename arriaveooooooooooooooooooooooooooooooo')
     const record = this.warmPeers.get(peerKey);
     if (!record) return;
 
@@ -278,7 +372,6 @@ class NetworkPeers extends EventEmitter {
   }
 
   peerJoin (publicKey, stagingRecord) {
-    console.log('PEER JOIN')
     if (!publicKey || !stagingRecord) return
     this.peerHolder[publicKey] = stagingRecord
     const noisePublicKey = b4a.from(publicKey, 'hex')
@@ -304,9 +397,6 @@ class NetworkPeers extends EventEmitter {
   }
 
   matchPeersCodename (codenameID) {
-    console.log('CODENAME  ID')
-    console.log(codenameID)
-    console.log(this.pendingPeers)
     let peerMatch = this.pendingPeers.get(codenameID)
     return peerMatch
   }
@@ -387,9 +477,6 @@ class NetworkPeers extends EventEmitter {
    * @param {*} existing 
   */
   warmPeerIdentityPrepare (publicKeyInvitee, identityCode) {
-    console.log('ID FORMING IN')
-    console.log(identityCode)
-
     const codenameInform = {
       type: 'peer-codename-inform',
       action: 'set',
@@ -400,9 +487,7 @@ class NetworkPeers extends EventEmitter {
       }
     }
     // update status of stages 
-    this.updatePendingRole(codenameInform)
-    console.log('CODENAME PREPARED  SEND NEXT')
-    console.log(codenameInform)
+    this.updatePendingTopic(publicKeyInvitee)
     this.writeTonetworkData(publicKeyInvitee, codenameInform)
   }
 
@@ -414,9 +499,6 @@ class NetworkPeers extends EventEmitter {
   }
 
   writeTonetworkData (publickey, dataShare) {
-    console.log('write data to NWEPOERIRIRIRI')
-    console.log(publickey)
-    console.log(dataShare)
     const channel = this.getChannel(publickey)
     if (channel) channel.sendControl(dataShare)
   }
@@ -448,7 +530,6 @@ class NetworkPeers extends EventEmitter {
   }
 
   prepareTonetworkTopic (publicKey, peerRecord) {
-    console.log('Peers  write TOPIC TO NETWORK')
     const topicGeneration = crypto.randomBytes(32).toString('hex')
 
     const topicShare = {
@@ -464,7 +545,16 @@ class NetworkPeers extends EventEmitter {
     // inform peer of topic
     this.writeTopicReconnect(publicKey, topicShare)
 
-    this.emit('topic-formed-save', topicShare)
+    // update Peer Record
+    this.setPeerRecordTopic(publicKey, topicShare)
+
+    let confirmRecord = this.peerRecordAssess('peer', publicKey, peerRecord.concept.codename)
+    if (confirmRecord.confirm === true ) {
+      this.emit('peer-record-formed', confirmRecord.record)
+    } else {
+      // inform peer connection failed
+      console.log()
+    }
     // upgrade to warm peer
   }
 

@@ -131,7 +131,7 @@ class HolepunchWorker extends EventEmitter {
     })
 
     // save the topic
-    this.Peers.on('topic-formed-save', (peerRecord) => {
+    this.Peers.on('peer-record-formed', (peerRecord) => {
       if (peerRecord) {
         // save
         this.saveHelper(peerRecord)
@@ -141,7 +141,7 @@ class HolepunchWorker extends EventEmitter {
     });
 
     // save the topic
-    this.Peers.on('topic-formed-save-accept', (peerRecord) => {
+    this.Peers.on('peer-record-formed-accept', (peerRecord) => {
       if (peerRecord) {
         // save
         this.saveHelper(peerRecord)
@@ -253,7 +253,8 @@ class HolepunchWorker extends EventEmitter {
   }
 
   async saveHelper (peerRecord) {
-    console.log('save HELPER STAT____ START')
+    console.log('saveHELPERRRRRRRRRRRRR')
+    console.log(peerRecord)
     let libMessageout = {}
     libMessageout.type = 'library'
     libMessageout.action = 'account'
@@ -263,7 +264,7 @@ class HolepunchWorker extends EventEmitter {
     libMessageout.data = peerRecord
     libMessageout.bbid = ''
     // await this.wiring.library.libManager.libraryManage(libMessageout)
-    this.emit('peer-topic-save', libMessageout)
+    this.emit('peer-record-save', libMessageout)
   }
 
   async networkPath (message) {
