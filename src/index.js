@@ -136,7 +136,7 @@ class HolepunchWorker extends EventEmitter {
         // save
         this.saveHelper(peerRecord)
         // inform beebee BentoBoxDS
-        this.emit('peer-reconnect-topic-notify', peerRecord);
+        // this.emit('peer-reconnect-topic-notify', peerRecord);
       }
     });
 
@@ -146,9 +146,23 @@ class HolepunchWorker extends EventEmitter {
         // save
         this.saveHelper(peerRecord)
         // inform beebee BentoBoxDS
-        this.emit('peer-reconnect-topic-notify', peerRecord);
+        // this.emit('peer-reconnect-topic-notify', peerRecord);
       }
     });
+
+    this.Peers.on('peer-reconnected', (data) => {
+
+      this.wsocket.send(JSON.stringify({
+        type: 'account',
+        action: 'peer-reconnected-verify',
+        data: {
+          publickey: data.publickey,
+          topic: data.topic,
+          name: data.record?.value?.concept?.name || data.record?.concept?.name
+        }
+      }))
+
+    })
 
 
     this.Peers.on('beebee-data', (data) => {
@@ -253,8 +267,7 @@ class HolepunchWorker extends EventEmitter {
   }
 
   async saveHelper (peerRecord) {
-    console.log('saveHELPERRRRRRRRRRRRR')
-    console.log(peerRecord)
+   
     let libMessageout = {}
     libMessageout.type = 'library'
     libMessageout.action = 'account'
@@ -268,22 +281,17 @@ class HolepunchWorker extends EventEmitter {
   }
 
   async networkPath (message) {
-    console.log('HP network path')
-    console.log(message)
+
     if (!message) return
 
     if (message.action === 'share') {
       const reEstablishShort = this.Peers.checkConnectivityStatus(message, [], 'invite-gen')
       if (message.task === 'peer-share-invite') {
         // peer accepts invite send from a peer
-        console.log('peer set peer-share-codename1111')
-        console.log(message.data)
         this.Peers.setPendingRole('peer-share-invite', message.data.publickey, message.data.codename, message.data.name)
 
       } else if (message.task === 'peer-share-codename') {
         // peer generate hop address pubkey and codename
-        console.log('peer set peer-share-codename2222')
-        console.log(message.data)
         this.Peers.setPendingRole('peer-share-codename', message.data.publickey, message.data.codename, message.data.name)
 
 
@@ -336,8 +344,7 @@ class HolepunchWorker extends EventEmitter {
   }
 
   matchWarmSaveKey (saveKey) {
-    console.log('warm peers map')
-    console.log(this.Peers.warmPeers)
+
     return this.Peers.warmPeers.get(saveKey)
   }
 

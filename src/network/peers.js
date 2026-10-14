@@ -5,7 +5,6 @@ import b4a from 'b4a'
 import crypto from 'crypto'
 
 import { PeerProtocol } from './osmosis/protocol.js'
-import { match } from 'assert'
 
 class NetworkPeers extends EventEmitter {
   constructor (store, swarm, options = {}) {
@@ -22,6 +21,7 @@ class NetworkPeers extends EventEmitter {
     this.pendingPeers = new Map()
     this.pendingTopic = new Map()
     this.pendingNoidentity = new Map()
+    this.savedPeers = new Map()
     this.warmPeers = new Map()
     // this.pendingInvites = new Map() // Map<codename, { pubkey, codename, name }>
     this.peerHolder = {}
@@ -80,6 +80,8 @@ class NetworkPeers extends EventEmitter {
       const sPeer = peerNetwork[i]
       const hexKey = typeof sPeer.key === 'string' ? sPeer.key : b4a.toString(sPeer.key, 'hex')
       const concept = sPeer.value && sPeer.value.concept
+      this.savedPeers.set(hexKey, sPeer)
+
       if (concept && concept.settopic === true) {
         this.topicConnect(hexKey, concept.topic)
       } else if (concept && concept.topic) {
@@ -88,9 +90,94 @@ class NetworkPeers extends EventEmitter {
     }
   }
 
+  /**
+   *  evaluate connection as the happen on Swarm
+   * @method _evaluateConnection
+   * @param {} info 
+   * @param {*} peerHex 
+   */
+  _evaluateConnection (info, peerHex) {
+    // console.log('[Transport] Connection established:', peerHex, 'Is Client:', info.client)
+
+    if (info.client) {
+      // Acceptor / Dialer Path: Check if this connection maps to a pending invite
+      const pendingRecord = this.matchPendingTopic(peerHex)
+
+      if (pendingRecord) {
+        // Transmit the codename to unlock the remote Generator's pendingPeers map
+        this.warmPeerIdentityPrepare(peerHex, pendingRecord)
+
+      } else {
+        // check if existing warm peer
+        // Extract topic from connection metadata
+        const topicBuffer = info.topics && info.topics[0]
+        const topicHex = topicBuffer ? b4a.toString(topicBuffer, 'hex') : null
+
+        if (topicHex) {
+          const matchedPeerRecord = this.findPeerByTopic(topicHex)
+          if (matchedPeerRecord) {
+            
+            this.warmPeers.set(peerHex, { record: matchedPeerRecord })
+
+            this.writeTonetworkData(peerHex, {
+              type: 'peer-reconnect-resume',
+              data: { topic: topicHex }
+            })
+
+            this.emit('peer-reconnected', {
+              publickey: peerHex,
+              topic: topicHex,
+              record: matchedPeerRecord
+            })
+            return
+          }
+        }
+      }
+    } else {
+      // update pending to show connection established
+      this.pendingSetNoidentity(peerHex, info.client)
+      // Do not force a lookup here; wait for the incoming peer-codename-inform packet.
+    }
+  }
+
+  /**
+   * pick up incoming messages from warm peers and route
+   * @method handlePeerControl
+   * @param {*} peerKey 
+   * @param {*} netData 
+   */
+  handlePeerControl (peerKey, netData) {
+    
+    if (netData && netData.type === 'peer-codename-inform') {
+      this.codenameMatchIdentity(peerKey, netData.data)
+    }
+    
+    if (netData && netData.type === 'topic-reconnect-id') {
+      this.matchTopicConfirm(peerKey, netData.data)
+    }
+
+    if (netData && netData.type === 'peer-reconnect-resume') {
+      const topicHex = netData.data && netData.data.topic
+      if (topicHex) {
+        const matchedPeerRecord = this.findPeerByTopic(topicHex)
+        if (matchedPeerRecord) {
+          
+          this.activeSessions.set(peerKey, { record: matchedPeerRecord })
+
+          this.emit('peer-reconnected', {
+            publickey: peerKey,
+            topic: topicHex,
+            record: matchedPeerRecord
+          })
+        }
+      }
+    }
+  
+  }
+
+
   // Peer generates invite token peer accept invite
   setPendingRole (stage, pubkey, codename, name) {
-    console.log('START  PENDING PATH')
     let inviteStage = false
     if (stage === 'peer-share-codename' || stage === 'peer-share-invite') {
       inviteStage = true      
@@ -118,12 +205,9 @@ class NetworkPeers extends EventEmitter {
       }
     };
 
-    console.log('STAGE BEFORE')
-    console.log(stage)
     if (stage === 'peer-share-codename') {
       this.pendingPeers.set(codename, stagingRecord);
     } else if (stage === 'peer-share-invite') {
-      console.log('SET PATH PEER JOIN')
       this.pendingTopic.set(pubkey, stagingRecord);
       // peer connection activate
       this.peerJoin(pubkey, stagingRecord)
@@ -132,9 +216,6 @@ class NetworkPeers extends EventEmitter {
 
   // incoming connection but not matched to any invite identity yet
   pendingSetNoidentity (publicKey, role) {
-    console.log('connected but NO IDENTITY')
-    console.log(publicKey)
-    console.log(role)
     let noIdentity = {}
     noIdentity.publickey = publicKey
     noIdentity.client = role
@@ -143,40 +224,41 @@ class NetworkPeers extends EventEmitter {
 
   // Peer generates invite token peer accept invite
   updatePendingTopic (publicKey) {
-    console.log('UPDATE PENDING-----------')
     // get existing pending pendingPeers or pendingTopic
     let existingPending = this.pendingTopic.get(publicKey)
     existingPending.stages.connected = true
     existingPending.stages.codenameGenerated = true
     // update pending MAP state
     this.pendingTopic.set(publicKey, existingPending)
-    console.log('exisitng TOPIC PENDING UPDATED STAGE')
-    console.log(this.pendingTopic)
   }
 
   // Peer confirm codename match to invite
   updatePendingPeers (publicKey) {
-    console.log('UPDATE PENDING-WARM----------')
     // get existing pending pendingPeers or pendingTopic
     let existingPending = this.pendingPeers.get(publicKey)
     existingPending.stages.codenameMatched = true
     // update pending MAP state
     this.pendingPeers.set(publicKey, existingPending)
-    console.log('exisitng WARM PENDING UPDATED STAGE')
-    console.log(this.pendingPeers)
+  }
+
+  findPeerByTopic (topicHex) {
+    for (const [key, record] of this.savedPeers.entries()) {
+      const storedTopic = record.value?.concept?.topic || record.concept?.topic
+      if (storedTopic === topicHex) {
+        return record
+      }
+    }
+    return null
   }
 
   // assess all the peer record stages and confirm completion
   peerRecordAssess (pendingType, publicKey, codename) {
-    console.log('RECORD ASSESS ----- ASSESS---')
     let liveRecord = {}
     if (pendingType === 'peer') {
       liveRecord = this.pendingPeers.get(codename)
     } else if (pendingType === 'topic') {
       liveRecord = this.pendingTopic.get(publicKey)
     }
-    console.log('ASSESS  PEER RECORD')
-    console.log(liveRecord)
 
     let stagesConfirm = false
 
@@ -206,45 +288,6 @@ class NetworkPeers extends EventEmitter {
     confirmPeer.confirm = stagesConfirm
     confirmPeer.record = liveRecord
     return confirmPeer
-  }
-
-
-  _evaluateConnection (info, peerHex) {
-    // console.log('HP---EVALUTE connection------------------')
-    // console.log('[Transport] Connection established:', peerHex, 'Is Client:', info.client)
-
-    if (info.client) {
-      // Acceptor / Dialer Path: Check if this connection maps to a pending invite
-      const pendingRecord = this.matchPendingTopic(peerHex)
-
-      if (pendingRecord) {
-        // Transmit the codename to unlock the remote Generator's pendingPeers map
-        this.warmPeerIdentityPrepare(peerHex, pendingRecord)
-
-      } else {
-        console.log('[Acceptor] Outbound connection established, but no pendingTopic entry exists for:', peerHex)
-      }
-    } else {
-      // update pending to show connection established
-      this.pendingSetNoidentity(peerHex, info.client)
-      // Do not force a lookup here; wait for the incoming peer-codename-inform packet.
-    }
-  }
-
-  handlePeerControl (peerKey, netData) {
-    // console.log('HOP peers.js   handlePeerControl------1111111-------------------------')
-    /*if (netData && netData.type === 'public-library' && this.hyperbee) {
-      this.hyperbee.saveRepliatePubLibary(netData.data)
-    }*/
-    
-    if (netData && netData.type === 'peer-codename-inform') {
-      this.codenameMatchIdentity(peerKey, netData.data)
-    }
-    
-    if (netData && netData.type === 'topic-reconnect-id') {
-      this.matchTopicConfirm(peerKey, netData.data)
-    }
-  
   }
 
   handlePeerOsmosis (peerKey, frame) {
@@ -301,8 +344,6 @@ class NetworkPeers extends EventEmitter {
   }
 
   updatePeerRecordTopic (publicKey, data) {
-    console.log('data in TPOOIC  set')
-    console.log(data)
     // get the existing pending record
     let liveRecord = this.pendingTopic.get(publicKey)
     liveRecord.concept.settopic = false
@@ -310,10 +351,6 @@ class NetworkPeers extends EventEmitter {
   }
 
   setPeerRecordTopic (publicKey, data) {
-    console.log('GENERATE TOPIC')
-    console.log(publicKey)
-    console.log(this.pendingPeers)
-    console.log(data)
     // get the existing pending record
     let liveRecord = this.pendingPeers.get(publicKey)
     liveRecord.concept.settopic = true
@@ -553,7 +590,7 @@ class NetworkPeers extends EventEmitter {
       this.emit('peer-record-formed', confirmRecord.record)
     } else {
       // inform peer connection failed
-      console.log()
+      console.log('end')
     }
     // upgrade to warm peer
   }
