@@ -299,7 +299,6 @@ class HolepunchWorker extends EventEmitter {
     })
 
     this.BeeData.on('publib-replicate-notification', (data) => {
-      console.log('inform beebee osmosis replication 0000000')
       this.emit('replicate-publib-notification', data)
     })
 

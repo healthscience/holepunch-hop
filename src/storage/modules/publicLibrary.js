@@ -131,7 +131,6 @@ class PublicLibraryModule {
    * @method replicatePubliclibrary
    */
   replicatePubliclibrary = async function (dataIn) {
-    console.log('START REPLICAXTION _________________>>>>>>>>>')
     const coreRep = this.store.get({ key: b4a.from(dataIn.discoverykey, 'hex') })
     const beePlib = new Hyperbee(coreRep, {
       keyEncoding: 'utf-8',
@@ -158,9 +157,6 @@ class PublicLibraryModule {
    * @method replicateQueryPubliclibrary
   */
   async replicateQueryPubliclibrary (data) {
-    console.log('replication IIININNININ')
-    console.log('replicateQueryPubliclibrary')
-    console.log(data)
     const { peerKey, beeKey, store, manifest } = data
 
     if (!beeKey) return null
@@ -219,8 +215,6 @@ class PublicLibraryModule {
     if (targetLocalBee) {
       await targetLocalBee.ready()
       for await (const entry of bee.createReadStream()) {
-        // console.log('what has been replicated?????????')
-        // console.log(entry)
         await targetLocalBee.put(entry.key, entry.value)
         entryCount++
       }
