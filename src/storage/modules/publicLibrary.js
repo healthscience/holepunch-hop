@@ -56,9 +56,7 @@ class PublicLibraryModule {
    * @method getPublicLibraryRefRange
    */
   getPublicLibraryRefRange = async function (lsID, category, range) {
-
     const { gt, lt } = this.crypto.getRange(lsID, category)
-
     const streamData = this.dbRef.createReadStream({
       gt,
       lt,
@@ -133,13 +131,13 @@ class PublicLibraryModule {
    * @method replicatePubliclibrary
    */
   replicatePubliclibrary = async function (dataIn) {
+    console.log('START REPLICAXTION _________________>>>>>>>>>')
     const coreRep = this.store.get({ key: b4a.from(dataIn.discoverykey, 'hex') })
     const beePlib = new Hyperbee(coreRep, {
       keyEncoding: 'utf-8',
       valueEncoding: 'utf-8'
     })
     await coreRep.ready()
-    this.swarm.join(coreRep.discoveryKey, { server: false, client: true })
     await coreRep.update()
 
     const nodeData = beePlib.createReadStream()
@@ -160,25 +158,49 @@ class PublicLibraryModule {
    * @method replicateQueryPubliclibrary
   */
   async replicateQueryPubliclibrary (data) {
+    console.log('replication IIININNININ')
+    console.log('replicateQueryPubliclibrary')
+    console.log(data)
     const { peerKey, beeKey, store, manifest } = data
 
     if (!beeKey) return null
 
     // 1. Mount core & Hyperbee instance from corestore
     const coreRep = this.store.get({ key: b4a.from(beeKey, 'hex') })
+    await coreRep.ready()
+
+    // 2. Explicitly join the public discovery key and target Peer 1's public key directly
+    if (peerKey) {
+      const noisePublicKey = b4a.from(peerKey, 'hex')
+      if (noisePublicKey.length === 32) {
+        this.swarm.joinPeer(noisePublicKey, { server: true, client: true })
+      }
+    }
+    
+    this.swarm.join(coreRep.discoveryKey, { server: true, client: true })
+
     const bee = new Hyperbee(coreRep, {
       keyEncoding: 'binary',
       valueEncoding: 'json'
     })
     await bee.ready()
 
-    // 2. Poll remote core length header over Hyperswarm and download blocks
+    // 3. Poll remote core length header over the targeted connection and download blocks
     if (bee.core) {
+      await bee.core.ready()
+
+      let peerWait = 0
+      while (bee.core.peers.length === 0 && peerWait < 30) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+        peerWait++
+      }
+
       let retries = 0
-      while (bee.core.length === 0 && retries < 20) {
-        const updated = await bee.core.update({ wait: true })
+      while (bee.core.length === 0 && retries < 30) {
+        await bee.core.update({ wait: true })
+        if (bee.core.length > 0) break
         retries++
-        if (!updated && retries > 5) break
+        await new Promise(resolve => setTimeout(resolve, 200))
       }
 
       if (bee.core.length > 0) {
@@ -187,63 +209,28 @@ class PublicLibraryModule {
       }
     }
 
-    // 3. Update view pointer to reflect newly downloaded blocks
+    // 4. Update view pointer to reflect newly downloaded blocks
     await bee.update()
 
-    // 4. Resolve local primary Bee directly from this.commonBees Map
+    // 5. Resolve local primary Bee directly from this.commonBees Map
     const targetLocalBee = this.commonBees.get(store)
     let entryCount = 0
 
     if (targetLocalBee) {
       await targetLocalBee.ready()
       for await (const entry of bee.createReadStream()) {
+        // console.log('what has been replicated?????????')
+        // console.log(entry)
         await targetLocalBee.put(entry.key, entry.value)
         entryCount++
       }
       await targetLocalBee.update()
-
     } else {
       console.warn(`[osmosis:bee:trace] Warning: Local Bee store for "${store}" not found in this.commonBees!`)
     }
 
     this.emit('publib-replicate-notification', { store, peerKey })
     return bee
-
-
-      /*
-      const boardNXPcontract = await beePlib.get(dataIn.data.data.boardID)
-      let unString = JSON.parse(boardNXPcontract.value)
-      let moduleContracts = []
-      for (let mod of unString.modules) {
-        let modC = await beePlib.get(mod)
-        moduleContracts.push(modC)
-      }
-      let referenceContracts = []
-      for (let modRef of moduleContracts) {
-        let unString = JSON.parse(modRef.value)
-        if (unString.style === 'packaging') {
-          for (let ref of unString.info.value.concept.tablestructure) {
-            if (ref?.refcontract) {
-              let refC = await beePlib.get(ref.refcontract)
-              referenceContracts.push(refC)
-            }
-          }
-        } else if (unString.style === 'question') {
-          let questRef = {}
-          questRef.key = unString.info.key
-          questRef.value = JSON.stringify(unString.info.value)
-          referenceContracts.push(questRef)
-        }
-      }
-
-      if (moduleContracts.length > 0) {
-        let holderConfirm = {}
-        holderConfirm.boardNXP = [boardNXPcontract]
-        holderConfirm.modules = moduleContracts
-        holderConfirm.refcontracts = referenceContracts
-        this.confirmPubLibList[dataIn.data.data.datastores] = holderConfirm
-        this.emit('publibbeebee-notification', )
-      } */
 
   }
 

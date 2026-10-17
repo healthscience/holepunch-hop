@@ -49,7 +49,7 @@ export class PeerProtocol {
   }
 
   _setupChannel() {
-    // Check if the channel already exists on this Protomux instance
+    // Check if the channel already exists on this Protomux instance[cite: 7]
     for (const ch of this.mux) {
       if (ch.protocol === 'holepunch-hop') {
         this.channel = ch
@@ -57,14 +57,14 @@ export class PeerProtocol {
       }
     }
 
-    // Create the channel if it does not exist yet
+    // Create the channel if it does not exist yet[cite: 7]
     if (!this.channel) {
       this.channel = this.mux.createChannel({ protocol: 'holepunch-hop' })
     }
 
     if (!this.channel) return
 
-    // Register message handlers if they haven't been attached yet
+    // Register message handlers if they haven't been attached yet[cite: 7]
     if (!this.controlHandler) {
       try {
         this.controlHandler = this.channel.addMessage({
@@ -72,7 +72,7 @@ export class PeerProtocol {
           onmessage: (data) => this.onMessage(this.publicKey, data)
         })
       } catch (err) {
-        // Handler already registered on this channel
+        // Handler already registered on this channel[cite: 7]
       }
     }
 
@@ -83,18 +83,19 @@ export class PeerProtocol {
           onmessage: (data) => this.onOsmosis(this.publicKey, data)
         })
       } catch (err) {
-        // Handler already registered on this channel
+        // Handler already registered on this channel[cite: 7]
       }
     }
 
     this.channel.open()
 
-    // Automatically exchange local public library manifest
-    if (this.localManifest) {
+    // Automatically evaluate and exchange local public library manifest dynamically
+    const manifest = typeof this.localManifest === 'function' ? this.localManifest() : this.localManifest
+    if (manifest && (Array.isArray(manifest) ? manifest.length > 0 : Object.keys(manifest).length > 0)) {
       this.sendControl({
         type: 'public-library',
         action: 'auto-announce',
-        data: this.localManifest
+        data: manifest
       })
     }
   }

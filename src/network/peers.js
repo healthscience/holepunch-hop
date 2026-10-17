@@ -14,8 +14,10 @@ class NetworkPeers extends EventEmitter {
     this.swarm = swarm
     this.getPublicManifest = options.getPublicManifest
 
+    this.peerManifests = new Map()
+
     // Streamlined RAM State Maps
-    this.activeSessions = new Map() // Map<peerHex, { conn, protocol }>
+    this.activeSessions = new Map()
 
     // Scoped RAM state maps
     this.pendingPeers = new Map()
@@ -35,10 +37,11 @@ class NetworkPeers extends EventEmitter {
 
       const protocol = new PeerProtocol(conn, {
         publicKey: peerHex,
-        localManifest: typeof this.getPublicManifest === 'function' ? this.getPublicManifest() : {},
+        localManifest: () => (typeof this.getPublicManifest === 'function' ? this.getPublicManifest() : {}),
         onMessage: (peerKey, payload) => this.handlePeerControl(peerKey, payload),
         onOsmosis: (peerKey, frame) => this.handlePeerOsmosis(peerKey, frame)
       })
+
 
       this.activeSessions.set(peerHex, { conn, protocol })
 
@@ -171,6 +174,11 @@ class NetworkPeers extends EventEmitter {
           })
         }
       }
+    }
+
+    if (netData && netData.type === 'public-library') {
+      this.peerManifests.set(peerKey, netData.data)
+      this.emit('publiclibrary-notification-manifest', peerKey, netData.data)
     }
   
   }

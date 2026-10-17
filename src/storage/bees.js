@@ -378,6 +378,10 @@ class HyperBee extends EventEmitter {
     let publicLibraries = []
     for (let publicL of this.activeBees) {
       if (publicL.privacy === 'public') {
+        let localBee = this.commonBees.get(publicL.store)
+        if (localBee && localBee.discoveryKey) {
+          this.swarm.join(localBee.discoveryKey, { server: true, client: true })
+        }
         publicLibraries.push(publicL)
       }
     }

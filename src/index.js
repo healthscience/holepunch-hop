@@ -210,17 +210,65 @@ class HolepunchWorker extends EventEmitter {
       }
     })
 
+    this.Peers.on('publiclibrary-notification-manifest', async (warmPeerPK) => {
+      const rawManifests = this.Peers.peerManifests.get(warmPeerPK)
+      if (!rawManifests) return
+
+      const approvedManifests = await this.osmosis.filterIngress('public-library', rawManifests)
+      if (!approvedManifests) return
+
+      const libraryList = Array.isArray(approvedManifests) ? approvedManifests : [approvedManifests]
+
+      for (let i = 0; i < libraryList.length; i++) {
+        const libManifest = libraryList[i]
+        if (libManifest.store === 'bentocues') {
+          await this.BeeData.replicateQueryPubliclibrary({
+            peerKey: warmPeerPK,
+            beeKey: libManifest.pubkey || libManifest.beeKey,
+            store: libManifest.store,
+            manifest: libManifest
+          })
+        }
+      }
+
+      if (this.wsocket) {
+        this.wsocket.send(JSON.stringify({
+          type: 'osmosis',
+          action: 'osmosis-replication-complete',
+          completed: true,
+          store: 'bentocues'
+        }))
+      }
+    })
+
     this.Peers.on('osmosis-request-replication', async (data) => {
       const targetPeerKey = data.targetPeerKey
       const stores = data.stores
-      if (!targetPeerKey) return
+      if (!targetPeerKey || !stores) return
 
+      // 1. Retrieve Peer 1's full manifest list
       const publicManifests = this.Peers.peerManifests.get(targetPeerKey)
-      if (!publicManifests || publicManifests.length === 0) return
+      if (!publicManifests || !Array.isArray(publicManifests)) {
+        console.warn(`[osmosis] No valid public manifest list found for peerKey: ${targetPeerKey}`)
+        return
+      }
 
       const targetStores = Array.isArray(stores) ? stores : [stores]
-      const manifestsToSync = publicManifests.filter((m) => targetStores.includes(m.store))
+      const manifestsToSync = []
 
+      // 2. Loop through the incoming request and map each requested store to its manifest
+      for (const storeName of targetStores) {
+        const matchingManifest = publicManifests.find(m => m.store === storeName)
+        if (matchingManifest) {
+          manifestsToSync.push(matchingManifest)
+        } else {
+          console.warn(`[osmosis] Warning: Requested store "${storeName}" has no matching manifest in cache.`)
+        }
+      }
+
+      console.log(`[osmosis] Built sync array with ${manifestsToSync.length} manifest(s).`)
+
+      // 3. Sequentially process and replicate each matched store
       for (let i = 0; i < manifestsToSync.length; i++) {
         const manifest = manifestsToSync[i]
         const passed = await this.osmosis.filterIngress('public-library', manifest)
@@ -228,12 +276,13 @@ class HolepunchWorker extends EventEmitter {
 
         await this.BeeData.replicateQueryPubliclibrary({
           peerKey: targetPeerKey,
-          beeKey: manifest.pubkey,
+          beeKey: manifest.pubkey || manifest.beeKey,
           store: manifest.store,
           manifest
         })
       }
 
+      // 4. Dispatch completion signal once all loops finish
       if (this.wsocket) {
         this.wsocket.send(JSON.stringify({
           type: 'osmosis',
@@ -250,6 +299,7 @@ class HolepunchWorker extends EventEmitter {
     })
 
     this.BeeData.on('publib-replicate-notification', (data) => {
+      console.log('inform beebee osmosis replication 0000000')
       this.emit('replicate-publib-notification', data)
     })
 
