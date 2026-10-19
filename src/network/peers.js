@@ -313,7 +313,7 @@ class NetworkPeers extends EventEmitter {
       })
     }
 
-    this.emit('osmosis-frame', { peerKey, frame })
+    // this.emit('osmosis-frame', { peerKey, frame })
   }
 
   /**
@@ -374,6 +374,7 @@ class NetworkPeers extends EventEmitter {
     this.updatePeerRecordTopic(publicKey, data)
     // peerRecord assess and then allow saving if all complete
     let checkRecord = this.peerRecordAssess('topic', publicKey, '')
+
     if (checkRecord.confirm === true) {
       this.emit('peer-record-formed-accept', checkRecord.record)
     } else {
@@ -594,6 +595,7 @@ class NetworkPeers extends EventEmitter {
     this.setPeerRecordTopic(peerRecord.concept.codename, topicShare)
 
     let confirmRecord = this.peerRecordAssess('peer', publicKey, peerRecord.concept.codename)
+
     if (confirmRecord.confirm === true ) {
       this.emit('peer-record-formed', confirmRecord.record)
     } else {

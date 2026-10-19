@@ -187,38 +187,8 @@ class HolepunchWorker extends EventEmitter {
       if (!approvedManifests) return
 
       const libraryList = Array.isArray(approvedManifests) ? approvedManifests : [approvedManifests]
-
-      for (let i = 0; i < libraryList.length; i++) {
-        const libManifest = libraryList[i]
-        if (libManifest.store === 'bentocues') {
-          await this.BeeData.replicateQueryPubliclibrary({
-            peerKey: warmPeerPK,
-            beeKey: libManifest.pubkey || libManifest.beeKey,
-            store: libManifest.store,
-            manifest: libManifest
-          })
-        }
-      }
-
-      if (this.wsocket) {
-        this.wsocket.send(JSON.stringify({
-          type: 'osmosis',
-          action: 'osmosis-replication-complete',
-          completed: true,
-          store: 'bentocues'
-        }))
-      }
-    })
-
-    this.Peers.on('publiclibrary-notification-manifest', async (warmPeerPK) => {
-      const rawManifests = this.Peers.peerManifests.get(warmPeerPK)
-      if (!rawManifests) return
-
-      const approvedManifests = await this.osmosis.filterIngress('public-library', rawManifests)
-      if (!approvedManifests) return
-
-      const libraryList = Array.isArray(approvedManifests) ? approvedManifests : [approvedManifests]
-
+      console.log('library list star flow OSOSOSOSOSMMSMISI')
+      console.log(libraryList)
       for (let i = 0; i < libraryList.length; i++) {
         const libManifest = libraryList[i]
         if (libManifest.store === 'bentocues') {
@@ -255,7 +225,6 @@ class HolepunchWorker extends EventEmitter {
 
       const targetStores = Array.isArray(stores) ? stores : [stores]
       const manifestsToSync = []
-
       // 2. Loop through the incoming request and map each requested store to its manifest
       for (const storeName of targetStores) {
         const matchingManifest = publicManifests.find(m => m.store === storeName)
@@ -266,7 +235,6 @@ class HolepunchWorker extends EventEmitter {
         }
       }
 
-      console.log(`[osmosis] Built sync array with ${manifestsToSync.length} manifest(s).`)
 
       // 3. Sequentially process and replicate each matched store
       for (let i = 0; i < manifestsToSync.length; i++) {
