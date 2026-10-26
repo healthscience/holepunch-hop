@@ -187,8 +187,7 @@ class HolepunchWorker extends EventEmitter {
       if (!approvedManifests) return
 
       const libraryList = Array.isArray(approvedManifests) ? approvedManifests : [approvedManifests]
-      console.log('library list star flow OSOSOSOSOSMMSMISI')
-      console.log(libraryList)
+
       for (let i = 0; i < libraryList.length; i++) {
         const libManifest = libraryList[i]
         if (libManifest.store === 'bentocues') {

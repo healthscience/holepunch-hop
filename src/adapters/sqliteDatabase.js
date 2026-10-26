@@ -118,8 +118,6 @@ class SqliteAdapter extends EventEmitter {
   *
   */
   queryTable = async function (table) {
-    console.log('HP--first SQL query')
-    console.log(table)
     let tableName = table.context.deviceTable
     // let devicetableName = table.context.devicetablename
     let tableTimestamp = table.context.timestamp   // timecolumn
@@ -158,8 +156,7 @@ class SqliteAdapter extends EventEmitter {
       if (queryLimit) {
         sqlQuery += ` LIMIT ` + queryLevel
       }
-      console.log('HP------formed ----------')
-      console.log(sqlQuery)
+
 	    this.dataBase.all(sqlQuery, [], (err, rows) => {
 	      if (err) {
 		reject(err)

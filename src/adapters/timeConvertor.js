@@ -36,7 +36,6 @@ class TimeConvertor extends EventEmitter {
     // .fromJSDate(sampleDate) // .fromHTTP(sampleDate) //  fromFormat(sampleDate, "YYY-MM-DD ")  //.fromISO(sampleDate) // or DateTime. fromFormat("23-06-2019", "dd-MM-yyyy") .(splitRow[0])//  new Date(splitRow[0])
     // console.log(parseDate) */
     let millDate = parseDate2.toMillis()
-    console.log(millDate)
     return millDate
   }
 
