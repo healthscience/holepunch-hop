@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import HolepunchWorker from '../src/index.js'
+import HolepunchWorker from '../../src/index.js'
 
 class MockWebSocket {
   constructor() {

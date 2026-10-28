@@ -1,6 +1,6 @@
 import { describe, it } from 'vitest'
 import assert from 'assert'
-import HolepunchData from '../src/index.js'
+import HolepunchData from '../../src/index.js'
 // need helpers prepare input to HP via (mock) HOP
 
 describe('upload a large csv in chunks', function () {

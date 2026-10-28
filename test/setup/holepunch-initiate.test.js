@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { spawn } from 'child_process'
 import path from 'path'
-import HolepunchWorker from '../src/index.js'
+import HolepunchWorker from '../../src/index.js'
 
 // Set global test timeout to 10 seconds
 const testTimeout = 10000;
