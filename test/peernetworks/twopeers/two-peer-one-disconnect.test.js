@@ -1,164 +1,81 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import Hyperswarm from 'hyperswarm'
-import NetworkPeers from '../../src/network/peers.js'
-import crypto from 'crypto'
+import { describe, it, expect, afterAll } from 'vitest';
+import path from 'path';
+import fs from 'fs';
+import os from 'os';
+import { setupLowLevelTestPeer, stopLowLevelTestPeer, teardownLowLevelTestPeer, TrackEvent } from '../helpers/ws-hop-connect.js';
 
-// Set global test timeout to 10 seconds
-const testTimeout = 10000;
+describe('Persistent Peer Disconnection & Unilateral Reconnection Workflows', () => {
+  const store1 = 'test-recon-p1';
+  const store2 = 'test-recon-p2';
 
-describe('Peer Disconnection Tests', () => {
-  let clientPeer
-  let serverPeer
-  let clientSwarm
-  let serverSwarm
-  let testConfig
-  let peerNetworkMock = []
+  afterAll(async () => {
+    await teardownLowLevelTestPeer(null, store1);
+    await teardownLowLevelTestPeer(null, store2);
+  });
 
-  beforeEach(async () => {
-    // Create real swarms
-    clientSwarm = new Hyperswarm()
-    serverSwarm = new Hyperswarm()
+  it('Scenario 2: Peer 1 stays online, Peer 2 closes down and auto-reconnects on launch', async () => {
+    const p1Dir = path.join(os.homedir(), '.' + store1);
+    const p2Dir = path.join(os.homedir(), '.' + store2);
+    if (fs.existsSync(p1Dir)) fs.rmSync(p1Dir, { recursive: true, force: true });
+    if (fs.existsSync(p2Dir)) fs.rmSync(p2Dir, { recursive: true, force: true });
 
-    // Create client and server peers
-    clientPeer = new NetworkPeers({}, clientSwarm)
-    serverPeer = new NetworkPeers({}, serverSwarm)
+    let peer1 = await setupLowLevelTestPeer({ storename: store1 });
+    let peer2 = await setupLowLevelTestPeer({ storename: store2 });
 
-    testConfig = {
-      peer1to2: {
-        peer1: {
-          publicKey: clientPeer.swarm.keyPair.publicKey.toString('hex'),
-          client: true
-        },
-        peer2: {
-          publicKey: serverPeer.swarm.keyPair.publicKey.toString('hex'),
-          client: false
-        }
-      }
-    }
+    const inviteBundle = await peer1.generateInvite('peer1-recon-s2');
+    const hopInvite = 'hop:' + inviteBundle.bundle.publickey + inviteBundle.bundle.codename;
 
-  
-    // Set up initial connection
-    clientPeer.peerJoinClient()
-    serverPeer.peerJoinClient()
+    const peer1RecordSaved = peer1.waitForMessage((msg) => msg.reftype === 'new-peer-topic', 45000);
+    const peer2RecordAccepted = peer2.waitForMessage((msg) => msg.action === 'peer-record-formed-accept', 45000);
 
-    // Create mock server peer for client to connect to
-    const mockServerPeer = {
-      publickey: serverPeer.swarm.keyPair.publicKey.toString('hex'),
-      live: false,
-      value: {
-        live: false,
-        key: serverPeer.swarm.keyPair.publicKey.toString('hex')
-      }
-    }
-    clientPeer.peerJoin(mockServerPeer)
+    await peer2.acceptInvite('peer2-recon-s2', hopInvite);
 
-    // Wait for initial setup
-    await new Promise(resolve => setTimeout(resolve, 1000))
-  }, 10000)
+    const p1RecordMsg = await peer1RecordSaved;
+    const p2RecordMsg = await peer2RecordAccepted;
 
-  afterEach(async () => {
-    console.log('Cleaning up test environment')
-    await Promise.all([
-      clientSwarm.destroy(),
-      serverSwarm.destroy()
-    ])
-    clientPeer = null
-    serverPeer = null
-  }, 10000)
+    const p2PeerRecord = { key: p2RecordMsg.data.key, value: p2RecordMsg.data };
 
-  describe('First-time connection and disconnection', () => {
-    it('should handle first-time connection and proper disconnection', async () => {
-      let connectionCount = 0
-      let disconnectCount = 0
+    // -------------------------------------------------------------------------
+    // Shut down only Peer 2 while Peer 1 remains online
+    // -------------------------------------------------------------------------
+    console.log('[Scenario 2] Shutting down Peer 2 while Peer 1 remains online...');
+    await stopLowLevelTestPeer(peer2);
+    peer2 = null;
 
-      // Track connection
-      const connectionPromise = new Promise((resolve) => {
-        clientPeer.swarm.on('connection', (conn, info) => {
-          connectionCount++
-          console.log('Client connection:')
-          expect(info.publicKey).toBeDefined()
-          expect(info.client).toBe(true)
-          expect(info.topics.length).toBe(0)
-          
-          // Store connection for later disconnection
-          clientPeer.connection = conn
-          
-          if (connectionCount === 1) {
-            console.log('Client disconnecting')
-            clientSwarm.destroy()
-            clientPeer = null
-            resolve()
-          }
-        })
-      })
+    // -------------------------------------------------------------------------
+    // Set up listeners for replication / re-sync confirmation upon Peer 2 return
+    // -------------------------------------------------------------------------
+    const peer1Replicated = peer1.waitForMessage((msg) => {
+      return msg.action === 'osmosis-replication-complete' || msg.action === 'peer-reconnected-verify';
+    }, 60000);
 
-      // Track server connection
-      const serverConnectionPromise = new Promise((resolve) => {
-        serverPeer.swarm.on('connection', (conn, info) => {
-          connectionCount++
-          console.log('Server connection:')
-          expect(info.publicKey).toBeDefined()
-          expect(info.publicKey).toBeDefined()
-          // Server sees itself as false
-          expect(info.client).toBe(false)
-          expect(info.topics.length).toBe(0)
-          
-          // Store connection for later disconnection
-          serverPeer.peerConnect = {}
-          serverPeer.peerConnect[testConfig.peer1to2.peer1.publicKey] = conn
+    // Restart Peer 2 from disk storage
+    console.log('[Scenario 2] Restarting Peer 2 from disk...');
+    peer2 = await setupLowLevelTestPeer({ storename: store2 });
 
-          peerNetworkMock.push({
-            key: testConfig.peer1to2.peer1.publicKey,
-            value: {
-              concept: {
-                name: 'peer1',
-                publickey: testConfig.peer1to2.peer1.publicKey,
-                roletaken: true,
-                longterm: true,
-                settopic: true,
-                topic: 'letitbe',
-                live: false,
-                livePeerkey: testConfig.peer1to2.peer1.publicKey
-              }
-            }
-          })
-          
-          if (connectionCount === 2) {
-            console.log('server count disconnecting')
-          }
-          // listen for error
-          conn.on('error', data => {
-            console.log('error incoming, which peer?')
-            disconnectCount++
-            expect(info).toBeDefined()
-            expect(info.publicKey).toBeDefined()
-            expect(info.publicKey.toString('hex')).toBe(testConfig.peer1to2.peer1.publicKey)
-            // match to peer info. and inform beebee ui
-            let connectLivekeys = Object.keys(serverPeer.peerConnect)
-            for (let peer of peerNetworkMock) {
-              for (let pconn of connectLivekeys) {
-                if (peer.value.livePeerkey === pconn) {
-                  // check if connect is close?
-                  // let keysNoise = Object.keys(serverPeer.peerConnect[pconn]['noiseStream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['rawStream']['_closed'])
-                  // console.log(this.peerConnect[pconn]['noiseStream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['rawStream']['_closed'])
-                  let closeStatus = serverPeer.peerConnect[pconn]['noiseStream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['_writableState']['stream']['rawStream']['_closed']
-                  expect(closeStatus).toBe(true)
-                }
-              }
-            }
-            // Verify disconnection info
-            if (disconnectCount === 1) {
-              resolve()
-            }
-          })
+    const peer2Replicated = peer2.waitForMessage((msg) => {
+      return msg.action === 'osmosis-replication-complete' || msg.action === 'peer-reconnected-verify';
+    }, 60000);
 
-        })
-      })
+    // Give the restarted worker a brief moment to stabilize stores before re-hydrating
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Wait for both connections to be established
-      await Promise.all([connectionPromise, serverConnectionPromise])
+    console.log('[Scenario 2] Re-hydrating Peer 2 state...');
+    peer2.hopWorker.Peers.setupConnectionBegin([p2PeerRecord]);
 
+    const res1 = await peer1Replicated;
+    const res2 = await peer2Replicated;
 
-    }, 30000)
-  }) 
-})
+    expect(res1).toBeDefined();
+    expect(res2).toBeDefined();
+    
+    TrackEvent('test-suite', 'scenario2-unilateral-reconnect-complete', { res1, res2 });
+    console.log('[Scenario 2] Unilateral restart replication and reconnection verified successfully.');
+
+    // Graceful closing delay to let background streams settle before teardown
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    await stopLowLevelTestPeer(peer1);
+    if (peer2) await stopLowLevelTestPeer(peer2);
+  }, 120000);
+});

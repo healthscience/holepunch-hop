@@ -213,12 +213,21 @@ class PublicLibraryModule {
     let entryCount = 0
 
     if (targetLocalBee) {
-      await targetLocalBee.ready()
-      for await (const entry of bee.createReadStream()) {
-        await targetLocalBee.put(entry.key, entry.value)
-        entryCount++
+      try {
+        await targetLocalBee.ready()
+        for await (const entry of bee.createReadStream()) {
+          if (bee.closed || targetLocalBee.closed) break
+          await targetLocalBee.put(entry.key, entry.value)
+          entryCount++
+        }
+        if (!targetLocalBee.closed) {
+          await targetLocalBee.update()
+        }
+      } catch (err) {
+        if (err.code !== 'SESSION_CLOSED') {
+          throw err
+        }
       }
-      await targetLocalBee.update()
     } else {
       console.warn(`[osmosis:bee:trace] Warning: Local Bee store for "${store}" not found in this.commonBees!`)
     }

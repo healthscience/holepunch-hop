@@ -1,18 +1,37 @@
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
+import EventEmitter from 'events';
 import HolepunchWorker from '../../../src/index.js';
 import { createInviteBundle } from './inviteUtility.js';
 
-// Proper standalone TrackEvent utility function exported for tests
 export function TrackEvent(storename, eventName, data) {
   console.log(`[TrackEvent:${storename}] [${eventName}]`, JSON.stringify(data, null, 2));
+}
+
+class MockWebSocket extends EventEmitter {
+  constructor() {
+    super();
+    this.sentMessages = [];
+  }
+  send(data) {
+    this.sentMessages.push(data);
+    try {
+      const parsed = JSON.parse(data);
+      this.emit('message-dispatched', parsed);
+    } catch (e) {
+      this.emit('message-dispatched', data);
+    }
+  }
 }
 
 export async function setupLowLevelTestPeer(options) {
   const { storename } = options;
   
   const hopWorker = new HolepunchWorker(storename);
+  const mockWs = new MockWebSocket();
+  hopWorker.setWebsocket(mockWs);
+
   await hopWorker.ready;
   await hopWorker.startStores();
 
@@ -36,7 +55,13 @@ export async function setupLowLevelTestPeer(options) {
     checkWaiters(msg);
   };
 
-  // 1. Native Event Listeners using TrackEvent
+  mockWs.on('message-dispatched', (msg) => {
+    if (msg.action === 'network-keys' && msg.data?.publickey) {
+      swarmPubkey = msg.data.publickey;
+    }
+    trackAndRecord('ws-message', msg);
+  });
+
   hopWorker.Peers.on('peer-network', (msg) => {
     if (msg.action === 'network-keys' && msg.data?.publickey) {
       swarmPubkey = msg.data.publickey;
@@ -45,29 +70,19 @@ export async function setupLowLevelTestPeer(options) {
   });
 
   hopWorker.on('peer-record-save', (msg) => {
-    trackAndRecord('peer-record-saved', { action: 'peer-record-saved', ...msg });
+    trackAndRecord('peer-record-saved', { ...msg, action: 'peer-record-saved' });
   });
 
   hopWorker.Peers.on('peer-record-formed-accept', (record) => {
     trackAndRecord('peer-record-formed-accept', { action: 'peer-record-formed-accept', data: record });
   });
 
-  // Additional low-level network and session tracers
-  hopWorker.Peers.on('peer-reconnected', (data) => trackAndRecord('peer-reconnected', data));
+  hopWorker.Peers.on('peer-reconnected', (data) => {
+    trackAndRecord('peer-reconnected', { action: 'peer-reconnected-verify', data });
+  });
+
   hopWorker.Peers.on('peer-disconnect', (data) => trackAndRecord('peer-disconnect', data));
 
-  // 2. Swarm Connection & Discovery Diagnostics
-  if (hopWorker.swarm) {
-    hopWorker.swarm.on('connection', (conn, info) => {
-      const peerId = info.publicKey ? info.publicKey.toString('hex') : 'unknown';
-      console.log(`[Swarm:${storename}] Connection established -> Peer ID: ${peerId} | Is Client: ${info.client}`);
-      
-      conn.on('close', () => console.log(`[Swarm:${storename}] Connection closed with Peer ID: ${peerId}`));
-      conn.on('error', (err) => console.error(`[Swarm:${storename}] Connection error with Peer ID ${peerId}:`, err.message));
-    });
-  }
-
-  // Trigger network keys broadcast
   if (hopWorker.Peers && typeof hopWorker.Peers.networkKeys === 'function') {
     hopWorker.Peers.networkKeys();
   }
@@ -94,7 +109,6 @@ export async function setupLowLevelTestPeer(options) {
   };
 
   const send = async (messageHOP) => {
-    console.log(`[Send:${storename}] Routing networkPath:`, JSON.stringify(messageHOP));
     await hopWorker.networkPath(messageHOP);
   };
 
@@ -129,11 +143,13 @@ export async function setupLowLevelTestPeer(options) {
         live: false
       }
     });
+    await new Promise((resolve) => setTimeout(resolve, 500));
     return true;
   };
 
   return {
     hopWorker,
+    mockWs,
     get swarmPubkey() { 
       return swarmPubkey || hopWorker.swarm?.keyPair?.publicKey?.toString('hex'); 
     },
@@ -144,10 +160,21 @@ export async function setupLowLevelTestPeer(options) {
   };
 }
 
-export async function teardownLowLevelTestPeer(peerInstance, storename) {
-  if (peerInstance?.hopWorker?.swarm) {
-    await peerInstance.hopWorker.swarm.destroy();
+export async function stopLowLevelTestPeer(peerInstance) {
+  if (peerInstance?.hopWorker) {
+    const worker = peerInstance.hopWorker;
+    if (worker.swarm && typeof worker.swarm.destroy === 'function') {
+      try { await worker.swarm.destroy(); } catch (e) {}
+    }
+    if (worker.store && typeof worker.store.close === 'function') {
+      try { await worker.store.close(); } catch (e) {}
+    }
   }
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+}
+
+export async function teardownLowLevelTestPeer(peerInstance, storename) {
+  await stopLowLevelTestPeer(peerInstance);
 
   if (storename) {
     const storePath = path.join(os.homedir(), storename.startsWith('.') ? storename : `.${storename}`);

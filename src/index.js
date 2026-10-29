@@ -99,6 +99,17 @@ class HolepunchWorker extends EventEmitter {
     await this.activateHypercores()
   }
 
+  async close() {
+    if (this.swarm) {
+      await this.swarm.destroy();
+    }
+    if (this.store && typeof this.store.close === 'function') {
+      await this.store.close();
+    } else if (this.corestore && typeof this.corestore.close === 'function') {
+      await this.corestore.close();
+    }
+  }
+
   networkListeners () {
     this.Peers.on('peer-network', (data) => {
       if (this.wsocket) this.wsocket.send(JSON.stringify(data))
