@@ -6,7 +6,7 @@ import HolepunchWorker from '../../../src/index.js';
 import { createInviteBundle } from './inviteUtility.js';
 
 export function TrackEvent(storename, eventName, data) {
-  console.log(`[TrackEvent:${storename}] [${eventName}]`, JSON.stringify(data, null, 2));
+  // console.log(`[TrackEvent:${storename}] [${eventName}]`, JSON.stringify(data, null, 2));
 }
 
 class MockWebSocket extends EventEmitter {
